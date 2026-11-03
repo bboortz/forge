@@ -27,7 +27,8 @@ images/                  — one directory per image we publish
   postgres-18/           — roadmap
 .github/workflows/
   build.yml              — daily 03:00 UTC cron: build → scan → sign → push
-  pr.yml                 — on PR: build + scan, do not push
+  ci.yml                 — stratified: fast on feat branches, full on dev + PRs
+  release.yml            — manual workflow_dispatch: fast-forward main from dev
 docs/                    — design notes, image rationale, consumer playbooks
   stories/               — FG-NNN-<slug>.md + INDEX + _template + _9-questions
   plan/                  — per-change plan docs (FG-NNN-<slug>-plan.md) + _template

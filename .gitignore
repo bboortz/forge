@@ -30,6 +30,10 @@ audit.log
 .env.local
 *.key
 
+# Forge build artifacts
+build/
+.cosign/
+
 # Editor
 .vscode/
 .idea/

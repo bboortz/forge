@@ -1,0 +1,44 @@
+repos:
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.14.0
+    hooks:
+      - id: hadolint-docker
+        files: ^images/.*/Dockerfile$
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        files: \.(sh|bash)$
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        files: ^\.github/.*\.ya?ml$
+        args: ["-d", "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}"]
+
+  - repo: local
+    hooks:
+      - id: verify-sid-pins
+        name: verify-sid-pins
+        language: system
+        entry: bash scripts/verify-sid-pins.sh
+        pass_filenames: false
+        files: ^images/.*/sid-pins/
+
+      - id: verify-traceability
+        name: verify-traceability
+        language: system
+        entry: bash scripts/verify-traceability.sh
+        pass_filenames: false
+        files: ^(docs/stories/|docs/plan/|docs/CAPABILITIES\.md|tests/acceptance/)
+
+      # Pre-push: full `make check` (lint + verify-* + acceptance tests).
+      # Takes a few minutes locally. Bypass with --no-verify only in emergencies.
+      - id: make-check-pre-push
+        name: make check (pre-push)
+        language: system
+        entry: bash -c 'make check'
+        pass_filenames: false
+        stages: [pre-push]
