@@ -15,7 +15,7 @@ Wire the full Forge publish pipeline — build, SBOM, scan, keyless sign, push, 
 See `_9-questions.md` for the question set.
 
 1. **Who** — primary consumer is the Forge maintainer wiring the pipeline. Secondary (post-publish): a Python dev or security engineer pulling `ghcr.io/bboortz/python:3.13-slim-trixie` and running `cosign verify` against it.
-2. **When** — fires on three triggers: PR touching `images/`, `Makefile`, or `.github/workflows/` (runs `pr.yml` build + scan, no push); merge to `main` via `workflow_dispatch` (runs `build.yml` and publishes the first digest); daily 03:00 UTC cron (rebuilds with `--pull`, publishes a fresh digest under the same tag).
+2. **When** — fires on three triggers: push to feat branch or PR targeting `dev` (runs `ci.yml` full-check: build + scan, no push); merge to `main` via `release.yml` + `workflow_dispatch` on `build.yml` (publishes the first digest); daily 03:00 UTC cron on `build.yml` (rebuilds with `--pull`, publishes a fresh digest under the same tag).
 3. **What success looks like** — all five observable:
    - `docker pull ghcr.io/bboortz/python:3.13-slim-trixie` succeeds without authentication
    - `docker run --rm ghcr.io/bboortz/python:3.13-slim-trixie python3 -c "print('ok')"` prints `ok`
@@ -24,7 +24,7 @@ See `_9-questions.md` for the question set.
    - A second cron run on day 2 publishes a new digest under the same tag; both digests are independently signed and attested
 4. **Urgency** — foundation tier. Nothing in FG-002, FG-003, or any later image story works without this pipeline existing.
 5. **Happy path** —
-   1. Feature branch `feat/FG-001-python-slim-pipeline` lands `images/python/{Dockerfile,build.sh,sid-pins/}`, `Makefile`, `.github/workflows/{pr,build}.yml`, `.pre-commit-config.yaml`, red `tests/acceptance/test_FG_001_python-slim-pipeline.sh`, plus the DD-TGD scaffolding (`docs/stories/_template.md`, `_9-questions.md`, `INDEX.md`; `docs/plan/_template.md`, `IDEAS.md`; `docs/CAPABILITIES.md`).
+   1. Feature branch `feat/FG-001-python-slim-pipeline` lands `images/python/{Dockerfile,build.sh,sid-pins/}`, `Makefile`, `.github/workflows/{ci,build,release}.yml`, `.pre-commit-config.yaml`, red `tests/acceptance/test_FG_001_python-slim-pipeline.sh`, plus the DD-TGD scaffolding (`docs/stories/_template.md`, `_9-questions.md`, `INDEX.md`; `docs/plan/_template.md`, `IDEAS.md`; `docs/CAPABILITIES.md`).
    2. PR to `dev`. Local `make check` + `make test-acceptance` green.
    3. Dev → main CI fast-forwards.
    4. Operator triggers `.github/workflows/build.yml` via `workflow_dispatch` (first publish).
@@ -101,7 +101,7 @@ Scenario: Daily cron rebuilds the same tag
 
 Scenario: PR CI scans but does not publish
   Given a PR that touches images/python/
-  When pr.yml runs
+  When ci.yml full-check runs
   Then build and scan succeed
    And nothing is pushed to GHCR
 ```

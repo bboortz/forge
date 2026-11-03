@@ -1,0 +1,73 @@
+---
+# Gated manual promotion of dev → main. Inherited from beaconry's release.yml.
+#
+# Trigger: workflow_dispatch (manual button in the GitHub Actions tab).
+# Does:
+#   1. Checkout source (default: dev HEAD).
+#   2. Assert the latest Full-check CI on that commit is green.
+#   3. Fast-forward main from source.
+#
+# No VERSION/tag/CHANGELOG gates in V1 — those arrive with a future story.
+
+name: Release
+
+"on":
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch to promote (default: dev)"
+        default: "dev"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    name: Promote → main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch source branch
+        run: |
+          git fetch origin "${{ inputs.ref }}:promote-src" --force
+          echo "SRC_SHA=$(git rev-parse promote-src)" >> "$GITHUB_ENV"
+
+      - name: Assert CI green on source HEAD
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The source-of-truth check-run name is "Full check (make check)"
+          # per ci.yml. If CI hasn't finished yet, there's no success record
+          # and we abort — operator should wait for the badge to turn green
+          # then re-run.
+          STATUS=$(gh api "repos/${{ github.repository }}/commits/${SRC_SHA}/check-runs" \
+            --jq '[.check_runs[] | select(.name == "Full check (make check)")] | sort_by(.started_at) | .[-1].conclusion' \
+            2>/dev/null || echo "")
+          if [[ "$STATUS" != "success" ]]; then
+            echo "::error::Full check on ${SRC_SHA:0:8} not green (status=${STATUS:-not-yet-run}). Wait for CI to pass before promoting."
+            exit 1
+          fi
+          echo "✓ CI green on ${SRC_SHA:0:8}"
+
+      - name: Fast-forward main from source
+        run: |
+          git config user.name "forge-release-bot"
+          git config user.email "release-bot@forge.local"
+          git fetch origin main
+          git checkout main
+          git merge --ff-only promote-src
+          git push origin main
+
+      - name: Summary
+        run: |
+          {
+            echo "## Promoted → main"
+            echo "- Source: \`${{ inputs.ref }}\` @ \`${SRC_SHA:0:8}\`"
+            echo ""
+            echo "Next daily cron will publish from the new main HEAD."
+          } >> "$GITHUB_STEP_SUMMARY"

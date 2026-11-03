@@ -33,3 +33,12 @@ repos:
         entry: bash scripts/verify-traceability.sh
         pass_filenames: false
         files: ^(docs/stories/|docs/plan/|docs/CAPABILITIES\.md|tests/acceptance/)
+
+      # Pre-push: full `make check` (lint + verify-* + acceptance tests).
+      # Takes a few minutes locally. Bypass with --no-verify only in emergencies.
+      - id: make-check-pre-push
+        name: make check (pre-push)
+        language: system
+        entry: bash -c 'make check'
+        pass_filenames: false
+        stages: [pre-push]

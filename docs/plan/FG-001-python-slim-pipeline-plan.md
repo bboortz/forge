@@ -39,7 +39,7 @@ Downstream consumers depend on the exact certificate-identity path. Moving the w
 
 Fast tier (local `make check`): hadolint, shellcheck, yamllint, actionlint, verify-sid-pins (vacuous — no pins yet), verify-traceability, test-acceptance. For image-touching changes also: `make build && make scan && make sign-local && make verify` locally. See `memory/workflow.md § Blocking gates` for the full matrix.
 
-PR CI (`.github/workflows/pr.yml`) runs the real build + scan on the GHA runner.
+PR CI (`.github/workflows/ci.yml`) runs the real build + scan on the GHA runner.
 
 ## Rollout plan
 
@@ -62,8 +62,8 @@ One row per Gherkin scenario + one per CAP delivered. Filled during the pre-ship
 | Scenario: Local sign+verify round-trip | `tests/acceptance/test_FG_001_python-slim-pipeline.sh` (section 4) | ✅ |
 | Scenario: External cosign verify | `tests/acceptance/test_FG_001_python-slim-pipeline.sh` (section 6, PUBLISHED=1) | ⚠️ post-publish |
 | Scenario: Daily cron rebuild | `.github/workflows/build.yml` (schedule block) | ⚠️ post-publish |
-| Scenario: PR CI scans without publishing | `.github/workflows/pr.yml` | ✅ |
-| CAP `build.pr-ci` | `.github/workflows/pr.yml` + test section 1–3 | ✅ |
+| Scenario: PR CI scans without publishing | `.github/workflows/ci.yml` | ✅ |
+| CAP `build.pr-ci` | `.github/workflows/ci.yml` + test section 1–3 | ✅ |
 | CAP `build.daily-publish` | `.github/workflows/build.yml` | ⚠️ post-publish |
 | CAP `sbom.cyclonedx-attest` | test section 2 + `build.yml` attest step | ✅ |
 | CAP `scan.grype-attest` | test section 3 + `build.yml` attest step | ✅ |

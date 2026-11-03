@@ -19,7 +19,7 @@ CAP id convention: `<domain>.<verb-or-shape>`. Domains in current use: `build`, 
 
 ### build.pr-ci
 
-On PR touching `images/`, `Makefile`, or `.github/workflows/`, build the affected image and run grype against it. Does not push.
+On push to `dev` or PR targeting `dev`, build the affected image(s) and run grype against each. Does not push to GHCR. Lives in `.github/workflows/ci.yml` as the full-check job.
 
 - **Delivered by**: FG-001
 - **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`

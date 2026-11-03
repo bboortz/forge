@@ -65,22 +65,21 @@ make verify     IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG"
 pass "sign-local + verify both exit 0"
 
 # -----------------------------------------------------------------------------
-# Section 5 — Scenario: PR CI scans but does not publish
+# Section 5 — Scenario: non-publish CI is scan-only
 # -----------------------------------------------------------------------------
-# Static check — the pr.yml must exist and must not run docker push or cosign sign
-# against ghcr.io, and must not include an id-token:write permission (keyless
-# signing is a build.yml-only capability).
-say "5. .github/workflows/pr.yml is scan-only (no push, no keyless sign)"
-test -f .github/workflows/pr.yml
-if grep -E '^[[:space:]]*(docker push|cosign sign)' .github/workflows/pr.yml >/dev/null; then
-  echo "  ✗ pr.yml must not push or sign" >&2
+# Static check — ci.yml must not run `docker push` or `cosign sign` and must
+# not request id-token:write. Keyless signing lives only in build.yml.
+say "5. .github/workflows/ci.yml is scan-only (no push, no keyless sign)"
+test -f .github/workflows/ci.yml
+if grep -E '^[[:space:]]*(docker push|cosign sign)' .github/workflows/ci.yml >/dev/null; then
+  echo "  ✗ ci.yml must not push or sign" >&2
   exit 1
 fi
-if grep -E 'id-token:[[:space:]]*write' .github/workflows/pr.yml >/dev/null; then
-  echo "  ✗ pr.yml must not request id-token: write" >&2
+if grep -E 'id-token:[[:space:]]*write' .github/workflows/ci.yml >/dev/null; then
+  echo "  ✗ ci.yml must not request id-token: write" >&2
   exit 1
 fi
-pass "pr.yml has no push, no sign, no id-token write"
+pass "ci.yml has no push, no sign, no id-token write"
 
 # -----------------------------------------------------------------------------
 # Section 6 — Scenarios requiring a published digest (opt-in via PUBLISHED=1)
