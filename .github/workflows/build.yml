@@ -11,11 +11,29 @@ permissions:
   id-token: write            # OIDC token for keyless cosign signing
 
 jobs:
-  publish:
+
+  # Discovery job: emit a JSON matrix listing every images/<dir>/image.yaml
+  # so adding a new image dir auto-enrolls in the publish pipeline with no
+  # workflow edit. Delegates to scripts/discover-images.sh.
+  discover:
+    name: Discover image dirs
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.disc.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: disc
+        run: |
+          echo "matrix=$(bash scripts/discover-images.sh | jq -c .)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Publish ${{ matrix.image_dir }}
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
     env:
-      IMAGE_NAME: python
-      IMAGE_TAG: 3.13-slim-trixie
       REGISTRY: ghcr.io/bboortz
 
     steps:
@@ -42,20 +60,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build + tag directly as the published reference
-        run: make build IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG" REGISTRY="$REGISTRY"
+      - name: Build via scripts/build-image.sh (reads image.yaml)
+        env:
+          IMAGE_DIR: ${{ matrix.image_dir }}
+        run: REGISTRY="$REGISTRY" bash scripts/build-image.sh "$IMAGE_DIR"
 
       - name: Scan + SBOM
-        run: make scan IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG" REGISTRY="$REGISTRY"
+        env:
+          IMAGE_DIR: ${{ matrix.image_dir }}
+        run: make scan IMAGE_DIR="$IMAGE_DIR" REGISTRY="$REGISTRY"
 
       - name: Push image
         id: push
+        env:
+          REPO: ${{ matrix.repo }}
+          TAG: ${{ matrix.tag }}
         run: |
-          IMAGE_REF="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+          IMAGE_REF="${REGISTRY}/${REPO}:${TAG}"
           docker push "${IMAGE_REF}"
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_REF}" | sed 's/.*@//')
           echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
-          echo "image_digest=${REGISTRY}/${IMAGE_NAME}@${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "image_digest=${REGISTRY}/${REPO}@${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: cosign sign (keyless)
         env:
@@ -65,13 +90,13 @@ jobs:
       - name: cosign attest — CycloneDX SBOM
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          SBOM: build/${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}.sbom.json
+          SBOM: build/${{ matrix.repo }}-${{ matrix.tag }}.sbom.json
         run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
 
       - name: cosign attest — grype vuln scan
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          GRYPE: build/${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}.grype.json
+          GRYPE: build/${{ matrix.repo }}-${{ matrix.tag }}.grype.json
         run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
 
       - name: Publish-time verify (sanity check from the runner)
@@ -86,6 +111,6 @@ jobs:
       - name: Upload scan artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: scan-${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
+          name: scan-${{ matrix.repo }}-${{ matrix.tag }}
           path: build/
           retention-days: 30

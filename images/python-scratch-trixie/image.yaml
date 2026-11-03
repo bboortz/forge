@@ -1,0 +1,7 @@
+# Image metadata consumed by scripts/{build,test,discover}-image(s).sh
+# Scratch runtime: python interpreter + stdlib + minimal glibc closure +
+# CA bundle + zoneinfo + nss config + pip. No shell, no apt, no dpkg db.
+repo: python
+tag: 3.13-scratch-trixie
+platforms:
+  - linux/amd64
