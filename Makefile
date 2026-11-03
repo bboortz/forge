@@ -27,7 +27,7 @@ LOCAL_IMAGE         := localhost:$(LOCAL_REGISTRY_PORT)/$(IMAGE_NAME):$(IMAGE_TA
 ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
 .PHONY: help tools install-hooks lint build scan sign-local verify \
-        test-acceptance test-fast check \
+        test-images test-acceptance test-fast check \
         verify-sid-pins verify-traceability \
         _local-registry _local-registry-stop
 
@@ -42,9 +42,10 @@ help:
 	@echo "  scan                 syft SBOM + grype scan → $(OUT_DIR)/"
 	@echo "  sign-local           push $(IMAGE) to localhost:$(LOCAL_REGISTRY_PORT) and cosign-sign"
 	@echo "  verify               cosign verify (local key)"
+	@echo "  test-images          bash images/*/tests/smoke_*.sh (scope with IMAGE_NAME)"
 	@echo "  test-acceptance      bash tests/acceptance/test_FG_*.sh"
 	@echo "  test-fast            lint + verify-sid-pins + verify-traceability"
-	@echo "  check                test-fast + test-acceptance"
+	@echo "  check                test-fast + test-acceptance + test-images"
 	@echo ""
 	@echo "Variables: IMAGE_NAME=$(IMAGE_NAME) IMAGE_TAG=$(IMAGE_TAG) REGISTRY=$(REGISTRY)"
 
@@ -116,6 +117,24 @@ test-acceptance:
 	  bash $$t || exit 1; \
 	done
 
+# test-images globs images/*/tests/smoke_*.sh and runs each against the
+# already-built local image(s). Scope with IMAGE_NAME=python to narrow.
+# Does NOT build the image itself — callers (acceptance test, make check)
+# ensure a build has happened first.
+test-images:
+	@scope=$${IMAGE_NAME:+images/$$IMAGE_NAME/tests}; \
+	scope=$${scope:-images/*/tests}; \
+	found=0; fail=0; \
+	for t in $$scope/smoke_*.sh; do \
+	  [ -f "$$t" ] || continue; \
+	  found=$$((found+1)); \
+	  echo "→ $$t"; \
+	  IMAGE_NAME="$(IMAGE_NAME)" IMAGE_TAG="$(IMAGE_TAG)" REGISTRY="$(REGISTRY)" \
+	    bash "$$t" || fail=$$((fail+1)); \
+	done; \
+	echo "test-images: $$found script(s), $$fail failure(s)"; \
+	[ $$fail -eq 0 ]
+
 test-fast: lint verify-sid-pins verify-traceability
 
-check: test-fast test-acceptance
+check: test-fast test-acceptance test-images

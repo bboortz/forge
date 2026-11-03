@@ -99,6 +99,26 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 
 `revision` + `created` are injected at build time via `--label` from the Makefile — do not hard-code in the Dockerfile.
 
+## Per-image smoke tests (`images/<name>/tests/`)
+
+Every image under `images/<name>/` owns a `tests/` dir of smoke scripts that encode its contract — what it must still do after any `apt upgrade`, sid pin, or runtime-shape change. Scripts are co-located so `images/<name>/` stays self-contained: `Dockerfile` + `build.sh` + `sid-pins/` + `tests/`.
+
+Convention:
+
+- Each script is `images/<name>/tests/smoke_<thing>.sh`, executable, `set -euo pipefail`, shellcheck-clean.
+- Each reads `${IMAGE_NAME}`, `${IMAGE_TAG}`, `${REGISTRY}` from env (defaults are fine for local invocation).
+- Scripts are independently runnable (`bash images/<name>/tests/smoke_<thing>.sh`) AND discoverable (`make test-images` globs them).
+- The Makefile `test-images` target scopes with `IMAGE_NAME=<name>` or runs every image's suite.
+
+Baseline every new image provides (minimum):
+
+- `smoke_imports.sh` (or the language's equivalent "core features load") — fails if a stdlib / core lib was lost in a rebuild.
+- `smoke_tls_handshake.sh` + `smoke_ca_bundle.sh` — any image that will make outbound HTTPS calls must prove the CA path works.
+- `smoke_entrypoint.sh` — exercises the documented invocation pattern (python3 for python; `nginx -t` for nginx; `postgres --version` for postgres).
+- `smoke_size.sh` — image size ≤ **upstream base × 1.1** (10% headroom for apt-upgrade). The base is parsed from the Dockerfile's `FROM` line so a future base-bump auto-updates the ceiling.
+
+Scratch-runtime variants (FG-003+) use the **same** smoke suite as the slim variant that preceded them. If a scratch image can't pass every assertion its slim predecessor passes, the ldd closure is wrong — the suite is the oracle.
+
 ## What NOT to put in a Forge image
 
 - Shell (`sh`, `bash`, `busybox`) in a scratch-runtime image. The `-slim` variants keep their shell on purpose; scratch runtimes do not.
