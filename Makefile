@@ -13,10 +13,13 @@ REGISTRY  ?= forge-local
 OUT_DIR   ?= build
 
 # Resolve repo + tag from the image's yaml (only when the dir exists; empty
-# otherwise so `make help` etc. stay usable).
+# otherwise so `make help` etc. stay usable). `repo:` is optional — defaults
+# to the image dir name per FG-004. Quoted tag values (e.g. `tag: "3.13"`)
+# are stripped by the awk to yield a clean `3.13`.
 _IMAGE_YAML := images/$(IMAGE_DIR)/image.yaml
-_REPO := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^repo:/ {print $$2; exit}' $(_IMAGE_YAML)))
-_TAG  := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^tag:/  {print $$2; exit}' $(_IMAGE_YAML)))
+_REPO_EXPLICIT := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^repo:/ {gsub(/["\x27]/,"",$$2); print $$2; exit}' $(_IMAGE_YAML)))
+_REPO := $(or $(_REPO_EXPLICIT),$(IMAGE_DIR))
+_TAG  := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^tag:/ {gsub(/["\x27]/,"",$$2); print $$2; exit}' $(_IMAGE_YAML)))
 IMAGE := $(REGISTRY)/$(_REPO):$(_TAG)
 IMAGE_SLUG := $(_REPO)-$(_TAG)
 
