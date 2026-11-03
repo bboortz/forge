@@ -15,8 +15,8 @@
 set -euo pipefail
 
 IMAGE_DIR="python-slim-trixie"
-IMAGE_REPO="python"
-IMAGE_TAG="3.13-slim-trixie"
+IMAGE_REPO="python-slim-trixie"          # FG-004: repo name == dir name
+IMAGE_TAG="3.13"                         # FG-004: version only
 TESTS_DIR="images/${IMAGE_DIR}/tests"
 
 cd "$(git rev-parse --show-toplevel)"
@@ -57,11 +57,11 @@ done
 # Section 4 — Scenario: make check runs test-images
 # -----------------------------------------------------------------------------
 say "4. Makefile wires test-images into make check"
-if ! awk '/^check:/{getline; print; exit}' Makefile | grep -q test-images; then
-  echo "  ✗ 'check:' recipe does not include test-images" >&2
+if ! grep -qE '^check(-strict)?:.*test-images' Makefile; then
+  echo "  ✗ 'check:' recipe does not include test-images as a prerequisite" >&2
   exit 1
 fi
-pass "make check depends on test-images"
+pass "make check (or check-strict) depends on test-images"
 
 echo
 echo "FG-002 acceptance: all sections passed."

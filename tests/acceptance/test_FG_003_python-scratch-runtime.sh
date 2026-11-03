@@ -41,12 +41,12 @@ say "2. scripts/build-image.sh builds both variants from image.yaml"
 [[ -x scripts/build-image.sh ]] || { echo "  ✗ scripts/build-image.sh missing or not executable" >&2; exit 1; }
 
 bash scripts/build-image.sh python-slim-trixie >/dev/null
-docker image inspect forge-local/python:3.13-slim-trixie >/dev/null
-pass "forge-local/python:3.13-slim-trixie built"
+docker image inspect forge-local/python-slim-trixie:3.13 >/dev/null
+pass "forge-local/python-slim-trixie:3.13 built"
 
 bash scripts/build-image.sh python-scratch-trixie >/dev/null
-docker image inspect forge-local/python:3.13-scratch-trixie >/dev/null
-pass "forge-local/python:3.13-scratch-trixie built"
+docker image inspect forge-local/python-scratch-trixie:3.13 >/dev/null
+pass "forge-local/python-scratch-trixie:3.13 built"
 
 # -----------------------------------------------------------------------------
 # Section 3 — Scenario: central test script runs every variant's suite

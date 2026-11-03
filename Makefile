@@ -37,8 +37,8 @@ LOCAL_IMAGE         := localhost:$(LOCAL_REGISTRY_PORT)/$(_REPO):$(_TAG)
 ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
 .PHONY: help tools install-hooks lint build scan sign-local verify \
-        test-images test-acceptance test-fast check \
-        verify-sid-pins verify-traceability \
+        test-images test-acceptance test-fast check check-strict \
+        verify-sid-pins verify-traceability clean-local-images \
         _local-registry _local-registry-stop
 
 help:
@@ -56,6 +56,8 @@ help:
 	@echo "  test-acceptance      bash tests/acceptance/test_FG_*.sh"
 	@echo "  test-fast            lint + verify-sid-pins + verify-traceability"
 	@echo "  check                test-fast + test-acceptance + test-images"
+	@echo "  check-strict         clean-local-images + check (pre-push gate)"
+	@echo "  clean-local-images   docker rmi every forge-local/* image"
 	@echo ""
 	@echo "Variables: IMAGE_DIR=$(IMAGE_DIR) REGISTRY=$(REGISTRY)"
 	@echo "Resolved:  IMAGE=$(IMAGE)"
@@ -134,3 +136,11 @@ test-images:
 test-fast: lint verify-sid-pins verify-traceability
 
 check: test-fast test-acceptance test-images
+
+# check-strict wipes forge-local/* before running make check so stale image
+# references in tests can't hide behind a workstation-cached image. Pre-push
+# uses this; interactive dev uses plain `make check` for speed.
+clean-local-images:
+	@bash scripts/clean-local-images.sh
+
+check-strict: clean-local-images check

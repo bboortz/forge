@@ -131,10 +131,10 @@ Mocking rule: cosign / grype / syft run for real against local test images — n
 ## Dev-loop ergonomics
 
 - **Local env**: Docker + hadolint + shellcheck + cosign (v2.x) + grype + syft + bats + yamllint + actionlint. `make tools` installs the missing CLIs that have official installers; the rest come from the host package manager.
-- **Makefile targets**: `make lint`, `make build`, `make scan`, `make sign-local`, `make verify`, `make test-acceptance`, `make test-fast`, `make check`, `make verify-traceability`, `make verify-sid-pins`.
-- **Pre-commit hooks** (`.pre-commit-config.yaml`) — install with `pre-commit install && pre-commit install --hook-type pre-push`:
+- **Makefile targets**: `make lint`, `make build`, `make scan`, `make sign-local`, `make verify`, `make test-acceptance`, `make test-fast`, `make check`, `make check-strict`, `make clean-local-images`, `make verify-traceability`, `make verify-sid-pins`.
+- **Pre-commit hooks** (`.pre-commit-config.yaml`) — install with `make install-hooks`:
   - On `commit` (fast, staged files): hadolint + shellcheck + yamllint; verify-sid-pins when `sid-pins/` changed; verify-traceability when story / plan / test / CAP paths touched.
-  - On `push` (full repo): `make check` = fast gates + acceptance tests. Bypass with `--no-verify` only in emergencies.
+  - On `push` (full repo): `make check-strict` = `clean-local-images` + `check`. Wiping every `forge-local/*` image first catches stale image refs in tests that would otherwise hide behind the workstation's docker cache (hard-learned via PR #7 CI failure). Bypass with `--no-verify` only in emergencies.
 
 ## When adding a new image — checklist
 
