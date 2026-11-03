@@ -1,0 +1,41 @@
+# Local legacy (kept locally, not shipped)
+OLD/
+
+# Personal session helpers (dev-local, not shipped)
+resume.sh
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Testing / tooling caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+coverage.json
+htmlcov/
+.pyright/
+
+# Audit Log
+audit.log
+
+# Environment / secrets
+.env
+.env.local
+*.key
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+.env.pre-*
