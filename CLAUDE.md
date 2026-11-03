@@ -56,7 +56,7 @@ grype scan (JSON)       → attached as OCI annotation
 cosign sign (keyless, GHA OIDC) → verifiable against the Forge public key
     │
     ↓
-docker push ghcr.io/forge-images/<image>:latest
+docker push ghcr.io/bboortz/<image>:latest
 ```
 
 ---

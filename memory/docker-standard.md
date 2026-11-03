@@ -82,7 +82,7 @@ Primary platforms: `linux/amd64`, `linux/arm64`. We build via `docker buildx bui
 
 ## Build cache
 
-- Use `--cache-from=type=registry,ref=ghcr.io/forge-images/<name>:buildcache` and `--cache-to=type=registry,ref=...,mode=max` on both PR and nightly builds.
+- Use `--cache-from=type=registry,ref=ghcr.io/bboortz/<name>:buildcache` and `--cache-to=type=registry,ref=...,mode=max` on both PR and nightly builds.
 - Cache invalidation is implicit when a sid pin changes (apt layer rehashes) — do not add cache-busting ARGs.
 
 ## Image labels
@@ -90,7 +90,7 @@ Primary platforms: `linux/amd64`, `linux/arm64`. We build via `docker buildx bui
 Every image sets, at minimum:
 
 ```dockerfile
-LABEL org.opencontainers.image.source="https://github.com/forge-images/forge"
+LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.description="Minimal, continuously patched <name> base image"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"

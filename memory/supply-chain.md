@@ -52,20 +52,20 @@ permissions:
 
 ```bash
 cosign verify \
-  --certificate-identity https://github.com/forge-images/forge/.github/workflows/build.yml \
+  --certificate-identity https://github.com/bboortz/forge/.github/workflows/build.yml \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/forge-images/<image>:<tag>
+  ghcr.io/bboortz/<image>:<tag>
 ```
 
 Two levers that break this if you touch them:
 - **Workflow file path**: the `--certificate-identity` is tied to the exact workflow file. Moving `build.yml` elsewhere breaks every consumer's verify command.
-- **Repository name / owner**: changes the identity URL. Treat `forge-images/forge` as a stable public identifier.
+- **Repository name / owner**: changes the identity URL. Treat `bboortz/forge` as a stable public identifier.
 
 If either must change, run a migration period where the old identity is also valid (sign with both, document both) for at least 90 days.
 
 ## Local developer flow
 
-`make verify` runs cosign-verify against the just-signed local digest, using the keyless identity derived from the workflow. For out-of-CI testing (no OIDC token), the Makefile has a `make sign-local` target that uses a local cosign key pair under `.cosign/` (gitignored). Local-signed digests are never pushed to `ghcr.io/forge-images/` — only to a local registry.
+`make verify` runs cosign-verify against the just-signed local digest, using the keyless identity derived from the workflow. For out-of-CI testing (no OIDC token), the Makefile has a `make sign-local` target that uses a local cosign key pair under `.cosign/` (gitignored). Local-signed digests are never pushed to `ghcr.io/bboortz/` — only to a local registry.
 
 ## Why keyless (not stored keys)
 

@@ -51,7 +51,7 @@ Every published digest ships with three artifacts attached as OCI annotations:
 
 The signature covers the digest; the scan + SBOM are additional attestations.
 
-Verification identity: `--certificate-identity https://github.com/forge-images/forge/.github/workflows/build.yml`, `--certificate-oidc-issuer https://token.actions.githubusercontent.com`. The identity string is tied to the workflow file path — if we move the workflow, we break every downstream verify. Treat the path as a stable public interface.
+Verification identity: `--certificate-identity https://github.com/bboortz/forge/.github/workflows/build.yml`, `--certificate-oidc-issuer https://token.actions.githubusercontent.com`. The identity string is tied to the workflow file path — if we move the workflow, we break every downstream verify. Treat the path as a stable public interface.
 
 ## Image set V1
 

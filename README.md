@@ -31,8 +31,8 @@ A GitHub Actions workflow rebuilds every image daily at 03:00 UTC with `--pull`.
 
 | Image | Base | Rebuilt | Attested |
 |---|---|---|---|
-| `ghcr.io/forge-images/python3.13:latest` | Debian trixie / FROM scratch | Daily | ✓ |
-| `ghcr.io/forge-images/python3.13-slim:latest` | python:3.13-slim-trixie | Daily | ✓ |
+| `ghcr.io/bboortz/python3.13:latest` | Debian trixie / FROM scratch | Daily | ✓ |
+| `ghcr.io/bboortz/python3.13-slim:latest` | python:3.13-slim-trixie | Daily | ✓ |
 
 Every image ships with:
 - A grype JSON scan result attached as an OCI annotation
@@ -44,7 +44,7 @@ Every image ships with:
 ## Quick start
 
 ```dockerfile
-FROM ghcr.io/forge-images/python3.13:latest
+FROM ghcr.io/bboortz/python3.13:latest
 
 COPY --from=builder /install /usr/lib/python3.13/dist-packages
 COPY --from=builder /app /app
@@ -56,9 +56,9 @@ Verify the image before pulling:
 
 ```bash
 cosign verify \
-  --certificate-identity https://github.com/forge-images/forge/.github/workflows/build.yml \
+  --certificate-identity https://github.com/bboortz/forge/.github/workflows/build.yml \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/forge-images/python3.13:latest
+  ghcr.io/bboortz/python3.13:latest
 ```
 
 ---
@@ -84,7 +84,7 @@ Google distroless is excellent. Forge builds on the same idea with two differenc
 The full build pipeline is open source. To run your own Forge registry:
 
 ```bash
-git clone https://github.com/forge-images/forge
+git clone https://github.com/bboortz/forge
 cd forge
 cp .env.example .env          # set GHCR_TOKEN, COSIGN_KEY
 make build                    # build all images locally
