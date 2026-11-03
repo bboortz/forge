@@ -1,0 +1,85 @@
+name: Build — daily publish (cron + manual)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"      # 03:00 UTC — see memory/design-decisions.md
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write            # push to ghcr.io
+  id-token: write            # OIDC token for keyless cosign signing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: python
+      IMAGE_TAG: 3.13-slim-trixie
+      REGISTRY: ghcr.io/bboortz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install syft + grype + cosign
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b "$HOME/.local/bin"
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b "$HOME/.local/bin"
+          curl -sSfL -o "$HOME/.local/bin/cosign" https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
+          chmod +x "$HOME/.local/bin/cosign"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + tag directly as the published reference
+        run: make build IMAGE_NAME=$IMAGE_NAME IMAGE_TAG=$IMAGE_TAG REGISTRY=$REGISTRY
+
+      - name: Scan + SBOM
+        run: make scan IMAGE_NAME=$IMAGE_NAME IMAGE_TAG=$IMAGE_TAG REGISTRY=$REGISTRY
+
+      - name: Push image
+        id: push
+        run: |
+          IMAGE_REF="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+          docker push "${IMAGE_REF}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_REF}" | sed 's/.*@//')
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "image_digest=${REGISTRY}/${IMAGE_NAME}@${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: cosign sign (keyless)
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+        run: cosign sign --yes "$IMAGE_DIGEST"
+
+      - name: cosign attest — CycloneDX SBOM
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+          SBOM: build/${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}.sbom.json
+        run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
+
+      - name: cosign attest — grype vuln scan
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+          GRYPE: build/${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}.grype.json
+        run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
+
+      - name: Publish-time verify (sanity check from the runner)
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+        run: |
+          cosign verify \
+            --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$IMAGE_DIGEST"
+
+      - name: Upload scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
+          path: build/
+          retention-days: 30
