@@ -87,7 +87,7 @@ pass "ci.yml has no push, no sign, no id-token write"
 if [[ "${PUBLISHED:-0}" == "1" ]]; then
   say "6. external cosign verify against the published digest"
   cosign verify \
-    --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml" \
+    --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
     "$IMAGE_PUBLISHED" >/dev/null
   pass "cosign verify exits 0 for $IMAGE_PUBLISHED"

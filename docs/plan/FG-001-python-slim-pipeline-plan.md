@@ -60,16 +60,16 @@ One row per Gherkin scenario + one per CAP delivered. Filled during the pre-ship
 | Scenario: SBOM is CycloneDX | `tests/acceptance/test_FG_001_python-slim-pipeline.sh` (section 2) | ✅ |
 | Scenario: grype scan JSON | `tests/acceptance/test_FG_001_python-slim-pipeline.sh` (section 3) | ✅ |
 | Scenario: Local sign+verify round-trip | `tests/acceptance/test_FG_001_python-slim-pipeline.sh` (section 4) | ✅ |
-| Scenario: External cosign verify | `tests/acceptance/test_FG_001_python-slim-pipeline.sh` (section 6, PUBLISHED=1) | ⚠️ post-publish |
-| Scenario: Daily cron rebuild | `.github/workflows/build.yml` (schedule block) | ⚠️ post-publish |
+| Scenario: External cosign verify | `tests/acceptance/test_FG_001_python-slim-pipeline.sh` (section 6, PUBLISHED=1) | ✅ (run #41708841964) |
+| Scenario: Daily cron rebuild | `.github/workflows/build.yml` (schedule block) | ✅ (schedule registered; first cron fires 2026-11-04 03:00 UTC) |
 | Scenario: PR CI scans without publishing | `.github/workflows/ci.yml` | ✅ |
 | CAP `build.pr-ci` | `.github/workflows/ci.yml` + test section 1–3 | ✅ |
-| CAP `build.daily-publish` | `.github/workflows/build.yml` | ⚠️ post-publish |
-| CAP `sbom.cyclonedx-attest` | test section 2 + `build.yml` attest step | ✅ |
-| CAP `scan.grype-attest` | test section 3 + `build.yml` attest step | ✅ |
-| CAP `sign.cosign-keyless-oidc` | `build.yml` sign step (OIDC permissions block) | ⚠️ post-publish |
+| CAP `build.daily-publish` | `.github/workflows/build.yml` | ✅ (first `workflow_dispatch` succeeded, run #41708841964) |
+| CAP `sbom.cyclonedx-attest` | test section 2 + 7 + `build.yml` attest step | ✅ |
+| CAP `scan.grype-attest` | test section 3 + 7 + `build.yml` attest step | ✅ |
+| CAP `sign.cosign-keyless-oidc` | `build.yml` sign step (OIDC permissions block) | ✅ (verified against the live digest) |
 | CAP `sign.cosign-local-dev` | test section 4 + `make sign-local` target | ✅ |
-| CAP `verify.consumer-cmd` | test section 6 + README Quick Start | ⚠️ post-publish |
-| CAP `publish.ghcr-public-pull` | manual: GHCR package visibility flip | ⚠️ post-publish |
+| CAP `verify.consumer-cmd` | test section 6 + README Quick Start | ✅ (verified from this workstation) |
+| CAP `publish.ghcr-public-pull` | test section 8 + manual visibility flip | ✅ (package visibility set to public 2026-11-03) |
 
-**⚠️ post-publish** rows require the first `workflow_dispatch` publish to transition to ✅. Shipping to `dev` is allowed with these rows pending; promotion to shipped status requires them to transition after step 4 of the rollout plan.
+All rows ✅ — story moves from `in-progress` to `shipped`. Cosign is pinned to v2.4.3 everywhere (see `memory/supply-chain.md` for the 2026-11-17 review deadline).

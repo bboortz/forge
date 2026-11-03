@@ -31,35 +31,37 @@ A GitHub Actions workflow rebuilds every image daily at 03:00 UTC with `--pull`.
 
 | Image | Base | Rebuilt | Attested |
 |---|---|---|---|
-| `ghcr.io/bboortz/python3.13:latest` | Debian trixie / FROM scratch | Daily | ✓ |
-| `ghcr.io/bboortz/python3.13-slim:latest` | python:3.13-slim-trixie | Daily | ✓ |
+| `ghcr.io/bboortz/python:3.13-slim-trixie` | `python:3.13-slim-trixie` + `apt upgrade` | Daily 03:00 UTC | ✓ |
 
-Every image ships with:
-- A grype JSON scan result attached as an OCI annotation
-- An SBOM (syft CycloneDX format)
-- A cosign signature verifiable against the Forge public key
+Every published digest ships with:
+- A syft CycloneDX SBOM attached as a cosign attestation (predicate type `cyclonedx`)
+- A grype JSON scan result attached as a cosign attestation (predicate type `vuln`)
+- A keyless cosign signature over the digest (GHA OIDC via Sigstore Fulcio + Rekor transparency log)
+
+Roadmap: `FROM scratch` Python variant (FG-002), `python:3.13-slim-trixie` with a selective `sid` pin (FG-003), `nginx:stable`, `postgres:18`. See [`docs/plan/IDEAS.md`](docs/plan/IDEAS.md).
 
 ---
 
 ## Quick start
 
 ```dockerfile
-FROM ghcr.io/bboortz/python3.13:latest
-
-COPY --from=builder /install /usr/lib/python3.13/dist-packages
-COPY --from=builder /app /app
-
-CMD ["app.py"]
+FROM ghcr.io/bboortz/python:3.13-slim-trixie
+COPY app.py /app/app.py
+CMD ["python3", "/app/app.py"]
 ```
+
+Daily rebuilds move the tag's digest, so pin by digest (`@sha256:...`) in production if you need reproducibility. The attached SBOM + scan + signature are preserved across rebuilds — they just describe the new digest.
 
 Verify the image before pulling:
 
 ```bash
 cosign verify \
-  --certificate-identity https://github.com/bboortz/forge/.github/workflows/build.yml \
+  --certificate-identity https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/bboortz/python3.13:latest
+  ghcr.io/bboortz/python:3.13-slim-trixie
 ```
+
+> Requires `cosign` **v2.x**. See `memory/supply-chain.md` for the cosign-version pin rationale.
 
 ---
 
