@@ -26,7 +26,7 @@ LOCAL_IMAGE         := localhost:$(LOCAL_REGISTRY_PORT)/$(IMAGE_NAME):$(IMAGE_TA
 
 ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
-.PHONY: help tools lint build scan sign-local verify \
+.PHONY: help tools install-hooks lint build scan sign-local verify \
         test-acceptance test-fast check \
         verify-sid-pins verify-traceability \
         _local-registry _local-registry-stop
@@ -34,6 +34,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 help:
 	@echo "Forge targets:"
 	@echo "  tools                install cosign/grype/syft to ~/.local/bin if missing"
+	@echo "  install-hooks        register pre-commit + pre-push git hooks locally"
 	@echo "  lint                 hadolint / shellcheck / yamllint / actionlint"
 	@echo "  verify-sid-pins      enforce CVE + removal condition + date per pin"
 	@echo "  verify-traceability  enforce story ↔ plan ↔ test ↔ CAP links"
@@ -52,9 +53,15 @@ tools:
 	@command -v syft   >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b $$HOME/.local/bin
 	@command -v grype  >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b $$HOME/.local/bin
 	@command -v cosign >/dev/null || { curl -sSfL -o $$HOME/.local/bin/cosign https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64 && chmod +x $$HOME/.local/bin/cosign; }
+	@command -v pre-commit >/dev/null || { echo "  pre-commit missing — install with: pipx install pre-commit"; false; }
 	@for t in hadolint shellcheck yamllint actionlint jq; do \
 	  command -v $$t >/dev/null || echo "  $$t missing (install via your package manager)"; \
 	done
+
+install-hooks:
+	@command -v pre-commit >/dev/null || { echo "pre-commit missing — install with: pipx install pre-commit"; exit 1; }
+	pre-commit install
+	pre-commit install --hook-type pre-push
 
 lint:
 	@echo "→ hadolint"
