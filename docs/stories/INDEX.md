@@ -4,4 +4,4 @@ One line per story. Keep in ID order. Status mirrors each story's frontmatter.
 
 | ID | Slug | Status | One-liner |
 |----|------|--------|-----------|
-| _(empty — add a row when the first story lands)_ | | | |
+| FG-001 | [python-slim-pipeline](FG-001-python-slim-pipeline.md) | in-progress | Full publish pipeline for `python:3.13-slim-trixie` (no scratch, no sid pin, amd64-only) |
