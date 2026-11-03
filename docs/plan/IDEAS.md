@@ -18,3 +18,4 @@ Running list of ideas Claude + user have discussed but not yet promoted to stori
 - **Scan-regression gate** — PR fails if the scan introduces a new HIGH/CRITICAL vs. current `:latest`. Deferred to a dedicated story so the gate itself is testable.
 - **Image-size gate** — PR fails if runtime image is > 10% larger than previous `:latest`. Deferred for the same reason.
 - **Air-gapped verification path** — stored-key fallback for consumers who can't reach Rekor. V2 if a user asks.
+- **Cosign v3 migration** (review by **2026-11-17**) — currently pinned to v2.4.3 everywhere because v3 stores sigs as OCI 1.1 referrers (`sha256-<digest>` without `.sig`) that legacy verifiers miss, and dropped `--tlog-upload=false` which `make sign-local` depends on. Evaluate: upgrade everywhere + rewrite sign-local around a tlog-less signing-config, or renew the v2 pin. See `memory/supply-chain.md` review note.
