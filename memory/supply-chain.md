@@ -1,5 +1,7 @@
 *Scan, SBOM, sign, verify — the four acts every Forge image must perform before it's considered published.*
 
+**⚠️ Cosign pin — review due 2026-11-17.** Both CI (`build.yml`) and local (`make sign-local` / `make verify`) are pinned to cosign **v2.4.3**. v3.x stores signatures as OCI 1.1 referrers (no `.sig` tag) and dropped `--tlog-upload=false`, which would break both consumer-side verify with v2 clients and the local sign-local round-trip. Review path: upgrade everything to v3 + rewrite sign-local around a tlog-less signing-config, or renew the v2 pin.
+
 ## Flow
 
 ```
