@@ -16,13 +16,14 @@
 
 set -euo pipefail
 
-IMAGE_NAME="python"
+IMAGE_DIR="python-slim-trixie"
+IMAGE_REPO="python"
 IMAGE_TAG="3.13-slim-trixie"
-IMAGE_LOCAL="forge-local/${IMAGE_NAME}:${IMAGE_TAG}"
-IMAGE_PUBLISHED="ghcr.io/bboortz/${IMAGE_NAME}:${IMAGE_TAG}"
+IMAGE_LOCAL="forge-local/${IMAGE_REPO}:${IMAGE_TAG}"
+IMAGE_PUBLISHED="ghcr.io/bboortz/${IMAGE_REPO}:${IMAGE_TAG}"
 BUILD_DIR="build"
-SBOM="${BUILD_DIR}/${IMAGE_NAME}-${IMAGE_TAG}.sbom.json"
-GRYPE="${BUILD_DIR}/${IMAGE_NAME}-${IMAGE_TAG}.grype.json"
+SBOM="${BUILD_DIR}/${IMAGE_REPO}-${IMAGE_TAG}.sbom.json"
+GRYPE="${BUILD_DIR}/${IMAGE_REPO}-${IMAGE_TAG}.grype.json"
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -33,7 +34,7 @@ pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 # Section 1 — Scenario: Image builds locally
 # -----------------------------------------------------------------------------
 say "1. make build produces a local image"
-make build IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG"
+make build IMAGE_DIR="$IMAGE_DIR"
 docker image inspect "$IMAGE_LOCAL" >/dev/null
 pass "local image $IMAGE_LOCAL exists"
 test "$(docker run --rm "$IMAGE_LOCAL" python3 -c "print('ok')")" = "ok"
@@ -43,7 +44,7 @@ pass "python3 -c \"print('ok')\" prints ok"
 # Section 2 — Scenario: SBOM is produced in CycloneDX format
 # -----------------------------------------------------------------------------
 say "2. syft SBOM is CycloneDX"
-make scan IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG"
+make scan IMAGE_DIR="$IMAGE_DIR"
 test -f "$SBOM"
 jq -e '.bomFormat == "CycloneDX"' "$SBOM" >/dev/null
 pass "$SBOM has bomFormat == CycloneDX"
@@ -60,8 +61,8 @@ pass "$GRYPE has .descriptor.name == grype"
 # Section 4 — Scenario: Local sign + verify round-trip
 # -----------------------------------------------------------------------------
 say "4. local cosign sign + verify round-trip"
-make sign-local IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG"
-make verify     IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG"
+make sign-local IMAGE_DIR="$IMAGE_DIR"
+make verify     IMAGE_DIR="$IMAGE_DIR"
 pass "sign-local + verify both exit 0"
 
 # -----------------------------------------------------------------------------

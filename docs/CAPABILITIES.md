@@ -89,7 +89,50 @@ Per-image contract tests live co-located with the recipe under `images/<name>/te
 
 ### test.size-budget
 
-Every image asserts its final size is at most **upstream base × 1.1**, where "upstream base" is the `FROM` reference used in the Dockerfile. 10% headroom accommodates `apt upgrade` deltas.
+Every image asserts its final size is at most **upstream base × 1.1**, where "upstream base" is the `FROM` reference used in the Dockerfile. 10% headroom accommodates `apt upgrade` deltas. Scratch variants add an additional hard byte-ceiling (60 MB for python-scratch-trixie).
 
-- **Delivered by**: FG-002
-- **Covered by**: `images/python/tests/smoke_size.sh`
+- **Delivered by**: FG-002 (base × 1.1)
+- **Extended by**: FG-003 (scratch hard ceiling)
+- **Covered by**: `images/python-slim-trixie/tests/smoke_size.sh`, `images/python-scratch-trixie/tests/smoke_size.sh`
+
+### build.two-stage-scratch
+
+Two-stage Dockerfile pattern: builder stage on a conventional Debian base, runtime stage `FROM scratch` with explicit COPY lines enumerating the ldd closure + CA bundle + zoneinfo + nss.
+
+- **Delivered by**: FG-003
+- **Covered by**: `tests/acceptance/test_FG_003_python-scratch-runtime.sh`
+
+### image.no-shell
+
+Scratch-runtime variants contain no `/bin/sh` or other shells. Attempting `docker run --rm --entrypoint=/bin/sh <image>` fails.
+
+- **Delivered by**: FG-003
+- **Covered by**: `images/python-scratch-trixie/tests/smoke_scratch_no_shell.sh`
+
+### image.zero-os-cves
+
+grype run against a scratch-runtime image reports zero matches whose source is a Debian package. Every surviving finding is a PyPI dep the consumer installed — no OS-package noise.
+
+- **Delivered by**: FG-003
+- **Covered by**: `images/python-scratch-trixie/tests/smoke_scratch_zero_os_cves.sh`
+
+### build.central-script
+
+Single `scripts/build-image.sh <image-dir>` drives every image build. Reads `images/<dir>/image.yaml` for the publishable repo + tag.
+
+- **Delivered by**: FG-003
+- **Covered by**: `tests/acceptance/test_FG_003_python-scratch-runtime.sh`
+
+### test.central-script
+
+Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smoke_*.sh` and runs it with the correct `IMAGE_NAME`/`IMAGE_TAG`/`REGISTRY` env from the image's `image.yaml`.
+
+- **Delivered by**: FG-003
+- **Covered by**: `tests/acceptance/test_FG_003_python-scratch-runtime.sh`
+
+### publish.matrix-auto-discovery
+
+`.github/workflows/build.yml` matrix job is driven by `scripts/discover-images.sh`, which emits a JSON matrix listing every `images/*/image.yaml`. Adding a new image dir auto-enrolls it in the daily publish pipeline — no workflow edit needed.
+
+- **Delivered by**: FG-003
+- **Covered by**: `scripts/discover-images.sh` + `.github/workflows/build.yml`

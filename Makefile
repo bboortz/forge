@@ -1,20 +1,27 @@
 # Forge — top-level Makefile. See memory/workflow.md for the gate matrix.
 #
 # Primary variables (override via `make <target> VAR=value`):
-#   IMAGE_NAME ?= python
-#   IMAGE_TAG  ?= 3.13-slim-trixie
-#   REGISTRY   ?= forge-local       (CI overrides to ghcr.io/bboortz)
+#   IMAGE_DIR  ?= python-slim-trixie    (directory under images/)
+#   REGISTRY   ?= forge-local           (CI overrides to ghcr.io/bboortz)
+#
+# Repo + tag are resolved from images/<IMAGE_DIR>/image.yaml so callers only
+# ever pass IMAGE_DIR. test-images delegates to scripts/test-images.sh which
+# does its own yaml resolution.
 
-IMAGE_NAME ?= python
-IMAGE_TAG  ?= 3.13-slim-trixie
-REGISTRY   ?= forge-local
-OUT_DIR  ?= build
+IMAGE_DIR ?= python-slim-trixie
+REGISTRY  ?= forge-local
+OUT_DIR   ?= build
 
-IMAGE      := $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
-IMAGE_SLUG := $(IMAGE_NAME)-$(IMAGE_TAG)
+# Resolve repo + tag from the image's yaml (only when the dir exists; empty
+# otherwise so `make help` etc. stay usable).
+_IMAGE_YAML := images/$(IMAGE_DIR)/image.yaml
+_REPO := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^repo:/ {print $$2; exit}' $(_IMAGE_YAML)))
+_TAG  := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^tag:/  {print $$2; exit}' $(_IMAGE_YAML)))
+IMAGE := $(REGISTRY)/$(_REPO):$(_TAG)
+IMAGE_SLUG := $(_REPO)-$(_TAG)
 
-SBOM       := $(OUT_DIR)/$(IMAGE_SLUG).sbom.json
-GRYPE      := $(OUT_DIR)/$(IMAGE_SLUG).grype.json
+SBOM  := $(OUT_DIR)/$(IMAGE_SLUG).sbom.json
+GRYPE := $(OUT_DIR)/$(IMAGE_SLUG).grype.json
 
 COSIGN_DIR := .cosign
 COSIGN_KEY := $(COSIGN_DIR)/cosign.key
@@ -22,7 +29,7 @@ COSIGN_PUB := $(COSIGN_DIR)/cosign.pub
 
 LOCAL_REGISTRY_PORT ?= 5555
 LOCAL_REGISTRY_NAME := forge-local-registry
-LOCAL_IMAGE         := localhost:$(LOCAL_REGISTRY_PORT)/$(IMAGE_NAME):$(IMAGE_TAG)
+LOCAL_IMAGE         := localhost:$(LOCAL_REGISTRY_PORT)/$(_REPO):$(_TAG)
 
 ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
@@ -38,16 +45,17 @@ help:
 	@echo "  lint                 hadolint / shellcheck / yamllint / actionlint"
 	@echo "  verify-sid-pins      enforce CVE + removal condition + date per pin"
 	@echo "  verify-traceability  enforce story ↔ plan ↔ test ↔ CAP links"
-	@echo "  build                docker build images/<IMAGE_NAME>/ as $(IMAGE)"
+	@echo "  build                scripts/build-image.sh \$$IMAGE_DIR"
 	@echo "  scan                 syft SBOM + grype scan → $(OUT_DIR)/"
 	@echo "  sign-local           push $(IMAGE) to localhost:$(LOCAL_REGISTRY_PORT) and cosign-sign"
 	@echo "  verify               cosign verify (local key)"
-	@echo "  test-images          bash images/*/tests/smoke_*.sh (scope with IMAGE_NAME)"
+	@echo "  test-images          scripts/test-images.sh [\$$IMAGE_DIR]"
 	@echo "  test-acceptance      bash tests/acceptance/test_FG_*.sh"
 	@echo "  test-fast            lint + verify-sid-pins + verify-traceability"
 	@echo "  check                test-fast + test-acceptance + test-images"
 	@echo ""
-	@echo "Variables: IMAGE_NAME=$(IMAGE_NAME) IMAGE_TAG=$(IMAGE_TAG) REGISTRY=$(REGISTRY)"
+	@echo "Variables: IMAGE_DIR=$(IMAGE_DIR) REGISTRY=$(REGISTRY)"
+	@echo "Resolved:  IMAGE=$(IMAGE)"
 
 tools:
 	@mkdir -p $$HOME/.local/bin
@@ -68,9 +76,9 @@ lint:
 	@echo "→ hadolint"
 	@hadolint images/*/Dockerfile
 	@echo "→ shellcheck"
-	@shellcheck tests/acceptance/*.sh images/*/build.sh scripts/*.sh
+	@shellcheck tests/acceptance/*.sh images/*/tests/*.sh scripts/*.sh
 	@echo "→ yamllint"
-	@yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" .github/
+	@yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" .github/ images/*/image.yaml
 	@if command -v actionlint >/dev/null; then echo "→ actionlint"; actionlint .github/workflows/*.yml; else echo "  actionlint missing — skipping"; fi
 
 verify-sid-pins:
@@ -80,7 +88,7 @@ verify-traceability:
 	@bash scripts/verify-traceability.sh
 
 build:
-	@bash images/$(IMAGE_NAME)/build.sh
+	@bash scripts/build-image.sh "$(IMAGE_DIR)"
 
 scan: build
 	@mkdir -p $(OUT_DIR)
@@ -117,23 +125,8 @@ test-acceptance:
 	  bash $$t || exit 1; \
 	done
 
-# test-images globs images/*/tests/smoke_*.sh and runs each against the
-# already-built local image(s). Scope with IMAGE_NAME=python to narrow.
-# Does NOT build the image itself — callers (acceptance test, make check)
-# ensure a build has happened first.
 test-images:
-	@scope=$${IMAGE_NAME:+images/$$IMAGE_NAME/tests}; \
-	scope=$${scope:-images/*/tests}; \
-	found=0; fail=0; \
-	for t in $$scope/smoke_*.sh; do \
-	  [ -f "$$t" ] || continue; \
-	  found=$$((found+1)); \
-	  echo "→ $$t"; \
-	  IMAGE_NAME="$(IMAGE_NAME)" IMAGE_TAG="$(IMAGE_TAG)" REGISTRY="$(REGISTRY)" \
-	    bash "$$t" || fail=$$((fail+1)); \
-	done; \
-	echo "test-images: $$found script(s), $$fail failure(s)"; \
-	[ $$fail -eq 0 ]
+	@bash scripts/test-images.sh
 
 test-fast: lint verify-sid-pins verify-traceability
 
