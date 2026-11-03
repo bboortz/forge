@@ -37,10 +37,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build + tag directly as the published reference
-        run: make build IMAGE_NAME=$IMAGE_NAME IMAGE_TAG=$IMAGE_TAG REGISTRY=$REGISTRY
+        run: make build IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG" REGISTRY="$REGISTRY"
 
       - name: Scan + SBOM
-        run: make scan IMAGE_NAME=$IMAGE_NAME IMAGE_TAG=$IMAGE_TAG REGISTRY=$REGISTRY
+        run: make scan IMAGE_NAME="$IMAGE_NAME" IMAGE_TAG="$IMAGE_TAG" REGISTRY="$REGISTRY"
 
       - name: Push image
         id: push
