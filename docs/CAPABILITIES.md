@@ -72,3 +72,24 @@ For out-of-CI development, `make sign-local` uses a local cosign key pair under 
 
 - **Delivered by**: FG-001
 - **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`
+
+### test.image-smoke-suite
+
+Per-image contract tests live co-located with the recipe under `images/<name>/tests/*.sh`. Each image maintains its own guarantees; deleting the image removes its tests cleanly.
+
+- **Delivered by**: FG-002
+- **Covered by**: `tests/acceptance/test_FG_002_python-image-smoke-suite.sh`
+
+### test.makefile-glob
+
+`make test-images` (optionally scoped by `IMAGE_NAME=<name>`) discovers and runs every `images/*/tests/*.sh` against the just-built local image. Aggregated into `make check`.
+
+- **Delivered by**: FG-002
+- **Covered by**: `tests/acceptance/test_FG_002_python-image-smoke-suite.sh`
+
+### test.size-budget
+
+Every image asserts its final size is at most **upstream base × 1.1**, where "upstream base" is the `FROM` reference used in the Dockerfile. 10% headroom accommodates `apt upgrade` deltas.
+
+- **Delivered by**: FG-002
+- **Covered by**: `images/python/tests/smoke_size.sh`
