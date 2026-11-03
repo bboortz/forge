@@ -65,6 +65,8 @@ cosign verify \
 
 ## Why not just use Google distroless?
 
+> For the full differentiator breakdown with measurable claims and trade-offs, see [`docs/differentiators.md`](docs/differentiators.md).
+
 Google distroless is excellent. Forge builds on the same idea with two differences:
 
 **Patch speed.** Google distroless rebuilds every ~2 days and depends on Debian backporting fixes from `sid` to `trixie`. When a fix lands in `sid` and has not yet been backported, distroless remains vulnerable. Forge pulls directly from `sid` for the affected package while staying on `trixie` for everything else. The fix in `sid` becomes available in a Forge image within 24 hours of the Debian package upload.
