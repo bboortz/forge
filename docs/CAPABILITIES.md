@@ -187,3 +187,17 @@ Scratch images have no exec, so smoke suites validate contents by extracting the
 
 - **Delivered by**: FG-008
 - **Covered by**: `tests/acceptance/test_FG_008_baseline-standard.sh`
+
+### image.ssl-cert-env
+
+Every Forge scratch derivative re-declares `ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt` and `ENV SSL_CERT_DIR=/etc/ssl/certs` in its own Dockerfile. Baseline sets them too but ENV directives don't propagate through `COPY --from=scratch_base` — this convention closes the trap that broke HTTPS for every scratch derivative before FG-009. Memory: [`memory/scratch-closures.md`](../memory/scratch-closures.md) § ENV does not propagate.
+
+- **Delivered by**: FG-009
+- **Covered by**: `tests/acceptance/test_FG_009_python-scratch-hardening.sh`
+
+### image.python-scratch-nonroot
+
+`python-scratch-trixie` defaults to `USER 65532:65532`, `WORKDIR /nonroot`, `ENTRYPOINT ["/usr/local/bin/python3"]`, `CMD []`, with `PYTHONDONTWRITEBYTECODE=1` + `PYTHONFAULTHANDLER=1` baked. Distroless convention: `docker run <image> script.py` just works; `docker run <image> pip install ...` needs `--entrypoint=pip`.
+
+- **Delivered by**: FG-009
+- **Covered by**: `tests/acceptance/test_FG_009_python-scratch-hardening.sh`, `images/python-scratch-trixie/tests/smoke_user_nonroot.sh`, `images/python-scratch-trixie/tests/smoke_tls_https_real.sh`, `images/python-scratch-trixie/tests/smoke_entrypoint.sh`

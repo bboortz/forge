@@ -100,9 +100,15 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 COPY --from=scratch_base / /
 COPY --from=builder /out /
 
+# FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
+# re-declare here so postgres can do outbound TLS (e.g. postgres_fdw
+# connecting to a TLS-encrypted remote instance, extensions issuing HTTPS
+# calls). See docs/baseline-contract.md § "TLS trust".
 ENV PATH=/usr/lib/postgresql/17/bin \
     PGDATA=/var/lib/postgresql/data \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    SSL_CERT_DIR=/etc/ssl/certs
 
 EXPOSE 5432
 # USER uses the numeric form (hadolint DL3066) — same uid pinned in /etc/passwd.

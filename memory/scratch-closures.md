@@ -15,7 +15,19 @@ FROM scratch AS runtime
 # hadolint ignore=DL3067
 COPY --from=scratch_base / /     # baseline first
 COPY --from=builder /out /       # image overlay — later COPY wins
+
+# MANDATORY — see § "ENV does not propagate" below.
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ```
+
+## **⚠️ ENV does not propagate through `COPY --from=`** (FG-009 lesson)
+
+`COPY --from=scratch_base / /` copies **files only** — not the baseline's `ENV` directives. Every scratch derivative **must re-declare** every shared env var in its own Dockerfile, including:
+
+- `SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt` (TLS verify path; without this, urllib / requests / pip / cosign all fail with `CERTIFICATE_VERIFY_FAILED` — hit by Beaconry in production)
+- `SSL_CERT_DIR=/etc/ssl/certs`
+
+This is the single highest-impact trap of the composition pattern. It passed our FG-005 smoke suite because `smoke_tls_handshake.sh` only called `ssl.create_default_context()` (lazy — doesn't touch the trust store). Replaced in FG-009 with `smoke_tls_https_real.sh` doing an actual `urlopen('https://example.com')`. Future scratch image additions MUST include a real-HTTPS smoke to catch this regression.
 
 Baseline supplies: ld-linux + core glibc (**NOT libutil**) + TLS + DNS + `libz` + `libzstd` + CA bundle + `/etc/nsswitch.conf` + `/etc/passwd`+`/etc/group` (root + nobody) + `/usr/share/zoneinfo`. Everything else is image-specific.
 

@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
-# Smoke — image runs Python code via `docker run <image> python3 ...`.
-# The Dockerfile uses CMD (not ENTRYPOINT) to match upstream python:*-slim
-# behaviour, so consumers invoke python3 explicitly when passing args.
-# This test exercises that invocation pattern end-to-end.
+# Smoke — image runs Python code via `docker run <image> script.py` style.
+# FG-009: python-scratch-trixie now uses ENTRYPOINT ["python3"] + empty CMD
+# (distroless convention), so `docker run <image> -c "..."` just works
+# without the consumer specifying python3 explicitly.
 #
-# Delivers: FG-002 Scenario "Container entrypoint runs python3 by default".
+# Delivers: FG-002 "Container entrypoint runs python3 by default" +
+#           FG-009 "ENTRYPOINT=python3 convention".
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-python}"
-IMAGE_TAG="${IMAGE_TAG:-3.13-slim-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-python-scratch-trixie}"
+IMAGE_TAG="${IMAGE_TAG:-3.13}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
-out=$(docker run --rm "${IMAGE}" python3 -c "print('ok')")
+# 1. docker run <image> -c "..." → ENTRYPOINT=python3 applies → runs python3 -c "..."
+out=$(docker run --rm "${IMAGE}" -c "print('ok')")
 if [[ "${out}" != "ok" ]]; then
-  echo "  ✗ expected 'ok', got: ${out}" >&2
+  echo "  ✗ docker run <image> -c \"print('ok')\" returned '${out}', expected 'ok'" >&2
   exit 1
 fi
 
-# And default CMD alone starts the python3 REPL without crashing (test by
-# sending EOF via stdin and asserting zero exit).
+# 2. docker run <image> (no args) → python3 REPL. Send EOF via stdin, expect
+# clean exit.
 : | docker run --rm -i "${IMAGE}" >/dev/null
 
-echo "  ✓ python3 -c round-trips 'ok'; default CMD starts python3 cleanly"
+echo "  ✓ docker run <image> -c runs python3 code; default (no args) starts REPL"

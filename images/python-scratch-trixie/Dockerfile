@@ -79,7 +79,26 @@ COPY --from=scratch_base / /
 # Python-specific overlay. Later COPYs win if paths collide.
 COPY --from=builder /out /
 
+# FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
+# we must re-declare here or every TLS call (urllib, requests, pip install,
+# grype DB download, Telegram API) fails with CERTIFICATE_VERIFY_FAILED.
+# See memory/scratch-closures.md § "ENV doesn't propagate" and
+# docs/baseline-contract.md § "TLS trust".
 ENV PATH=/usr/local/bin \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    SSL_CERT_DIR=/etc/ssl/certs \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONFAULTHANDLER=1
 
-CMD ["python3.13"]
+# FG-009: run as nonroot (uid 65532, distroless convention, provided by
+# scratch-base-trixie:0.2). Consumers who need root add `USER root`
+# explicitly. HOME is baseline's /nonroot (owned 65532:65532).
+WORKDIR /nonroot
+USER 65532:65532
+
+# FG-009: ENTRYPOINT = python3 (not CMD) so `docker run <image> script.py`
+# works out of the box. Consumers override with --entrypoint for pip etc.
+# `docker run <image>` (no args) drops into the REPL.
+ENTRYPOINT ["/usr/local/bin/python3"]
+CMD []
