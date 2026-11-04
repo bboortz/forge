@@ -54,8 +54,11 @@ say "4. postgres user pinned to uid 999 (Docker Hub convention)"
 tmp=$(mktemp -d); trap 'rm -rf "${tmp}"' EXIT
 docker save "${IMAGE}" -o "${tmp}/img.tar"
 tar xf "${tmp}/img.tar" -C "${tmp}"
+# Extract /etc/passwd from EVERY layer (don't break early) so the later
+# overlay wins — baseline layer ships root+nobody; postgres overlay layer
+# overwrites with the service-user augmented file.
 for layer in "${tmp}"/blobs/sha256/*; do
-  tar xf "${layer}" -C "${tmp}" etc/passwd 2>/dev/null && break
+  tar xf "${layer}" -C "${tmp}" etc/passwd 2>/dev/null || true
 done
 if ! grep -qE '^postgres:x:999:999:' "${tmp}/etc/passwd"; then
   echo "  ✗ postgres uid/gid not pinned to 999:999 in /etc/passwd:" >&2
