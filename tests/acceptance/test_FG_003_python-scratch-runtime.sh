@@ -51,10 +51,16 @@ pass "forge-local/python-scratch-trixie:3.13 built"
 # -----------------------------------------------------------------------------
 # Section 3 — Scenario: central test script runs every variant's suite
 # -----------------------------------------------------------------------------
-say "3. scripts/test-images.sh discovers and runs every suite"
+say "3. scripts/test-images.sh discovers and runs the python variants it just built"
 [[ -x scripts/test-images.sh ]] || { echo "  ✗ scripts/test-images.sh missing or not executable" >&2; exit 1; }
-bash scripts/test-images.sh
-pass "all images/*/tests/smoke_*.sh passed"
+# Scope to the two python variants FG-003 built. Other images (nginx, postgres,
+# future) have their own FG-NNN tests that build + smoke their own images.
+# The aggregate "all variants" exercise happens via `make check`'s dedicated
+# `test-images` phase which runs AFTER every acceptance test has had a chance
+# to build its image.
+bash scripts/test-images.sh python-slim-trixie
+bash scripts/test-images.sh python-scratch-trixie
+pass "python-slim-trixie + python-scratch-trixie smoke suites passed"
 
 # -----------------------------------------------------------------------------
 # Section 4 — Scenario: GHA matrix auto-discovers image dirs
