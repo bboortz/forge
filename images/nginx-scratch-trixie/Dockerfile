@@ -28,10 +28,15 @@ RUN set -eux; \
     apt-get -y --no-install-recommends install nginx ca-certificates; \
     rm -rf /var/lib/apt/lists/*
 
-# Assemble the nginx overlay (baseline already supplies glibc + TLS + DNS
-# + zoneinfo + /etc/passwd+group with root/nobody). We add nginx + its one
-# unique closure lib (libpcre2-8), nginx's writable dirs, our minimal config,
-# and the www-data user line that overwrites baseline's /etc/passwd+group.
+# Pull the baseline's /etc identity files into the builder so we can APPEND
+# the www-data service-user line rather than overwriting the whole file.
+# This way future additions to the baseline (e.g. nogroup) propagate into
+# every derivative on the next rebuild instead of being silently dropped.
+COPY --from=scratch_base /etc/passwd /tmp/baseline-passwd
+COPY --from=scratch_base /etc/group  /tmp/baseline-group
+
+# Assemble the nginx overlay. Baseline supplies glibc + TLS + DNS + zoneinfo
+# + /etc/passwd+group with root+nobody; we APPEND the www-data service user.
 RUN set -eux; \
     install -d /out/usr/sbin /out/usr/share/nginx/html \
                /out/etc /out/etc/nginx \
@@ -43,12 +48,13 @@ RUN set -eux; \
     # nginx binary + its one lib not in baseline.
     cp /usr/sbin/nginx                    /out/usr/sbin/nginx; \
     cp /lib/x86_64-linux-gnu/libpcre2-8.so.0 /out/lib/x86_64-linux-gnu/libpcre2-8.so.0; \
-    # Overwrite baseline's /etc/passwd+group to add the www-data (uid 33)
-    # service user alongside root + nobody.
-    printf 'root:x:0:0:root:/:/sbin/nologin\n'              >  /out/etc/passwd; \
+    # Build /etc/passwd + /etc/group by appending service-user lines to
+    # baseline's contents (append semantic via build-time concat + full-file
+    # COPY in the runtime stage).
+    cat /tmp/baseline-passwd                                 > /out/etc/passwd; \
     printf 'www-data:x:33:33:www-data:/:/sbin/nologin\n'    >> /out/etc/passwd; \
-    printf 'nobody:x:65534:65534:nobody:/:/sbin/nologin\n'  >> /out/etc/passwd; \
-    printf 'root:x:0:\nwww-data:x:33:\nnobody:x:65534:\n'   >  /out/etc/group; \
+    cat /tmp/baseline-group                                  > /out/etc/group; \
+    printf 'www-data:x:33:\n'                               >> /out/etc/group; \
     chown -R 33:33 /out/var/lib/nginx /out/var/log/nginx /out/var/cache/nginx
 
 COPY nginx.conf /out/etc/nginx/nginx.conf

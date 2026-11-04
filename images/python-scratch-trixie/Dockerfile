@@ -30,13 +30,14 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # Collect the Python-specific overlay. Baseline already supplies glibc + TLS
-# + DNS + zoneinfo + minimal /etc; we only COPY the Python interpreter,
-# stdlib, libpython, pip, and Python's own stdlib C-extension deps (sqlite,
-# bz2, lzma, zstd, expat, ffi, nsl, tirpc) here.
+# + DNS + zoneinfo + minimal /etc (including /etc/passwd + /etc/group with
+# root+nobody, which Python doesn't need to augment — no service user).
+# We only COPY the Python interpreter, stdlib, libpython, pip, and Python's
+# own stdlib C-extension deps (sqlite, bz2, lzma, zstd, expat, ffi, nsl,
+# tirpc) + libutil (openpty/forkpty stdlib dep, not in baseline).
 RUN set -eux; \
     install -d /out/usr/local/bin /out/usr/local/lib \
-               /out/lib/x86_64-linux-gnu \
-               /out/etc; \
+               /out/lib/x86_64-linux-gnu; \
     # Interpreter + stdlib + libpython + python3/python symlinks.
     cp -a /usr/local/bin/python3.13  /out/usr/local/bin/python3.13; \
     cp -a /usr/local/bin/python3     /out/usr/local/bin/python3     2>/dev/null || ln -s python3.13 /out/usr/local/bin/python3; \

@@ -35,6 +35,12 @@ RUN set -eux; \
       locales libnss-db ; \
     rm -rf /var/lib/apt/lists/*
 
+# Pull baseline's /etc/passwd + /etc/group so we APPEND the postgres user
+# instead of overwriting (FG-005 append pattern — future baseline additions
+# propagate automatically).
+COPY --from=scratch_base /etc/passwd /tmp/baseline-passwd
+COPY --from=scratch_base /etc/group  /tmp/baseline-group
+
 # Assemble the postgres-specific overlay. Baseline supplies the core glibc +
 # TLS + DNS + zoneinfo + minimal /etc. We add postgres binaries, postgres-
 # specific shared libs (ICU + krb5 + ldap + pam + xml + readline + libpq +
@@ -67,15 +73,14 @@ RUN set -eux; \
                libpq.so.5; do \
       cp "/lib/x86_64-linux-gnu/${lib}" "/out/lib/x86_64-linux-gnu/${lib}"; \
     done; \
-    # Overwrite baseline's /etc/passwd+group to add the postgres user at
-    # uid 999 / gid 999 (matches Docker Hub's official postgres image —
-    # critical for volume compatibility with sidecar-init clusters).
+    # Append postgres service user (uid 999 — Docker Hub convention) to
+    # baseline's /etc/passwd + /etc/group.
     pg_uid=999; pg_gid=999; \
-    printf 'root:x:0:0:root:/:/sbin/nologin\n'                                  >  /out/etc/passwd; \
+    cat /tmp/baseline-passwd                                                     > /out/etc/passwd; \
     printf 'postgres:x:%s:%s:postgres:/var/lib/postgresql:/sbin/nologin\n' \
       "${pg_uid}" "${pg_gid}"                                                    >> /out/etc/passwd; \
-    printf 'nobody:x:65534:65534:nobody:/:/sbin/nologin\n'                       >> /out/etc/passwd; \
-    printf 'root:x:0:\npostgres:x:%s:\nnobody:x:65534:\n' "${pg_gid}"            >  /out/etc/group; \
+    cat /tmp/baseline-group                                                      > /out/etc/group; \
+    printf 'postgres:x:%s:\n' "${pg_gid}"                                       >> /out/etc/group; \
     chown -R "${pg_uid}:${pg_gid}" /out/var/lib/postgresql /out/var/run/postgresql
 
 # --- Stage 2: runtime (scratch) -----------------------------------------------
