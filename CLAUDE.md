@@ -9,6 +9,7 @@ Full product description: `README.md`
 @memory/supply-chain.md
 @memory/code-quality.md
 @memory/workflow.md
+@memory/scratch-closures.md
 
 ---
 

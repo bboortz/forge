@@ -5,3 +5,4 @@
 - [Supply chain](supply-chain.md) — grype scan step, syft SBOM, keyless cosign signing, downstream verify command, local developer flow
 - [Code quality](code-quality.md) — commit format, branch naming, pre-PR checklist, shell / Dockerfile style
 - [Workflow](workflow.md) — DD-TGD process (story → plan → red test → impl → CAPs → gates → audit), 9 canonical questions, gate matrix, capability matrix, new-image checklist
+- [Scratch closures](scratch-closures.md) — hard-won lessons from FG-003/006/007/005: baseline composition rules, append-vs-overwrite /etc/passwd, cp vs cp -a for symlinks, scratch has no shell, CI env traps, smoke-test patterns
