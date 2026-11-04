@@ -55,9 +55,6 @@ jobs:
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
       (github.event_name == 'pull_request' && github.base_ref == 'dev')
-    env:
-      IMAGE_NAME: python
-      IMAGE_TAG: 3.13-slim-trixie
     steps:
       - uses: actions/checkout@v4
 
@@ -82,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: scan-${{ env.IMAGE_NAME }}-${{ env.IMAGE_TAG }}
+          name: scan-artifacts
           path: build/
           retention-days: 14
 
