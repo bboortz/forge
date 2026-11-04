@@ -39,11 +39,12 @@ RUN set -eux; \
     apt-get -y --no-install-recommends install ca-certificates; \
     rm -rf /var/lib/apt/lists/*
 
-# Assemble the baseline tree.
+# Assemble the baseline tree — the common standard every Forge scratch
+# image can rely on. Documented in docs/baseline-contract.md.
 RUN set -eux; \
     install -d /out/etc /out/etc/ssl/certs /out/lib64 /out/lib/x86_64-linux-gnu \
-               /out/usr/share/zoneinfo /out/tmp; \
-    chmod 1777 /out/tmp; \
+               /out/usr/share/zoneinfo /out/tmp /out/var/tmp /out/nonroot; \
+    chmod 1777 /out/tmp /out/var/tmp; \
     # Dynamic linker (plain cp so the Debian multiarch symlink dereferences;
     # cp -a would leave /lib64/ld-linux-* as a dangling symlink — FG-006 lesson).
     cp /lib64/ld-linux-x86-64.so.2 /out/lib64/; \
@@ -58,16 +59,30 @@ RUN set -eux; \
                libnss_dns.so.2 libnss_files.so.2 libresolv.so.2; do \
       cp "/lib/x86_64-linux-gnu/${lib}" "/out/lib/x86_64-linux-gnu/${lib}"; \
     done; \
-    # Trust anchors + nss config + zoneinfo.
+    # TLS trust + nss config.
     cp /etc/ssl/certs/ca-certificates.crt /out/etc/ssl/certs/; \
     cp /etc/nsswitch.conf                 /out/etc/; \
+    # Zoneinfo (full tree, preserving symlinks like UTC → Etc/UTC).
     cp -r /usr/share/zoneinfo             /out/usr/share/; \
-    # Minimal /etc/passwd + /etc/group. Derivatives that need a service user
-    # (www-data for nginx, postgres for postgres) COPY their own passwd/group
-    # over these after the baseline layer lands.
-    printf 'root:x:0:0:root:/:/sbin/nologin\n'                 >  /out/etc/passwd; \
-    printf 'nobody:x:65534:65534:nobody:/:/sbin/nologin\n'     >> /out/etc/passwd; \
-    printf 'root:x:0:\nnobody:x:65534:\n'                      >  /out/etc/group
+    # Network-resolution data (FG-008): socket.getservbyname, getprotobyname,
+    # and localhost loopback lookups all silently fail without these.
+    cp /etc/services                      /out/etc/services; \
+    cp /etc/protocols                     /out/etc/protocols; \
+    printf '127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n' \
+                                          >  /out/etc/hosts; \
+    # /etc/localtime → UTC (FG-008): many apps read /etc/localtime first;
+    # without it they fall through to inconsistent defaults.
+    ln -s /usr/share/zoneinfo/Etc/UTC /out/etc/localtime; \
+    # Identity file: root + nonroot (65532, distroless convention) + nobody.
+    # Derivatives APPEND their service user (FG-005 pattern) rather than
+    # overwrite.
+    printf 'root:x:0:0:root:/:/sbin/nologin\n'                                 >  /out/etc/passwd; \
+    printf 'nonroot:x:65532:65532:nonroot:/nonroot:/sbin/nologin\n'            >> /out/etc/passwd; \
+    printf 'nobody:x:65534:65534:nobody:/:/sbin/nologin\n'                     >> /out/etc/passwd; \
+    printf 'root:x:0:\nnonroot:x:65532:\nnobody:x:65534:\n'                    >  /out/etc/group; \
+    # /nonroot home dir owned by uid 65532 (matches distroless :nonroot).
+    chown 65532:65532 /out/nonroot; \
+    chmod 0755        /out/nonroot
 
 # --- Stage 2: runtime (scratch) -----------------------------------------------
 FROM scratch AS runtime

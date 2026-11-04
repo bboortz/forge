@@ -7,7 +7,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-scratch-base-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-0.1}"
+IMAGE_TAG="${IMAGE_TAG:-0.2}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 

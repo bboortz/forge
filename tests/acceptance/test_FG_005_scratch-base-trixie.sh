@@ -16,7 +16,10 @@ say() { printf '\n\033[1;36m[FG-005]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
 BASE_DIR="scratch-base-trixie"
-BASE_IMAGE="forge-local/${BASE_DIR}:0.1"
+# Resolve baseline tag from image.yaml so FG-005 keeps passing across version
+# bumps (0.1 → 0.2 → …). Future-proof per FG-008.
+BASE_TAG=$(awk '/^tag:/ {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${BASE_DIR}/image.yaml")
+BASE_IMAGE="forge-local/${BASE_DIR}:${BASE_TAG}"
 DERIVATIVES=(python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie)
 
 # -----------------------------------------------------------------------------
