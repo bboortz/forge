@@ -1,7 +1,7 @@
 ---
 id: FG-009
 slug: python-scratch-hardening
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-04
 ---

@@ -1,7 +1,7 @@
 # FG-009 — Plan: python-scratch hardening + SSL fix
 
 **Story**: [`docs/stories/FG-009-python-scratch-hardening.md`](../stories/FG-009-python-scratch-hardening.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-009-python-scratch-hardening`
 
 ## Design delta
