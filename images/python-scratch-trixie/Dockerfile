@@ -46,7 +46,14 @@ RUN set -eux; \
     cp -a /usr/local/lib/libpython3*.so* /out/usr/local/lib/; \
     # Python-specific stdlib C-extension dyn deps (baseline supplies the core
     # but NOT libutil; the pty/openpty stdlib module needs it).
-    for lib in libutil.so.1 \
+    #
+    # librt.so.1: glibc 2.34 merged librt into libc; Debian trixie ships an
+    # empty 14.5 KB stub for binaries still carrying NEEDED librt.so.1. All
+    # manylinux2014 / manylinux_2_17 wheels (numpy, scipy, pandas, pillow,
+    # cryptography, …) are built against glibc 2.17 and need the stub to
+    # dlopen. FG-011: ship it so `pip install <popular-wheel>` doesn't
+    # silently break in scratch.
+    for lib in libutil.so.1 librt.so.1 \
                libbz2.so.1.0 liblzma.so.5 libzstd.so.1 \
                libexpat.so.1 libffi.so.8 libsqlite3.so.0 \
                libnsl.so.2 libtirpc.so.3; do \
