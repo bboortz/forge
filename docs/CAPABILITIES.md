@@ -136,3 +136,17 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 - **Delivered by**: FG-003
 - **Covered by**: `scripts/discover-images.sh` + `.github/workflows/build.yml`
+
+### image.nginx-serves-http
+
+`nginx-scratch-trixie` answers `curl http://localhost/` with HTTP 200 and the default welcome page out of the box. Minimal self-contained config shipped at `/etc/nginx/nginx.conf`.
+
+- **Delivered by**: FG-006
+- **Covered by**: `tests/acceptance/test_FG_006_nginx-scratch-trixie.sh`, `images/nginx-scratch-trixie/tests/smoke_serves_200.sh`
+
+### test.smoke-server-helper
+
+`scripts/smoke-server.sh` is the reusable start-wait-probe-stop harness for server images. Takes `--image`, `--port`, `--ready`, `--test`, substitutes `__HOST_PORT__` from the docker-assigned ephemeral host port, polls readiness, runs the test command, always cleans up.
+
+- **Delivered by**: FG-006
+- **Covered by**: `tests/acceptance/test_FG_006_nginx-scratch-trixie.sh` (and FG-007 postgres consumes the same helper)

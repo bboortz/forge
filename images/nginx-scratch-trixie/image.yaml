@@ -1,0 +1,6 @@
+# Image metadata consumed by scripts/{build,test,discover}-image(s).sh.
+# `repo` is derived from the directory name (FG-004) — do not add it back.
+# Scratch runtime: nginx + minimal glibc/TLS/pcre closure. No shell, no apt.
+tag: "1.26"
+platforms:
+  - linux/amd64
