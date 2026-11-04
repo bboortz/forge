@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Emit a GHA-matrix JSON listing every images/<dir>/image.yaml.
+# Emit a GHA-matrix JSON listing image dirs. Modes:
+#
+#   scripts/discover-images.sh            → every image (legacy caller)
+#   scripts/discover-images.sh base       → images with no depends_on
+#   scripts/discover-images.sh derivatives → images WITH depends_on
+#
+# build.yml uses the two-mode split so baselines publish before
+# derivatives that FROM them (FG-005).
 #
 # Output shape (single line, suitable for GITHUB_OUTPUT):
-#   {"include":[{"image_dir":"python-slim-trixie","repo":"python-slim-trixie","tag":"3.13"},
-#               {"image_dir":"python-scratch-trixie","repo":"python-scratch-trixie","tag":"3.13"}]}
-#
-# Used by .github/workflows/build.yml so adding a new images/<dir>/ auto-
-# enrolls it in the daily publish matrix with no workflow edit. The `repo`
-# field is derived from the directory name (per FG-004) unless image.yaml
-# carries an explicit override.
-#
-# Falls back to empty `include:` list if there are no image dirs (keeps GHA
-# matrix evaluation happy — and makes the "no images" state explicit).
+#   {"include":[{"image_dir":"...","repo":"...","tag":"..."}, ...]}
 
 set -euo pipefail
+
+MODE="${1:-all}"
 
 ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/_image_yaml.sh
@@ -25,6 +25,20 @@ while IFS= read -r -d '' dir; do
   name=$(basename "${dir}")
   repo=$(image_yaml_repo "${dir}/image.yaml")
   tag=$(image_yaml_get   "${dir}/image.yaml" tag)
+
+  # Count deps — determines tier.
+  dep_count=0
+  while IFS= read -r _dep; do
+    [[ -n "${_dep}" ]] && dep_count=$((dep_count + 1))
+  done < <(image_yaml_depends "${dir}/image.yaml")
+
+  case "${MODE}" in
+    base)        [[ ${dep_count} -eq 0 ]] || continue ;;
+    derivatives) [[ ${dep_count} -gt 0 ]] || continue ;;
+    all)         ;;
+    *) echo "unknown mode: ${MODE} (base|derivatives|all)" >&2; exit 2 ;;
+  esac
+
   entries+=("$(printf '{"image_dir":"%s","repo":"%s","tag":"%s"}' "${name}" "${repo}" "${tag}")")
 done < <(find "${ROOT}/images" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
 

@@ -41,11 +41,13 @@ The identity string is bound to the exact workflow file. Any digest that doesn't
 
 ---
 
-## 3. Minimal attack surface — `FROM scratch` runtime
+## 3. Minimal attack surface — `FROM scratch` runtime on a signed baseline
 
 **Claim.** The runtime stage has no shell, no package manager, no dpkg database. grype running against the runtime image finds **zero OS-level CVE candidates** because there is no OS package metadata to scan. Every finding is a PyPI dependency the consumer installed — actionable, not noise.
 
-**How we prove it.** Run `grype ghcr.io/bboortz/python3.13:latest -o json` on a freshly built image before any application layer is applied. The `matches[]` array against the base image is empty.
+**How we prove it.** Run `grype ghcr.io/bboortz/python-scratch-trixie:3.13 -o json` on a freshly built image before any application layer is applied. The `matches[]` array against the base image is empty of `.artifact.type == "deb"` entries.
+
+**About the baseline.** Every Forge scratch image literally starts `FROM scratch` and composes the runtime by COPYing from `scratch-base-trixie` (shared glibc + TLS + DNS + zoneinfo + minimal `/etc`, ~13 MB signed independently) plus its own image-specific overlay. The baseline is itself a published, signed, scanned Forge artifact — consumers can audit "what every Forge scratch image guarantees" against a single digest. It is NOT a `FROM scratch-base-trixie` indirection; derivative Dockerfiles preserve the literal `FROM scratch` line for the differentiator claim.
 
 **Baseline we beat.**
 - `python:3.13-slim-trixie`: ships `apt`, `dpkg`, shell, package database. grype enumerates every Debian package even on a fresh image.

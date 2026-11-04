@@ -5,3 +5,8 @@
 tag: "3.13"
 platforms:
   - linux/amd64
+# FG-005: this image derives from scratch-base-trixie via COPY --from=.
+# scripts/build-image.sh honours depends_on by (re)building each dep first
+# so local `make build IMAGE_DIR=python-scratch-trixie` works from a cold cache.
+depends_on:
+  - scratch-base-trixie

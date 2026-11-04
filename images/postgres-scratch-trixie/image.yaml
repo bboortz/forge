@@ -5,3 +5,5 @@
 tag: "17"
 platforms:
   - linux/amd64
+depends_on:
+  - scratch-base-trixie
