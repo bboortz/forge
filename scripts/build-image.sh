@@ -21,7 +21,7 @@ IMAGE_DIR="${1:?usage: $0 <image-dir>}"
 REGISTRY="${REGISTRY:-forge-local}"
 ROOT="$(git rev-parse --show-toplevel)"
 
-# shellcheck source=scripts/_image_yaml.sh
+# shellcheck source=scripts/_image_yaml.sh disable=SC1091
 . "${ROOT}/scripts/_image_yaml.sh"
 
 SRC="${ROOT}/images/${IMAGE_DIR}"
@@ -45,9 +45,16 @@ GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 BUILD_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Supply SCRATCH_BASE_REF so scratch derivatives build against our locally-
-# produced baseline instead of attempting to pull from GHCR. If baseline
-# isn't built, fall back to the published GHCR path.
-SCRATCH_BASE_REF="${REGISTRY}/scratch-base-trixie:0.1"
+# produced baseline instead of attempting to pull from GHCR. Baseline tag
+# is resolved dynamically from images/scratch-base-trixie/image.yaml so
+# future bumps (0.1 → 0.2 → …) don't require script edits.
+_BASELINE_YAML="${ROOT}/images/scratch-base-trixie/image.yaml"
+if [[ -f "${_BASELINE_YAML}" ]]; then
+  _BASELINE_TAG=$(image_yaml_get "${_BASELINE_YAML}" tag)
+else
+  _BASELINE_TAG="latest"
+fi
+SCRATCH_BASE_REF="${REGISTRY}/scratch-base-trixie:${_BASELINE_TAG}"
 PULL_FLAG="--pull"
 if docker image inspect "${SCRATCH_BASE_REF}" >/dev/null 2>&1; then
   # Local baseline present; don't --pull or the legacy builder tries to

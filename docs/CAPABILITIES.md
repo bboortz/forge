@@ -167,14 +167,23 @@ Test pattern for images whose one-time initialization needs a shell (e.g. postgr
 
 ### build.scratch-baseline
 
-Shared signed foundation for every Forge scratch image. `scratch-base-trixie` ships the strict intersection of python/nginx/postgres closures: dynamic linker, core glibc (sans `libutil.so.1`), TLS trust, common compression, DNS resolution, zoneinfo, and a minimal `/etc`. Derivatives preserve their literal `FROM scratch` runtime line and compose via `COPY --from=scratch_base / /` + an image-specific overlay.
+Shared signed foundation for every Forge scratch image. `scratch-base-trixie` ships a documented common standard: dynamic linker, core glibc (sans `libutil.so.1`), TLS trust, common compression, DNS resolution, network-resolution data (`/etc/services` + `/etc/protocols` + `/etc/hosts`), `/etc/localtime` → UTC, zoneinfo, standard identities (root + nonroot 65532 + nobody), and writable `/tmp` + `/var/tmp` + `/nonroot`. See `docs/baseline-contract.md` for the authoritative API. Derivatives preserve their literal `FROM scratch` runtime line and compose via `COPY --from=scratch_base / /` + an image-specific overlay.
 
 - **Delivered by**: FG-005
-- **Covered by**: `tests/acceptance/test_FG_005_scratch-base-trixie.sh`
+- **Extended by**: FG-008 (nonroot identity + network data + /etc/localtime + /var/tmp)
+- **Covered by**: `tests/acceptance/test_FG_005_scratch-base-trixie.sh`, `tests/acceptance/test_FG_008_baseline-standard.sh`
 
 ### test.scratch-contents
 
 Scratch images have no exec, so smoke suites validate contents by extracting the image via `docker save | tar tf` and asserting required paths are present (or absent). Reusable pattern for any image without a shell / binary that can be probed interactively.
 
 - **Delivered by**: FG-005
+- **Extended by**: FG-008 (users/network/time/writable-dirs contracts)
 - **Covered by**: `images/scratch-base-trixie/tests/smoke_contents_*.sh`
+
+### docs.baseline-contract
+
+`docs/baseline-contract.md` documents the file-layout API, reserved UIDs, composition contract, ENV re-declaration requirement, non-guarantees, and versioning policy for `scratch-base-trixie`. Authoritative audit surface for current and future consumers of Forge scratch images.
+
+- **Delivered by**: FG-008
+- **Covered by**: `tests/acceptance/test_FG_008_baseline-standard.sh`

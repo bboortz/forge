@@ -2,6 +2,6 @@
 # `repo` is derived from the directory name (FG-004) — do not add it back.
 # Semantic versioning (FG-005): bump tag when the surface changes; 0.x until
 # we have real consumer dependence.
-tag: "0.1"
+tag: "0.2"
 platforms:
   - linux/amd64
