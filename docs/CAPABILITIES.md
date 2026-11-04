@@ -164,3 +164,17 @@ Test pattern for images whose one-time initialization needs a shell (e.g. postgr
 
 - **Delivered by**: FG-007
 - **Covered by**: `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
+
+### build.scratch-baseline
+
+Shared signed foundation for every Forge scratch image. `scratch-base-trixie` ships the strict intersection of python/nginx/postgres closures: dynamic linker, core glibc (sans `libutil.so.1`), TLS trust, common compression, DNS resolution, zoneinfo, and a minimal `/etc`. Derivatives preserve their literal `FROM scratch` runtime line and compose via `COPY --from=scratch_base / /` + an image-specific overlay.
+
+- **Delivered by**: FG-005
+- **Covered by**: `tests/acceptance/test_FG_005_scratch-base-trixie.sh`
+
+### test.scratch-contents
+
+Scratch images have no exec, so smoke suites validate contents by extracting the image via `docker save | tar tf` and asserting required paths are present (or absent). Reusable pattern for any image without a shell / binary that can be probed interactively.
+
+- **Delivered by**: FG-005
+- **Covered by**: `images/scratch-base-trixie/tests/smoke_contents_*.sh`

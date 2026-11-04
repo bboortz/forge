@@ -54,9 +54,14 @@ say "4. postgres user pinned to uid 999 (Docker Hub convention)"
 tmp=$(mktemp -d); trap 'rm -rf "${tmp}"' EXIT
 docker save "${IMAGE}" -o "${tmp}/img.tar"
 tar xf "${tmp}/img.tar" -C "${tmp}"
-for layer in "${tmp}"/blobs/sha256/*; do
-  tar xf "${layer}" -C "${tmp}" etc/passwd 2>/dev/null && break
-done
+# Extract /etc/passwd from each layer IN ORDER (manifest.json says bottom
+# first → top last). Processing in order means the later overlay layer
+# correctly overwrites baseline's /etc/passwd with the service-user
+# augmented version. Iterating sorted blob names alphabetically ≠ layer
+# order, which flipped the result and failed the check on FG-005.
+while IFS= read -r layer; do
+  tar xf "${tmp}/${layer}" -C "${tmp}" etc/passwd 2>/dev/null || true
+done < <(jq -r '.[0].Layers[]' "${tmp}/manifest.json")
 if ! grep -qE '^postgres:x:999:999:' "${tmp}/etc/passwd"; then
   echo "  ✗ postgres uid/gid not pinned to 999:999 in /etc/passwd:" >&2
   grep postgres "${tmp}/etc/passwd" >&2 || true
