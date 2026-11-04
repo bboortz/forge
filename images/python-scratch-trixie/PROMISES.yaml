@@ -5,7 +5,7 @@
 
 spec_version: 1
 image: python-scratch-trixie
-version: "0.1"
+version: "0.2"
 
 promises:
   - id: runtime.python3-interp
@@ -38,6 +38,12 @@ promises:
     caps: [build.two-stage-scratch]
     tests:
       - images/python-scratch-trixie/tests/smoke_pip_runtime_install.sh
+
+  - id: runtime.librt-abi-stub
+    description: /lib/x86_64-linux-gnu/librt.so.1 ABI stub (14.5 KB, as shipped by Debian trixie — empty since glibc 2.34 merged librt into libc) is present and dlopen-able. Required for manylinux2014 / manylinux_2_17 wheels (numpy, scipy, pandas, pillow, cryptography) built against glibc 2.17 which carry NEEDED librt.so.1 in their ELF.
+    caps: [image.manylinux-wheel-compat]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_librt_manylinux.sh
 
   - id: absence.shell
     description: No /bin/sh, /bin/bash, or any shell binary. docker exec with interactive shell is impossible — by design.

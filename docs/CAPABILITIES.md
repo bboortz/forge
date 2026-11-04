@@ -229,3 +229,10 @@ Every image that depends on another Forge image declares its consumption surface
 
 - **Delivered by**: FG-010
 - **Covered by**: `tests/acceptance/test_FG_010_image-contracts.sh`
+
+### image.manylinux-wheel-compat
+
+`python-scratch-trixie` ships the `/lib/x86_64-linux-gnu/librt.so.1` ABI stub (14.5 KB, as shipped by Debian trixie — empty since glibc 2.34 merged librt into libc). Required so manylinux2014 / manylinux_2_17 wheels (numpy, scipy, pandas, pillow, cryptography, …) that carry `NEEDED librt.so.1` in their ELF dynamic section dlopen successfully at runtime. Baseline is deliberately not affected — this is a Python-ecosystem concern.
+
+- **Delivered by**: FG-011
+- **Covered by**: `tests/acceptance/test_FG_011_librt-manylinux-compat.sh`, `images/python-scratch-trixie/tests/smoke_librt_manylinux.sh`
