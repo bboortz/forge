@@ -1,7 +1,7 @@
 # FG-010 — Plan: image-to-image contracts
 
 **Story**: [`docs/stories/FG-010-image-contracts.md`](../stories/FG-010-image-contracts.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-010-image-contracts`
 
 ## Design delta
