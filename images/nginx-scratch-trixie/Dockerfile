@@ -79,7 +79,13 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 COPY --from=scratch_base / /
 COPY --from=builder /out /
 
-ENV PATH=/usr/sbin
+# FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
+# re-declare here so nginx-side TLS (e.g. upstream SSL verification in
+# proxy_pass) resolves the CA bundle without needing an ssl_trusted_certificate
+# directive. See docs/baseline-contract.md § "TLS trust".
+ENV PATH=/usr/sbin \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    SSL_CERT_DIR=/etc/ssl/certs
 
 EXPOSE 80
 
