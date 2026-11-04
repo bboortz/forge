@@ -1,0 +1,60 @@
+# Authoritative contract for python-scratch-trixie.
+#
+# Scratch runtime: no shell, no apt, no dpkg. ENTRYPOINT = python3, USER
+# 65532:65532, WORKDIR /nonroot. Beaconry-blessed shape (FG-009).
+
+spec_version: 1
+image: python-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.python3-interp
+    description: /usr/local/bin/python3 is python 3.13 with working stdlib — ssl, hashlib, json, urllib.request import and work out of the box.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_imports.sh
+
+  - id: runtime.entrypoint-python3
+    description: Image ENTRYPOINT = ["/usr/local/bin/python3"], CMD = []. `docker run <image> -c "print('ok')"` runs python3 directly (distroless convention).
+    caps: [image.python-scratch-nonroot, build.two-stage-scratch]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_entrypoint.sh
+
+  - id: runtime.user-nonroot
+    description: Container runs as uid 65532, gid 65532 with HOME=/nonroot by default. `os.geteuid()` returns 65532; `pwd.getpwuid(65532).pw_dir` returns "/nonroot".
+    caps: [image.python-scratch-nonroot]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_user_nonroot.sh
+
+  - id: runtime.https-outbound
+    description: Outbound HTTPS works out of the box — `urllib.request.urlopen("https://example.com")` returns 200. Requires SSL_CERT_FILE env (re-declared in this image's Dockerfile per FG-009).
+    caps: [image.ssl-cert-env, image.python-scratch-nonroot]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_tls_https_real.sh
+      - images/python-scratch-trixie/tests/smoke_ca_bundle.sh
+
+  - id: runtime.pip-target-install
+    description: "`pip install --target /tmp/pkg` works as nonroot (/tmp is 1777 from baseline)."
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_pip_runtime_install.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary. docker exec with interactive shell is impossible — by design.
+    caps: [image.no-shell]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_scratch_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype finds zero Debian-source matches. Every finding is a PyPI package the consumer installed, not Forge-introduced noise.
+    caps: [image.zero-os-cves]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_scratch_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 60 MB hard ceiling. Baseline accounts for 13 MB; the python overlay adds ~32 MB.
+    caps: [test.size-budget]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_size.sh

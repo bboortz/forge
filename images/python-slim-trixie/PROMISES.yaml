@@ -1,0 +1,37 @@
+# Authoritative contract for python-slim-trixie.
+#
+# python-slim-trixie is a conventional Debian-based image: shell + apt + pip
+# are all present. Consumers get operator ergonomics at the cost of surface
+# area. The `-scratch` variant is the one that trades those away for tight
+# runtime; this one is the "I need to docker exec into prod" variant.
+
+spec_version: 1
+image: python-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.python3
+    description: /usr/local/bin/python3 is python 3.13; stdlib imports (ssl, hashlib, json, urllib) succeed at container boot.
+    caps: [build.pr-ci, build.daily-publish]
+    tests:
+      - images/python-slim-trixie/tests/smoke_imports.sh
+      - images/python-slim-trixie/tests/smoke_entrypoint.sh
+
+  - id: runtime.pip-install
+    description: "`pip install` works at runtime (apt + a shell remain in the image). Suitable for operator debugging / data-science ad-hoc flows."
+    caps: [build.pr-ci]
+    tests:
+      - images/python-slim-trixie/tests/smoke_pip_runtime_install.sh
+
+  - id: files.tls-stack
+    description: /etc/ssl/certs/ca-certificates.crt present with Debian trust store. Python's default SSL context resolves normally (unlike scratch derivatives, slim ships Python's package-shipped ENV).
+    caps: [build.pr-ci]
+    tests:
+      - images/python-slim-trixie/tests/smoke_ca_bundle.sh
+      - images/python-slim-trixie/tests/smoke_tls_handshake.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ upstream base × 1.1 (10% headroom for apt-upgrade).
+    caps: [test.size-budget]
+    tests:
+      - images/python-slim-trixie/tests/smoke_size.sh

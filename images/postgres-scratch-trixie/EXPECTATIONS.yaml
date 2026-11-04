@@ -1,0 +1,48 @@
+# What postgres-scratch-trixie requires from its dependencies.
+
+spec_version: 1
+image: postgres-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: postgres binary's interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: postgres links against libc / libpthread / libdl / libm; libutil is image-specific (not in baseline — FG-005 decision).
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.compression
+        reason: libz.so.1 + libzstd.so.1 — postgres' pg_dump / WAL uses zlib; zstd is linked for wal_compression=zstd downstream.
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.tls-stack
+        reason: postgres' `ssl = on` path links against libssl/libcrypto. postgres_fdw remote TLS connections verify against /etc/ssl/certs/ca-certificates.crt.
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.time
+        reason: postgres honors /etc/localtime when log_timezone = system. Without the symlink the server picks a stale compiled-in default.
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: files.network-data
+        reason: /etc/hosts (postgres resolves localhost to 127.0.0.1 for the Unix-socket fallback in tooling) + /etc/services for pg_hba.conf hostname resolution.
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: writable-dirs.tmp
+        reason: postgres uses /tmp for the default Unix socket (/tmp/.s.PGSQL.5432). Must be 1777.
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract. In-container initdb is impossible precisely because of this — enforced by the sidecar-init pattern in test.sidecar-init.
+        preflight:
+          - images/postgres-scratch-trixie/tests/smoke_no_shell.sh

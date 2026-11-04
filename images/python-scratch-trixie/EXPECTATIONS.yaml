@@ -1,0 +1,57 @@
+# What python-scratch-trixie requires from its dependencies.
+# Pointed at scratch-base-trixie @ >=0.2 per image.yaml depends_on.
+#
+# Every expectation names a preflight test that would fail LOUDLY if the
+# baseline (or this image's own ENV re-declaration) ever deviated.
+#
+# The first design-fit of this file is the FG-009 postmortem — the SSL
+# expectation below documents precisely what Beaconry's broken-HTTPS
+# report would have found at PR time.
+
+spec_version: 1
+image: python-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: python3 binary's interp = /lib64/ld-linux-x86-64.so.2 — without it the ELF won't exec.
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_imports.sh
+
+      - promise: files.core-glibc
+        reason: libc / libm / libpthread / libdl are dlopened by the interpreter and most stdlib C extensions (hashlib, ssl).
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_imports.sh
+
+      - promise: files.tls-stack
+        reason: urllib / requests / pip verify TLS peers against the Debian trust store. This image's Dockerfile re-declares ENV SSL_CERT_FILE because baseline's ENV does NOT propagate through COPY --from=scratch_base (see memory/scratch-closures.md § ENV does not propagate).
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_tls_https_real.sh
+          - images/python-scratch-trixie/tests/smoke_ca_bundle.sh
+
+      - promise: files.dns-resolution
+        reason: urlopen('https://example.com') needs glibc name resolution — libnss_files + libnss_dns + /etc/nsswitch.conf.
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_tls_https_real.sh
+
+      - promise: identity.nonroot
+        reason: ENTRYPOINT runs as USER 65532 (FG-009); pwd.getpwuid(65532) returning a valid row with HOME=/nonroot is a guarantee python code can rely on.
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_user_nonroot.sh
+
+      - promise: writable-dirs.nonroot-home
+        reason: WORKDIR /nonroot needs the dir to exist with owner 65532:65532; otherwise ephemeral writes from the ENTRYPOINT (pip cache, python tempfiles) fail with EACCES.
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_user_nonroot.sh
+
+      - promise: writable-dirs.tmp
+        reason: "`pip install --target /tmp/pkg` is the documented FG-009 migration path for consumers who can't install as root."
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_pip_runtime_install.sh
+
+      - promise: absence.shell
+        reason: Image.no-shell contract — consumers who scan the image expect zero shell binaries; if baseline regressed this, the scratch-no-shell smoke fires.
+        preflight:
+          - images/python-scratch-trixie/tests/smoke_scratch_no_shell.sh

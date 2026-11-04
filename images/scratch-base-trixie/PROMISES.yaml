@@ -1,0 +1,114 @@
+# Authoritative contract for scratch-base-trixie. Every entry here is what
+# consumers (python-scratch-trixie, nginx-scratch-trixie, postgres-scratch-trixie,
+# and every future scratch derivative) can rely on.
+#
+# Hand-authored. Verified by scripts/verify-contracts.py on every CI run.
+# Semver-gated by scripts/contracts-semver-check.py on commit — see FG-010.
+#
+# The human-readable narrative version lives in docs/baseline-contract.md
+# and references this file as the canonical surface.
+
+spec_version: 1
+image: scratch-base-trixie
+version: "0.2"
+
+promises:
+  - id: files.dynamic-linker
+    description: /lib64/ld-linux-x86-64.so.2 is present as a real file (not a Debian multiarch symlink). Required by every dynamically linked binary.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_required_files.sh
+
+  - id: files.core-glibc
+    description: /lib/x86_64-linux-gnu/{libc,libm,libdl,libpthread,libcrypt,libgcc_s}.so.* — the minimum glibc + libgcc surface shared by every derivative.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_required_files.sh
+
+  - id: files.tls-stack
+    description: /lib/x86_64-linux-gnu/libssl.so.3 + libcrypto.so.3 + /etc/ssl/certs/ca-certificates.crt (Debian trixie trust store). SEE caveats.env-no-propagate — derivatives MUST re-declare ENV SSL_CERT_FILE.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_required_files.sh
+
+  - id: files.compression
+    description: /lib/x86_64-linux-gnu/libz.so.1 and libzstd.so.1 — needed by every builder stage that gzips/zstds artifacts and by postgres' default wire protocol.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_required_files.sh
+
+  - id: files.dns-resolution
+    description: /etc/nsswitch.conf (files dns policy) + /lib/x86_64-linux-gnu/libnss_{files,dns}.so.2 + libresolv.so.2 — glibc name resolution works without docker-injected files.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_required_files.sh
+      - images/scratch-base-trixie/tests/smoke_contents_network_data.sh
+
+  - id: files.network-data
+    description: /etc/services + /etc/protocols + /etc/hosts present with the full Debian content (loopback IPv4 + IPv6 in /etc/hosts; IANA well-known ports in /etc/services).
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_network_data.sh
+
+  - id: files.time
+    description: /etc/localtime symlinks to /usr/share/zoneinfo/Etc/UTC; /usr/share/zoneinfo/{UTC,Etc/UTC,Etc/GMT} present as reference points. Full IANA tzdata tree available.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_time.sh
+      - images/scratch-base-trixie/tests/smoke_contents_required_files.sh
+
+  - id: identity.root
+    description: /etc/passwd + /etc/group contain root (uid 0, gid 0, home /, shell /sbin/nologin).
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_users.sh
+
+  - id: identity.nonroot
+    description: /etc/passwd + /etc/group contain nonroot (uid 65532, gid 65532, HOME=/nonroot) — distroless convention. Derivatives that want to default-deny-root USER 65532 here.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_users.sh
+
+  - id: identity.nobody
+    description: /etc/passwd + /etc/group contain nobody (uid 65534, gid 65534).
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_users.sh
+
+  - id: writable-dirs.tmp
+    description: /tmp exists with mode 1777 (world-writable, sticky), owned by root.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_writable_dirs.sh
+
+  - id: writable-dirs.var-tmp
+    description: /var/tmp exists with mode 1777 (world-writable, sticky), owned by root.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_writable_dirs.sh
+
+  - id: writable-dirs.nonroot-home
+    description: /nonroot exists with mode 0755, owner 65532:65532 — HOME for the nonroot user.
+    caps: [build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_writable_dirs.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, /bin/dash, /bin/busybox, /usr/bin/sh. Workflows using system() won't work; this is intentional.
+    caps: [image.no-shell, build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: No Debian-source matches reported by grype. The point of scratch is actionable CVE output — every surviving finding is overlay-supplied, never OS noise.
+    caps: [image.zero-os-cves, build.scratch-baseline]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_contents_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Baseline image size ≤ a hard byte ceiling (25 MB today — ~2× the measured 13 MB). Keeps derivative size budgets stable.
+    caps: [test.size-budget]
+    tests:
+      - images/scratch-base-trixie/tests/smoke_size.sh
