@@ -1,0 +1,7 @@
+# Image metadata consumed by scripts/{build,test,discover}-image(s).sh.
+# `repo` is derived from the directory name (FG-004) — do not add it back.
+# Scratch runtime: postgres 17 + minimal glibc/ICU/krb5/TLS/ldap closure,
+# postgres share data + locale. No shell, no apt, no dpkg database, no JIT.
+tag: "17"
+platforms:
+  - linux/amd64
