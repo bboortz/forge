@@ -15,7 +15,7 @@ repos:
     rev: v1.38.0
     hooks:
       - id: yamllint
-        files: ^\.github/.*\.ya?ml$
+        files: ^(\.github/.*\.ya?ml|images/.*/(PROMISES|EXPECTATIONS)\.yaml)$
         args: ["-d", "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}"]
 
   - repo: local
@@ -33,6 +33,19 @@ repos:
         entry: bash scripts/verify-traceability.sh
         pass_filenames: false
         files: ^(docs/stories/|docs/plan/|docs/CAPABILITIES\.md|tests/acceptance/)
+
+      - id: verify-contracts
+        name: verify-contracts (FG-010)
+        language: system
+        entry: python3 scripts/verify-contracts.py
+        pass_filenames: false
+        files: ^(images/.*/PROMISES\.yaml|images/.*/EXPECTATIONS\.yaml|images/.*/tests/.*\.sh|images/.*/image\.yaml|docs/CAPABILITIES\.md)$
+
+      - id: contracts-semver-check
+        name: contracts-semver-check (FG-010)
+        language: system
+        entry: python3 scripts/contracts-semver-check.py
+        files: ^images/.*/PROMISES\.yaml$
 
       # Pre-push: `make check-strict` — wipes forge-local/* images first
       # so stale image references in tests can't hide behind a workstation-

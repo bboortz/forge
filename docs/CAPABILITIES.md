@@ -201,3 +201,31 @@ Every Forge scratch derivative re-declares `ENV SSL_CERT_FILE=/etc/ssl/certs/ca-
 
 - **Delivered by**: FG-009
 - **Covered by**: `tests/acceptance/test_FG_009_python-scratch-hardening.sh`, `images/python-scratch-trixie/tests/smoke_user_nonroot.sh`, `images/python-scratch-trixie/tests/smoke_tls_https_real.sh`, `images/python-scratch-trixie/tests/smoke_entrypoint.sh`
+
+### contracts.promises
+
+Every image declares what it guarantees to consumers in a machine-checkable `images/<name>/PROMISES.yaml` file. Each promise carries an id, description, CAP cross-references, and a non-empty list of smoke tests that enforce it. `scripts/verify-contracts.py` lints the graph on every CI run.
+
+- **Delivered by**: FG-010
+- **Covered by**: `tests/acceptance/test_FG_010_image-contracts.sh`
+
+### contracts.expectations
+
+Every image that depends on another Forge image declares its consumption surface in `images/<name>/EXPECTATIONS.yaml`. Each expectation names (a) the dependency image + version constraint, (b) the specific promise id it relies on, (c) a human-readable reason, (d) preflight smoke test(s) that fail loudly if the baseline ever deviates. The FG-009 ENV-doesn't-propagate trap would have been caught at PR time under this discipline.
+
+- **Delivered by**: FG-010
+- **Covered by**: `tests/acceptance/test_FG_010_image-contracts.sh`
+
+### contracts.verify-gate
+
+`make verify-contracts` is a blocking gate in `make check`. It resolves every expectation against its dependency's promises, checks version constraints, and asserts that every test pointer (PROMISES.tests and EXPECTATIONS.preflight) names an existing executable smoke under `images/*/tests/`. Diagnostics are fully qualified — every error names the file, the id, and the referenced thing.
+
+- **Delivered by**: FG-010
+- **Covered by**: `tests/acceptance/test_FG_010_image-contracts.sh`
+
+### contracts.semver-enforcement
+
+`scripts/contracts-semver-check.py` runs as a pre-commit hook on `PROMISES.yaml` edits. It classifies each change as `add` (minor), `remove` (major), or `modify` (same id, changed description — requires `--allow-modify` in commit message). Enforces the `version:` bump is at least as large as the change class; refuses commits that silently rot the contract. Removing a promise requires either (a) same-commit update to every dependent EXPECTATIONS.yaml, or (b) `--allow-breaking` override.
+
+- **Delivered by**: FG-010
+- **Covered by**: `tests/acceptance/test_FG_010_image-contracts.sh`

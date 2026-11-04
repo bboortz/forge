@@ -1,0 +1,47 @@
+# Authoritative contract for nginx-scratch-trixie.
+#
+# Scratch runtime: nginx 1.26 FROM scratch + minimal self-contained config.
+# User = www-data (uid 33) at runtime. Listens on :80 by default.
+
+spec_version: 1
+image: nginx-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.nginx-binary
+    description: /usr/sbin/nginx is present, executes, and `nginx -v` prints a version string.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.config-validates
+    description: Shipped /etc/nginx/nginx.conf passes `nginx -t`. Minimal self-contained (no includes of /etc/nginx/conf.d/*, sites-enabled/*).
+    caps: [image.nginx-serves-http]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_config_validates.sh
+
+  - id: runtime.serves-http-200
+    description: Container started with `docker run -p` answers `GET /` with HTTP 200 (default welcome page).
+    caps: [image.nginx-serves-http, test.smoke-server-helper]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_serves_200.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary.
+    caps: [image.no-shell]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype finds zero Debian-source matches.
+    caps: [image.zero-os-cves]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ a hard byte ceiling (18 MB — covers nginx 1.26 + modules + baseline composition).
+    caps: [test.size-budget]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_size.sh

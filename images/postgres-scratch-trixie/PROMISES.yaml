@@ -1,0 +1,48 @@
+# Authoritative contract for postgres-scratch-trixie.
+#
+# Scratch runtime: PostgreSQL 17 FROM scratch. postgres uid pinned to 999
+# (Docker Hub convention) for data-dir compatibility. Init requires a
+# shelled sidecar (initdb uses system() internally) — see FG-007 pattern.
+
+spec_version: 1
+image: postgres-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.postgres-binary
+    description: /usr/lib/postgresql/17/bin/postgres present, executes, `postgres --version` prints a version string.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/postgres-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.server-accepts-sql
+    description: Against a cluster initialized by a shelled sidecar, container accepts SQL connections and answers `SELECT 1`.
+    caps: [image.postgres-serves-sql, test.sidecar-init, test.smoke-server-helper]
+    tests:
+      - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: identity.postgres-uid
+    description: postgres user at uid 999 / gid 999 (Docker Hub convention). Data dirs initialized by Docker Hub's postgres:17 or Forge postgres-scratch-trixie are mutually readable.
+    caps: [image.postgres-serves-sql]
+    tests:
+      - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary. initdb cannot run in-container (uses system() internally); use a shelled sidecar.
+    caps: [image.no-shell, test.sidecar-init]
+    tests:
+      - images/postgres-scratch-trixie/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype finds zero Debian-source matches (no LLVM JIT, no plperl/plpython).
+    caps: [image.zero-os-cves]
+    tests:
+      - images/postgres-scratch-trixie/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 120 MB hard ceiling (postgres binary + stdlib + baseline).
+    caps: [test.size-budget]
+    tests:
+      - images/postgres-scratch-trixie/tests/smoke_size.sh

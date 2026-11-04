@@ -38,7 +38,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
 .PHONY: help tools install-hooks lint build scan sign-local verify \
         test-images test-acceptance test-fast check check-strict \
-        verify-sid-pins verify-traceability clean-local-images \
+        verify-sid-pins verify-traceability verify-contracts clean-local-images \
         _local-registry _local-registry-stop
 
 help:
@@ -48,13 +48,14 @@ help:
 	@echo "  lint                 hadolint / shellcheck / yamllint / actionlint"
 	@echo "  verify-sid-pins      enforce CVE + removal condition + date per pin"
 	@echo "  verify-traceability  enforce story ↔ plan ↔ test ↔ CAP links"
+	@echo "  verify-contracts     enforce image PROMISES ↔ EXPECTATIONS graph (FG-010)"
 	@echo "  build                scripts/build-image.sh \$$IMAGE_DIR"
 	@echo "  scan                 syft SBOM + grype scan → $(OUT_DIR)/"
 	@echo "  sign-local           push $(IMAGE) to localhost:$(LOCAL_REGISTRY_PORT) and cosign-sign"
 	@echo "  verify               cosign verify (local key)"
 	@echo "  test-images          scripts/test-images.sh [\$$IMAGE_DIR]"
 	@echo "  test-acceptance      bash tests/acceptance/test_FG_*.sh"
-	@echo "  test-fast            lint + verify-sid-pins + verify-traceability"
+	@echo "  test-fast            lint + verify-sid-pins + verify-traceability + verify-contracts"
 	@echo "  check                test-fast + test-acceptance + test-images"
 	@echo "  check-strict         clean-local-images + check (pre-push gate)"
 	@echo "  clean-local-images   docker rmi every forge-local/* image"
@@ -83,7 +84,7 @@ lint:
 	@echo "→ shellcheck"
 	@shellcheck tests/acceptance/*.sh images/*/tests/*.sh scripts/*.sh
 	@echo "→ yamllint"
-	@yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" .github/ images/*/image.yaml
+	@yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" .github/ images/*/image.yaml images/*/PROMISES.yaml images/*/EXPECTATIONS.yaml
 	@if command -v actionlint >/dev/null; then echo "→ actionlint"; actionlint .github/workflows/*.yml; else echo "  actionlint missing — skipping"; fi
 
 verify-sid-pins:
@@ -91,6 +92,9 @@ verify-sid-pins:
 
 verify-traceability:
 	@bash scripts/verify-traceability.sh
+
+verify-contracts:
+	@python3 scripts/verify-contracts.py
 
 build:
 	@bash scripts/build-image.sh "$(IMAGE_DIR)"
@@ -133,7 +137,7 @@ test-acceptance:
 test-images:
 	@bash scripts/test-images.sh
 
-test-fast: lint verify-sid-pins verify-traceability
+test-fast: lint verify-sid-pins verify-traceability verify-contracts
 
 check: test-fast test-acceptance test-images
 

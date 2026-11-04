@@ -1,0 +1,43 @@
+# What nginx-scratch-trixie requires from its dependencies.
+
+spec_version: 1
+image: nginx-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: nginx binary's interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/nginx-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: nginx links against libc / libpthread / libcrypt / libdl + libz.
+        preflight:
+          - images/nginx-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.compression
+        reason: libz.so.1 + libzstd.so.1 — nginx compresses responses by default (gzip_module) and ngx_http_zstd_module can be enabled downstream.
+        preflight:
+          - images/nginx-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.tls-stack
+        reason: nginx's `ssl` module links against libssl/libcrypto. The shipped /etc/ssl/certs/ca-certificates.crt is what `proxy_ssl_trusted_certificate` resolves against — without it, proxy_pass to HTTPS upstreams fails verify silently.
+        preflight:
+          - images/nginx-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.network-data
+        reason: /etc/services (for named port resolution in configs), /etc/hosts (localhost resolution for upstream groups).
+        preflight:
+          - images/nginx-scratch-trixie/tests/smoke_serves_200.sh
+
+      - promise: writable-dirs.tmp
+        reason: nginx uses /tmp (and the baked /var/cache/nginx + /var/lib/nginx/*) for request body buffering. /tmp must be world-writable.
+        preflight:
+          - images/nginx-scratch-trixie/tests/smoke_serves_200.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract.
+        preflight:
+          - images/nginx-scratch-trixie/tests/smoke_no_shell.sh
