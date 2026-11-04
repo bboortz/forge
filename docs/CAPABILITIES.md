@@ -150,3 +150,17 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 - **Delivered by**: FG-006
 - **Covered by**: `tests/acceptance/test_FG_006_nginx-scratch-trixie.sh` (and FG-007 postgres consumes the same helper)
+
+### image.postgres-serves-sql
+
+`postgres-scratch-trixie` starts and answers `psql -c 'SELECT 1'` end-to-end against an externally-initialized cluster. Binary-compatible with Debian postgres data directories (uid 999 pinned to match Docker Hub).
+
+- **Delivered by**: FG-007
+- **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
+
+### test.sidecar-init
+
+Test pattern for images whose one-time initialization needs a shell (e.g. postgres' `initdb` uses `system()` internally). A shelled sidecar image (Docker Hub's `postgres:17`) writes initial state into a named volume; the scratch image then runs against that volume. Documented limitation: scratch images cannot initialize in-container for workflows that invoke a shell.
+
+- **Delivered by**: FG-007
+- **Covered by**: `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
