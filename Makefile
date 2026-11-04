@@ -13,10 +13,13 @@ REGISTRY  ?= forge-local
 OUT_DIR   ?= build
 
 # Resolve repo + tag from the image's yaml (only when the dir exists; empty
-# otherwise so `make help` etc. stay usable).
+# otherwise so `make help` etc. stay usable). `repo:` is optional — defaults
+# to the image dir name per FG-004. Quoted tag values (e.g. `tag: "3.13"`)
+# are stripped by the awk to yield a clean `3.13`.
 _IMAGE_YAML := images/$(IMAGE_DIR)/image.yaml
-_REPO := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^repo:/ {print $$2; exit}' $(_IMAGE_YAML)))
-_TAG  := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^tag:/  {print $$2; exit}' $(_IMAGE_YAML)))
+_REPO_EXPLICIT := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^repo:/ {gsub(/["\x27]/,"",$$2); print $$2; exit}' $(_IMAGE_YAML)))
+_REPO := $(or $(_REPO_EXPLICIT),$(IMAGE_DIR))
+_TAG  := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^tag:/ {gsub(/["\x27]/,"",$$2); print $$2; exit}' $(_IMAGE_YAML)))
 IMAGE := $(REGISTRY)/$(_REPO):$(_TAG)
 IMAGE_SLUG := $(_REPO)-$(_TAG)
 
@@ -34,8 +37,8 @@ LOCAL_IMAGE         := localhost:$(LOCAL_REGISTRY_PORT)/$(_REPO):$(_TAG)
 ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
 .PHONY: help tools install-hooks lint build scan sign-local verify \
-        test-images test-acceptance test-fast check \
-        verify-sid-pins verify-traceability \
+        test-images test-acceptance test-fast check check-strict \
+        verify-sid-pins verify-traceability clean-local-images \
         _local-registry _local-registry-stop
 
 help:
@@ -53,6 +56,8 @@ help:
 	@echo "  test-acceptance      bash tests/acceptance/test_FG_*.sh"
 	@echo "  test-fast            lint + verify-sid-pins + verify-traceability"
 	@echo "  check                test-fast + test-acceptance + test-images"
+	@echo "  check-strict         clean-local-images + check (pre-push gate)"
+	@echo "  clean-local-images   docker rmi every forge-local/* image"
 	@echo ""
 	@echo "Variables: IMAGE_DIR=$(IMAGE_DIR) REGISTRY=$(REGISTRY)"
 	@echo "Resolved:  IMAGE=$(IMAGE)"
@@ -131,3 +136,11 @@ test-images:
 test-fast: lint verify-sid-pins verify-traceability
 
 check: test-fast test-acceptance test-images
+
+# check-strict wipes forge-local/* before running make check so stale image
+# references in tests can't hide behind a workstation-cached image. Pre-push
+# uses this; interactive dev uses plain `make check` for speed.
+clean-local-images:
+	@bash scripts/clean-local-images.sh
+
+check-strict: clean-local-images check

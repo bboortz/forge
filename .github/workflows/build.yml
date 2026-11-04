@@ -70,15 +70,23 @@ jobs:
           IMAGE_DIR: ${{ matrix.image_dir }}
         run: make scan IMAGE_DIR="$IMAGE_DIR" REGISTRY="$REGISTRY"
 
-      - name: Push image
+      - name: Push image (4 tags per variant per run — see FG-004)
         id: push
         env:
           REPO: ${{ matrix.repo }}
           TAG: ${{ matrix.tag }}
+          ARCH: amd64            # TODO(FG-005): expand when arm64 lands
         run: |
           IMAGE_REF="${REGISTRY}/${REPO}:${TAG}"
           docker push "${IMAGE_REF}"
           DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_REF}" | sed 's/.*@//')
+          # Tag + push three siblings pointing at the same digest:
+          #   :<tag>-<arch>, :latest, :latest-<arch>
+          # Cosign signs the digest (shared), so each tag inherits the signature.
+          for extra in "${TAG}-${ARCH}" "latest" "latest-${ARCH}"; do
+            docker tag  "${IMAGE_REF}" "${REGISTRY}/${REPO}:${extra}"
+            docker push "${REGISTRY}/${REPO}:${extra}"
+          done
           echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
           echo "image_digest=${REGISTRY}/${REPO}@${DIGEST}" >> "$GITHUB_OUTPUT"
 

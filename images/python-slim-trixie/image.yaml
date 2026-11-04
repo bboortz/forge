@@ -1,8 +1,7 @@
-# Image metadata consumed by scripts/{build,test,discover}-image(s).sh
-# - `repo` is the published GHCR repository name (ghcr.io/bboortz/<repo>)
-# - `tag` is the published tag suffix
-# - `platforms` is the buildx platform list; amd64-only until the arm64 story lands
-repo: python
-tag: 3.13-slim-trixie
+# Image metadata consumed by scripts/{build,test,discover}-image(s).sh.
+# `repo` is derived from the directory name (per FG-004) — do not add it back.
+# `tag` is the published version tag; the build workflow additionally pushes
+# -amd64 / :latest / :latest-amd64 siblings pointing at the same digest.
+tag: "3.13"
 platforms:
   - linux/amd64

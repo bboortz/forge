@@ -24,8 +24,9 @@ test -d "${SRC}"                || { echo "no such image dir: ${SRC}" >&2; exit 
 test -f "${SRC}/image.yaml"     || { echo "${SRC}/image.yaml missing" >&2; exit 1; }
 test -f "${SRC}/Dockerfile"     || { echo "${SRC}/Dockerfile missing" >&2; exit 1; }
 
-REPO=$(image_yaml_get "${SRC}/image.yaml" repo)
-TAG=$(image_yaml_get  "${SRC}/image.yaml" tag)
+REPO=$(image_yaml_repo "${SRC}/image.yaml")
+TAG=$(image_yaml_get   "${SRC}/image.yaml" tag)
+[[ -n "${TAG}" ]] || { echo "${SRC}/image.yaml missing required 'tag:' field" >&2; exit 1; }
 IMAGE_REF="${REGISTRY}/${REPO}:${TAG}"
 
 GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"

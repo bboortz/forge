@@ -34,11 +34,14 @@ repos:
         pass_filenames: false
         files: ^(docs/stories/|docs/plan/|docs/CAPABILITIES\.md|tests/acceptance/)
 
-      # Pre-push: full `make check` (lint + verify-* + acceptance tests).
-      # Takes a few minutes locally. Bypass with --no-verify only in emergencies.
-      - id: make-check-pre-push
-        name: make check (pre-push)
+      # Pre-push: `make check-strict` — wipes forge-local/* images first
+      # so stale image references in tests can't hide behind a workstation-
+      # cached image (lesson from PR #7 CI failure). Then runs the full
+      # fast tier + acceptance + per-image smoke suites. Takes a few minutes
+      # locally. Bypass with --no-verify only in emergencies.
+      - id: make-check-strict-pre-push
+        name: make check-strict (pre-push)
         language: system
-        entry: bash -c 'make check'
+        entry: bash -c 'make check-strict'
         pass_filenames: false
         stages: [pre-push]

@@ -64,9 +64,29 @@ Verification identity: `--certificate-identity https://github.com/bboortz/forge/
 
 Roadmap also tracks: automatic PRs against dependent repos, EU-hosted mirror (Frankfurt), BSI-aligned compliance report export.
 
-## No `latest`-only — digests are the contract
+## Repo naming — one GHCR repo per variant
 
-`:latest` moves daily, so consumers who want reproducibility must pin by digest. We publish date-tagged aliases (`python3.13:2026-11-03`) alongside `:latest` so the digest is addressable by a human-readable tag. Deprecation policy for date tags: keep 90 days, then prune.
+*Locked 2026-11-03 (FG-004). Supersedes the earlier "single `python` repo with variant in the tag" scheme shipped under FG-001.*
+
+Each image variant publishes to its **own GHCR repo**, named identically to the `images/<dir>/` directory. The variant lives in the repo name; the tag carries the version (and optionally the architecture).
+
+- `ghcr.io/bboortz/python-slim-trixie:3.13`
+- `ghcr.io/bboortz/python-scratch-trixie:3.13`
+
+Per publish, each variant pushes a 4-tag family pointing at the same digest:
+
+- `:<version>` (primary; manifest list once arm64 lands)
+- `:<version>-amd64` (arch-explicit; stays a direct arch digest when arm64 lands)
+- `:latest` (floating)
+- `:latest-amd64` (floating + arch-explicit)
+
+Arch suffix is `amd64` / `arm64` — matches Docker's `TARGETARCH` value, matches upstream convention. No `linux-` prefix.
+
+Directory-name == repo-name is the single source of truth. `image.yaml` does **not** carry a `repo:` field; scripts derive repo from `basename` of the image dir. If a future image ever needs a non-matching repo name, `image.yaml` can carry an explicit `repo:` override — but prefer renaming the directory instead.
+
+## `:latest` is published — digests are the contract
+
+`:latest` moves daily, so consumers who want reproducibility must pin a specific version tag (`:3.13`) or a digest (`@sha256:...`). We publish `:latest` for the convention-matching consumer who wants "whatever is current" — the README calls out the silent-roll risk explicitly. Date-tagged aliases (`python-slim-trixie:3.13-2026-11-03`) remain a future story — deferred until a consumer explicitly asks for them.
 
 ## Beaconry integration (reverse dependency)
 

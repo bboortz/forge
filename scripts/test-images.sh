@@ -32,8 +32,8 @@ fail=0
 
 for dir in "${image_dirs[@]}"; do
   test -f "${dir}/image.yaml" || continue
-  repo=$(image_yaml_get "${dir}/image.yaml" repo)
-  tag=$(image_yaml_get  "${dir}/image.yaml" tag)
+  repo=$(image_yaml_repo "${dir}/image.yaml")
+  tag=$(image_yaml_get   "${dir}/image.yaml" tag)
 
   tests=("${dir}/tests/"smoke_*.sh)
   [[ ${#tests[@]} -eq 0 ]] && { echo "→ ${dir##*/}: no smoke scripts, skipping"; continue; }
