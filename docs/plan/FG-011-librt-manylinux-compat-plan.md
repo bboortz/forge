@@ -1,7 +1,7 @@
 # FG-011 — Plan: librt.so.1 ABI stub for manylinux compat
 
 **Story**: [`docs/stories/FG-011-librt-manylinux-compat.md`](../stories/FG-011-librt-manylinux-compat.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-011-librt-manylinux-compat`
 
 ## Design delta
