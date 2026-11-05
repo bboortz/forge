@@ -264,3 +264,17 @@ Forge's scan + sign + attest + publish pipeline (per-image smokes, grype scan, s
 
 - **Delivered by**: FG-012
 - **Covered by**: `images/beaconry-scout/tests/smoke_syft_bundled.sh`
+
+### image.beaconry-hub
+
+`beaconry-hub` (bb-claw/beaconry → `poc/hub/Dockerfile`) published by Forge as `ghcr.io/bboortz/beaconry-hub:<ver>`. Composes on `python-scratch-trixie:3.13` — inherits every FG-009 guarantee. Boots a uvicorn FastAPI app on :8000 serving `/healthz` + `/readyz`. Tracks beaconry `main` via `ref: latest`.
+
+- **Delivered by**: FG-014
+- **Covered by**: `tests/acceptance/test_FG_014_beaconry-hub.sh`, `images/beaconry-hub/tests/smoke_http_healthz.sh`
+
+### image.beaconry-hub-bundled-tools
+
+`beaconry-hub` ships three CLIs ready to invoke: `/usr/local/bin/docker` (29.9.2), `/usr/local/bin/grype`, `/usr/local/bin/syft`. Hub uses docker for its `DockerAdapter` (BC-009), grype for CVE waterfall matching, and syft for post-fix SBOM re-verification.
+
+- **Delivered by**: FG-014
+- **Covered by**: `images/beaconry-hub/tests/smoke_docker_bundled.sh`, `images/beaconry-hub/tests/smoke_grype_bundled.sh`, `images/beaconry-hub/tests/smoke_syft_bundled.sh`

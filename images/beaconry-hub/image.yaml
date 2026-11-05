@@ -1,0 +1,14 @@
+# FG-014: externally-sourced image. Dockerfile + sources at bboortz/beaconry.
+# Daily cron re-resolves `latest` to upstream main HEAD and bakes the
+# resolved sha into org.opencontainers.image.revision (FG-012 + FG-013).
+tag: "0.1"
+platforms:
+  - linux/amd64
+depends_on:
+  - python-scratch-trixie
+source:
+  git: https://github.com/bboortz/beaconry
+  # FG-013: daily cron tracks beaconry main HEAD; resolved sha baked into revision label.
+  ref: "latest"
+  dockerfile: poc/hub/Dockerfile
+  context: poc
