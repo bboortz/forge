@@ -1,7 +1,7 @@
 # FG-012 — Plan: externally-sourced images + beaconry-scout
 
 **Story**: [`docs/stories/FG-012-external-sourced-images.md`](../stories/FG-012-external-sourced-images.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-012-external-sourced-images`
 
 ## Design delta
