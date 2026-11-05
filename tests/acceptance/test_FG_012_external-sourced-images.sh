@@ -16,7 +16,10 @@ say() { printf '\n\033[1;36m[FG-012]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
 IMAGE="forge-local/beaconry-scout:0.1"
-PIN_SHA="665370e7d793968b5b8fc550fbd0582993a829fc"
+# FG-012 originally pinned scout to a specific sha. FG-013 switched scout to
+# ref: latest, so section 4 now asserts the mechanism (label is a 40-char
+# sha, NOT the literal "latest") rather than a fixed value. This keeps
+# test_FG_012 stable across ref-schema changes.
 
 # -----------------------------------------------------------------------------
 # Section 1 — current graph is consistent (verify-image-dirs + verify-contracts)
@@ -81,15 +84,15 @@ pass "${IMAGE} built from upstream clone"
 
 revision=$(docker image inspect "${IMAGE}" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
 source=$(docker image inspect "${IMAGE}" --format '{{index .Config.Labels "org.opencontainers.image.source"}}')
-if [[ "${revision}" != "${PIN_SHA}" ]]; then
-  echo "  ✗ .Config.Labels.org.opencontainers.image.revision = ${revision}, expected ${PIN_SHA}" >&2
+if [[ ! "${revision}" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "  ✗ .Config.Labels.org.opencontainers.image.revision = ${revision}, expected a 40-char sha" >&2
   exit 1
 fi
 if [[ "${source}" != "https://github.com/bboortz/beaconry" ]]; then
   echo "  ✗ .Config.Labels.org.opencontainers.image.source = ${source}" >&2
   exit 1
 fi
-pass "image labels pin revision=${PIN_SHA} + source=upstream repo"
+pass "image labels: revision=${revision} (sha) + source=upstream repo"
 
 # -----------------------------------------------------------------------------
 # Section 5 — beaconry-scout smoke suite passes
