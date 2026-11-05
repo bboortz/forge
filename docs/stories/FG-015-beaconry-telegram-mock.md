@@ -1,7 +1,7 @@
 ---
 id: FG-015
 slug: beaconry-telegram-mock
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-05
 ---

@@ -1,7 +1,7 @@
 # FG-014 — Plan: beaconry-hub
 
 **Story**: [`docs/stories/FG-014-beaconry-hub.md`](../stories/FG-014-beaconry-hub.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-014-beaconry-hub`
 
 ## Design delta
