@@ -1,7 +1,7 @@
 ---
 id: FG-012
 slug: external-sourced-images
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-05
 ---
