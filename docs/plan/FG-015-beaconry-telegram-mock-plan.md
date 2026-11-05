@@ -1,7 +1,7 @@
 # FG-015 — Plan: beaconry-telegram-mock
 
 **Story**: [`docs/stories/FG-015-beaconry-telegram-mock.md`](../stories/FG-015-beaconry-telegram-mock.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-015-beaconry-telegram-mock`
 
 ## Design delta

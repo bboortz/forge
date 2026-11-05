@@ -1,7 +1,7 @@
 # FG-013 — Plan: scout `ref: latest`
 
 **Story**: [`docs/stories/FG-013-scout-ref-latest.md`](../stories/FG-013-scout-ref-latest.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-013-scout-ref-latest`
 
 ## Design delta

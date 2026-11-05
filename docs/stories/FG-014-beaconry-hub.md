@@ -1,7 +1,7 @@
 ---
 id: FG-014
 slug: beaconry-hub
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-05
 ---
