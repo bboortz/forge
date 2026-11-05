@@ -72,6 +72,8 @@ _image_yaml_source_get() {
       # Match "  key: value" (any indent, then "key:" then value).
       if ($0 ~ "^[[:space:]]+" k "[[:space:]]*:") {
         sub("^[[:space:]]+" k "[[:space:]]*:[[:space:]]*", "")
+        # Strip inline comments (anything from " #" onwards) BEFORE quotes.
+        sub(/[[:space:]]+#.*$/, "")
         sub(/[[:space:]]+$/, "")
         sub(/^"/, ""); sub(/"$/, "")
         sub(/^'\''/, ""); sub(/'\''$/, "")

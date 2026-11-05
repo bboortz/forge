@@ -9,6 +9,7 @@ depends_on:
   - python-scratch-trixie
 source:
   git: https://github.com/bboortz/beaconry
-  ref: "665370e7d793968b5b8fc550fbd0582993a829fc"
+  # FG-013: daily cron tracks beaconry main HEAD; resolved sha baked into revision label.
+  ref: "latest"
   dockerfile: poc/scout/Dockerfile
   context: poc
