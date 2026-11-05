@@ -27,7 +27,15 @@ ROOT="$(git rev-parse --show-toplevel)"
 SRC="${ROOT}/images/${IMAGE_DIR}"
 test -d "${SRC}"                || { echo "no such image dir: ${SRC}" >&2; exit 1; }
 test -f "${SRC}/image.yaml"     || { echo "${SRC}/image.yaml missing" >&2; exit 1; }
-test -f "${SRC}/Dockerfile"     || { echo "${SRC}/Dockerfile missing" >&2; exit 1; }
+
+# FG-012: externally-sourced images carry their Dockerfile in an upstream repo.
+# For Forge-local images, we still require a local Dockerfile here.
+if image_yaml_has_source "${SRC}/image.yaml"; then
+  test ! -e "${SRC}/Dockerfile" \
+    || { echo "${SRC}: has both source: and Dockerfile (mutually exclusive — see FG-012)" >&2; exit 1; }
+else
+  test -f "${SRC}/Dockerfile"   || { echo "${SRC}/Dockerfile missing" >&2; exit 1; }
+fi
 
 # Build any depends_on first so derivatives can COPY --from= them locally.
 while IFS= read -r dep; do
@@ -65,11 +73,79 @@ else
   SCRATCH_BASE_REF="ghcr.io/bboortz/scratch-base-trixie:latest"
 fi
 
-echo "→ docker build ${IMAGE_REF} (from images/${IMAGE_DIR}/)"
+# FG-012: resolve the build context + Dockerfile. For Forge-local images,
+# both live under images/<dir>/ (current behavior). For externally-sourced
+# images, clone the upstream repo at the pinned ref and build there.
+BUILD_CONTEXT="${SRC}"
+BUILD_DOCKERFILE="${SRC}/Dockerfile"
+RESOLVED_SHA="${GIT_SHA}"
+CLONE_DIR=""
+
+if image_yaml_has_source "${SRC}/image.yaml"; then
+  SRC_GIT=$(image_yaml_source_git "${SRC}/image.yaml")
+  SRC_REF=$(image_yaml_source_ref "${SRC}/image.yaml")
+  SRC_DOCKERFILE=$(image_yaml_source_dockerfile "${SRC}/image.yaml")
+  SRC_CONTEXT=$(image_yaml_source_context "${SRC}/image.yaml")
+  [[ -n "${SRC_REF}" ]] || { echo "${SRC}/image.yaml: source.ref is empty" >&2; exit 1; }
+
+  CLONE_DIR=$(mktemp -d)
+  # shellcheck disable=SC2064
+  trap "rm -rf '${CLONE_DIR}'" EXIT
+  echo "→ cloning ${SRC_GIT} @ ${SRC_REF}"
+
+  # Try shallow fetch-by-ref first (works for SHAs reachable from tips, tags,
+  # branches, and the `latest` keyword which resolves to HEAD). Fall back to
+  # a full clone + checkout when the server rejects fetch-by-sha for commits
+  # not on an advertised ref.
+  if [[ "${SRC_REF}" == "latest" ]]; then
+    git -C "${CLONE_DIR}" init -q
+    git -C "${CLONE_DIR}" remote add origin "${SRC_GIT}"
+    git -C "${CLONE_DIR}" fetch -q --depth=1 origin HEAD
+    git -C "${CLONE_DIR}" checkout -q FETCH_HEAD
+  else
+    git -C "${CLONE_DIR}" init -q
+    git -C "${CLONE_DIR}" remote add origin "${SRC_GIT}"
+    if git -C "${CLONE_DIR}" fetch -q --depth=1 origin "${SRC_REF}" 2>/dev/null; then
+      git -C "${CLONE_DIR}" checkout -q FETCH_HEAD
+    else
+      echo "  (shallow fetch rejected; falling back to full clone)"
+      rm -rf "${CLONE_DIR}"
+      CLONE_DIR=$(mktemp -d)
+      # shellcheck disable=SC2064
+      trap "rm -rf '${CLONE_DIR}'" EXIT
+      git clone -q "${SRC_GIT}" "${CLONE_DIR}"
+      git -C "${CLONE_DIR}" checkout -q "${SRC_REF}"
+    fi
+  fi
+
+  RESOLVED_SHA=$(git -C "${CLONE_DIR}" rev-parse HEAD)
+  BUILD_CONTEXT="${CLONE_DIR}/${SRC_CONTEXT}"
+  BUILD_DOCKERFILE="${CLONE_DIR}/${SRC_DOCKERFILE}"
+
+  test -d "${BUILD_CONTEXT}"     || { echo "source.context '${SRC_CONTEXT}' not found in clone" >&2; exit 1; }
+  test -f "${BUILD_DOCKERFILE}"  || { echo "source.dockerfile '${SRC_DOCKERFILE}' not found in clone" >&2; exit 1; }
+  echo "→ resolved ${SRC_REF} to ${RESOLVED_SHA}"
+fi
+
+# FG-012: for externally-sourced images, inject OCI labels via --label so
+# the resolved sha + upstream repo end up on the image even when the
+# upstream Dockerfile doesn't declare them. Forge-local Dockerfiles
+# already set these via their own LABEL directives — --label would just
+# override with the same value.
+EXTRA_LABELS=()
+if [[ -n "${CLONE_DIR}" ]]; then
+  EXTRA_LABELS+=(--label "org.opencontainers.image.revision=${RESOLVED_SHA}")
+  EXTRA_LABELS+=(--label "org.opencontainers.image.source=${SRC_GIT}")
+  EXTRA_LABELS+=(--label "org.opencontainers.image.created=${BUILD_TIMESTAMP}")
+fi
+
+echo "→ docker build ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=${BUILD_CONTEXT}, revision=${RESOLVED_SHA})"
 docker build \
   ${PULL_FLAG} \
-  --build-arg GIT_SHA="${GIT_SHA}" \
+  --build-arg GIT_SHA="${RESOLVED_SHA}" \
   --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
+  "${EXTRA_LABELS[@]}" \
+  --file "${BUILD_DOCKERFILE}" \
   --tag "${IMAGE_REF}" \
-  "${SRC}"
+  "${BUILD_CONTEXT}"

@@ -54,3 +54,57 @@ image_yaml_depends() {
     }
   ' "${file}"
 }
+
+# FG-012: scalar lookup inside the `source:` nested block. Expected shape:
+#   source:
+#     git: https://github.com/bboortz/beaconry
+#     ref: "665370e7..."
+#     dockerfile: poc/scout/Dockerfile
+#     context: poc/
+#
+# Empty stdout when the block or key is absent.
+_image_yaml_source_get() {
+  local file="$1" key="$2"
+  awk -v k="${key}" '
+    /^source:/ { in_src = 1; next }
+    in_src && /^[^ ]/ { in_src = 0 }
+    in_src {
+      # Match "  key: value" (any indent, then "key:" then value).
+      if ($0 ~ "^[[:space:]]+" k "[[:space:]]*:") {
+        sub("^[[:space:]]+" k "[[:space:]]*:[[:space:]]*", "")
+        sub(/[[:space:]]+$/, "")
+        sub(/^"/, ""); sub(/"$/, "")
+        sub(/^'\''/, ""); sub(/'\''$/, "")
+        print
+        exit
+      }
+    }
+  ' "${file}"
+}
+
+image_yaml_source_git() {
+  _image_yaml_source_get "$1" git
+}
+
+image_yaml_source_ref() {
+  _image_yaml_source_get "$1" ref
+}
+
+# dockerfile defaults to "Dockerfile" when source.dockerfile is absent.
+image_yaml_source_dockerfile() {
+  local v
+  v=$(_image_yaml_source_get "$1" dockerfile)
+  printf '%s\n' "${v:-Dockerfile}"
+}
+
+# context defaults to "." when source.context is absent.
+image_yaml_source_context() {
+  local v
+  v=$(_image_yaml_source_get "$1" context)
+  printf '%s\n' "${v:-.}"
+}
+
+# Return 0 (true) if the image.yaml declares an external source.
+image_yaml_has_source() {
+  [[ -n "$(image_yaml_source_git "$1")" ]]
+}

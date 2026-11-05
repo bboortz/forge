@@ -236,3 +236,31 @@ Every image that depends on another Forge image declares its consumption surface
 
 - **Delivered by**: FG-011
 - **Covered by**: `tests/acceptance/test_FG_011_librt-manylinux-compat.sh`, `images/python-scratch-trixie/tests/smoke_librt_manylinux.sh`
+
+### build.external-source
+
+`images/<name>/image.yaml` supports an optional `source:` block (`git` + `ref` + optional `dockerfile` + `context`). When present, `scripts/build-image.sh` clones the upstream repo at the resolved sha and builds from there — the Dockerfile + sources live upstream, Forge supplies the scan + sign + publish pipeline. `ref` accepts commit sha, git tag, `latest` keyword, or any branch name; always resolves to a concrete sha, baked into `org.opencontainers.image.revision` + `org.opencontainers.image.source` labels via `docker build --label`. Lint (`scripts/verify-image-dirs.sh`) rejects dirs with both `source:` and a local `Dockerfile`.
+
+- **Delivered by**: FG-012
+- **Covered by**: `tests/acceptance/test_FG_012_external-sourced-images.sh`
+
+### publish.external-image
+
+Forge's scan + sign + attest + publish pipeline (per-image smokes, grype scan, syft SBOM, cosign keyless signature) applies equally to externally-sourced images. Consumers verify an externally-sourced digest with the same `cosign verify --certificate-identity …/build.yml@refs/heads/main …` command.
+
+- **Delivered by**: FG-012
+- **Covered by**: `tests/acceptance/test_FG_012_external-sourced-images.sh`
+
+### image.beaconry-scout
+
+`beaconry-scout` (bb-claw/beaconry → `poc/scout/Dockerfile`) published by Forge as `ghcr.io/bboortz/beaconry-scout:<ver>`. Composed on `python-scratch-trixie:3.13` — inherits every FG-009 guarantee (nonroot, no shell, SSL_CERT_FILE, ENTRYPOINT=python3). Boots a uvicorn FastAPI app on :8001 serving `/healthz` + `/readyz`.
+
+- **Delivered by**: FG-012
+- **Covered by**: `tests/acceptance/test_FG_012_external-sourced-images.sh`, `images/beaconry-scout/tests/smoke_http_healthz.sh`
+
+### image.beaconry-scout-bundled-syft
+
+`beaconry-scout` ships `/usr/local/bin/syft` ready to invoke. Scout uses it to generate SBOMs for discovered containers at scan time; consumers can also invoke it directly via `docker run --entrypoint=/usr/local/bin/syft`.
+
+- **Delivered by**: FG-012
+- **Covered by**: `images/beaconry-scout/tests/smoke_syft_bundled.sh`

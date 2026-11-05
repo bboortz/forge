@@ -1,0 +1,14 @@
+# FG-012: externally-sourced image. Dockerfile + sources live in bboortz/beaconry.
+# Forge's scripts/build-image.sh clones at the pinned ref, builds, scans,
+# signs, publishes. depends_on captures the contract dep on python-scratch
+# so EXPECTATIONS.yaml can reference its promises (FG-010).
+tag: "0.1"
+platforms:
+  - linux/amd64
+depends_on:
+  - python-scratch-trixie
+source:
+  git: https://github.com/bboortz/beaconry
+  ref: "665370e7d793968b5b8fc550fbd0582993a829fc"
+  dockerfile: poc/scout/Dockerfile
+  context: poc

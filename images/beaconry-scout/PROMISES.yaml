@@ -1,0 +1,44 @@
+# Authoritative contract for beaconry-scout. Scout is externally sourced
+# (FG-012 source: block in image.yaml); the Dockerfile lives at
+# bboortz/beaconry@665370e7.../poc/scout/Dockerfile.
+#
+# Shape inherited from python-scratch-trixie:3.13 (USER 65532, no shell,
+# ENTRYPOINT /usr/local/bin/python3, SSL_CERT_FILE); scout-specific
+# additions are the readyz server + bundled syft + published port 8001.
+
+spec_version: 1
+image: beaconry-scout
+version: "0.1"
+
+promises:
+  - id: runtime.http-server
+    description: Container boots standalone (no hub, no docker socket) and the uvicorn FastAPI app serves GET /healthz = 200 on :8001 within 30s. Production /readyz adds docker-socket dependency and is covered by beaconry's own tests.
+    caps: [image.beaconry-scout]
+    tests:
+      - images/beaconry-scout/tests/smoke_http_healthz.sh
+
+  - id: runtime.bundled-syft
+    description: /usr/local/bin/syft is present and `syft --version` exits 0. Scout uses it to generate SBOMs for discovered containers.
+    caps: [image.beaconry-scout-bundled-syft]
+    tests:
+      - images/beaconry-scout/tests/smoke_syft_bundled.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary (inherited from python-scratch-trixie base).
+    caps: [image.no-shell]
+    tests:
+      - images/beaconry-scout/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype reports zero Debian-source matches. Any finding is a PyPI dep brought in by scout's requirements.txt, never OS noise.
+    caps: [image.zero-os-cves]
+    tests:
+      - images/beaconry-scout/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 150 MB hard ceiling. python-scratch base is ~45 MB; scout overlay (syft + python deps + app code) adds the rest.
+    caps: [test.size-budget]
+    tests:
+      - images/beaconry-scout/tests/smoke_size.sh

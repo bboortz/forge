@@ -1,0 +1,39 @@
+# What beaconry-scout requires from its dependencies. Pinned to
+# python-scratch-trixie@>=3.13 — scout's Dockerfile literally
+# FROM ghcr.io/bboortz/python-scratch-trixie:3.13 AS runtime.
+#
+# Every FG-009 guarantee (SSL cert env, ENTRYPOINT=python3, USER 65532,
+# WORKDIR /nonroot, PYTHONDONTWRITEBYTECODE, PYTHONFAULTHANDLER) is
+# automatically asserted for scout via the preflight pointers below.
+
+spec_version: 1
+image: beaconry-scout
+
+dependencies:
+  - image: python-scratch-trixie
+    version: ">=0.2"   # contract version from PROMISES.yaml, not image tag
+    expectations:
+      - promise: runtime.python3-interp
+        reason: scout.py runs under the base image's /usr/local/bin/python3; without the interpreter the ENTRYPOINT doesn't exec.
+        preflight:
+          - images/beaconry-scout/tests/smoke_http_healthz.sh
+
+      - promise: runtime.entrypoint-python3
+        reason: Scout's Dockerfile does CMD ["scout.py"] and relies on the base's ENTRYPOINT=["/usr/local/bin/python3"] to make `docker run <scout>` work.
+        preflight:
+          - images/beaconry-scout/tests/smoke_http_healthz.sh
+
+      - promise: runtime.user-nonroot
+        reason: scout runs as uid 65532 to touch the Docker socket read-only without root. The base image sets USER 65532; scout doesn't override it.
+        preflight:
+          - images/beaconry-scout/tests/smoke_http_healthz.sh
+
+      - promise: runtime.https-outbound
+        reason: Scout POSTs scan results to the hub — SSL_CERT_FILE must be set so TLS verification works. Base image re-declares this (FG-009); scout inherits.
+        preflight:
+          - images/beaconry-scout/tests/smoke_http_healthz.sh
+
+      - promise: absence.shell
+        reason: scratch-image invariant. If base regressed and shipped a shell, scout's attestation (no-shell promise) would lie.
+        preflight:
+          - images/beaconry-scout/tests/smoke_no_shell.sh

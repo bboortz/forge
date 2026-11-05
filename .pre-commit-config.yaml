@@ -47,6 +47,13 @@ repos:
         entry: python3 scripts/contracts-semver-check.py
         files: ^images/.*/PROMISES\.yaml$
 
+      - id: verify-image-dirs
+        name: verify-image-dirs (FG-012)
+        language: system
+        entry: bash scripts/verify-image-dirs.sh
+        pass_filenames: false
+        files: ^images/.*/(image\.yaml|Dockerfile)$
+
       # Pre-push: `make check-strict` — wipes forge-local/* images first
       # so stale image references in tests can't hide behind a workstation-
       # cached image (lesson from PR #7 CI failure). Then runs the full
