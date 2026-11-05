@@ -278,3 +278,10 @@ Forge's scan + sign + attest + publish pipeline (per-image smokes, grype scan, s
 
 - **Delivered by**: FG-014
 - **Covered by**: `images/beaconry-hub/tests/smoke_docker_bundled.sh`, `images/beaconry-hub/tests/smoke_grype_bundled.sh`, `images/beaconry-hub/tests/smoke_syft_bundled.sh`
+
+### image.beaconry-telegram-mock
+
+`beaconry-telegram-mock` (bb-claw/beaconry → `poc/telegram_mock/Dockerfile`) published by Forge as `ghcr.io/bboortz/beaconry-telegram-mock:<ver>`. Test fixture: mock Telegram Bot API shim + BC-018 test-driver surface (`/__driver__/*`) used by beaconry's e2e harness. Unlike scout/hub, base is `python:3.12-slim` (not scratch) — acceptable for a test-only image; Forge still attaches the grype scan attestation. Tracks beaconry `main` via `ref: latest`.
+
+- **Delivered by**: FG-015
+- **Covered by**: `tests/acceptance/test_FG_015_beaconry-telegram-mock.sh`, `images/beaconry-telegram-mock/tests/smoke_http_mock.sh`, `images/beaconry-telegram-mock/tests/smoke_driver_api.sh`

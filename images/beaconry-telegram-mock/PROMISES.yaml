@@ -1,0 +1,30 @@
+# Authoritative contract for beaconry-telegram-mock. Test fixture only;
+# beaconry's docker-compose.test.yml uses it so hub's python-telegram-bot
+# client can be exercised without hitting api.telegram.org.
+#
+# Base image is python:3.12-slim (upstream choice). No scratch guarantees
+# (shell + apt + os-cves acceptable for a test fixture); Forge still
+# attaches the grype scan as an attestation so operators can inspect.
+
+spec_version: 1
+image: beaconry-telegram-mock
+version: "0.1"
+
+promises:
+  - id: runtime.http-server
+    description: "Container boots and serves `/bot<token>/getMe` (mock Telegram Bot API) on :8080. Any bearer token prefix is accepted; the mock returns a canned response."
+    caps: [image.beaconry-telegram-mock]
+    tests:
+      - images/beaconry-telegram-mock/tests/smoke_http_mock.sh
+
+  - id: runtime.driver-endpoints
+    description: "`/__driver__/state` + `/__driver__/sent` + `/__driver__/inject-callback` + `/__driver__/reset` are reachable on :8080 and return 200. This is the BC-018 test-driver surface beaconry's e2e harness uses to assert \"did hub send message X?\"."
+    caps: [image.beaconry-telegram-mock]
+    tests:
+      - images/beaconry-telegram-mock/tests/smoke_driver_api.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ 300 MB hard ceiling. python:3.12-slim is ~150 MB; FastAPI + python-telegram-bot + uvicorn deps add the rest.
+    caps: [test.size-budget]
+    tests:
+      - images/beaconry-telegram-mock/tests/smoke_size.sh
