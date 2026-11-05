@@ -1,0 +1,52 @@
+# Authoritative contract for beaconry-hub. Externally sourced (FG-012) from
+# bboortz/beaconry/poc/hub/Dockerfile. Composes on python-scratch-trixie:3.13
+# and bundles three CLIs for hub's cve-waterfall + fix-execution paths.
+
+spec_version: 1
+image: beaconry-hub
+version: "0.1"
+
+promises:
+  - id: runtime.http-server
+    description: Container boots with BEACONRY_SKIP_GRYPE_DB=1 + dummy telegram env, and the uvicorn FastAPI app serves GET /healthz = 200 on :8000 within 60s.
+    caps: [image.beaconry-hub]
+    tests:
+      - images/beaconry-hub/tests/smoke_http_healthz.sh
+
+  - id: runtime.bundled-docker
+    description: /usr/local/bin/docker is present and `docker --version` exits 0. Hub uses it via its DockerAdapter against a mounted /var/run/docker.sock.
+    caps: [image.beaconry-hub-bundled-tools]
+    tests:
+      - images/beaconry-hub/tests/smoke_docker_bundled.sh
+
+  - id: runtime.bundled-grype
+    description: /usr/local/bin/grype is present and `grype --version` exits 0. Hub uses it in the CVE-waterfall to match SBOM artifacts to vulnerabilities.
+    caps: [image.beaconry-hub-bundled-tools]
+    tests:
+      - images/beaconry-hub/tests/smoke_grype_bundled.sh
+
+  - id: runtime.bundled-syft
+    description: /usr/local/bin/syft is present and `syft --version` exits 0. Hub uses it for post-fix re-verification.
+    caps: [image.beaconry-hub-bundled-tools]
+    tests:
+      - images/beaconry-hub/tests/smoke_syft_bundled.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary (inherited from python-scratch-trixie base).
+    caps: [image.no-shell]
+    tests:
+      - images/beaconry-hub/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype reports zero Debian-source matches. Any finding is a PyPI/bundled-CLI vulnerability — not OS noise.
+    caps: [image.zero-os-cves]
+    tests:
+      - images/beaconry-hub/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 350 MB hard ceiling. python-scratch base is ~45 MB; grype ≈150 MB, syft ≈50 MB, docker ≈20 MB, python deps ≈50 MB.
+    caps: [test.size-budget]
+    tests:
+      - images/beaconry-hub/tests/smoke_size.sh

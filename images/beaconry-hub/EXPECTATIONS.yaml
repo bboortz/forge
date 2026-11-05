@@ -1,0 +1,38 @@
+# What beaconry-hub requires from its dependencies. Pinned to
+# python-scratch-trixie@>=0.2 — hub's Dockerfile FROMs
+# ghcr.io/bboortz/python-scratch-trixie:3.13 AS runtime.
+#
+# Hub inherits every FG-009 guarantee (SSL cert env, ENTRYPOINT=python3,
+# USER 65532, WORKDIR /nonroot, PYTHONDONTWRITEBYTECODE, PYTHONFAULTHANDLER).
+
+spec_version: 1
+image: beaconry-hub
+
+dependencies:
+  - image: python-scratch-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: runtime.python3-interp
+        reason: hub.py runs under the base image's /usr/local/bin/python3.
+        preflight:
+          - images/beaconry-hub/tests/smoke_http_healthz.sh
+
+      - promise: runtime.entrypoint-python3
+        reason: Hub's Dockerfile does CMD ["hub.py"] and relies on the base's ENTRYPOINT=["/usr/local/bin/python3"] to make `docker run <hub>` work.
+        preflight:
+          - images/beaconry-hub/tests/smoke_http_healthz.sh
+
+      - promise: runtime.user-nonroot
+        reason: hub runs as uid 65532 to touch the docker socket (via group_add in the operator's compose). Base image sets USER 65532; hub doesn't override.
+        preflight:
+          - images/beaconry-hub/tests/smoke_http_healthz.sh
+
+      - promise: runtime.https-outbound
+        reason: Hub fetches CISA KEV JSON over HTTPS (BC-020) + Telegram API. SSL_CERT_FILE must be re-declared by the base (FG-009) so TLS verify works.
+        preflight:
+          - images/beaconry-hub/tests/smoke_http_healthz.sh
+
+      - promise: absence.shell
+        reason: scratch-image invariant. Hub's no-shell contract depends on base shipping zero shell binaries.
+        preflight:
+          - images/beaconry-hub/tests/smoke_no_shell.sh
