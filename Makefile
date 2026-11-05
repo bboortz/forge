@@ -38,7 +38,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
 .PHONY: help tools install-hooks lint build scan sign-local verify \
         test-images test-acceptance test-fast check check-strict \
-        verify-sid-pins verify-traceability verify-contracts clean-local-images \
+        verify-sid-pins verify-traceability verify-contracts verify-image-dirs clean-local-images \
         _local-registry _local-registry-stop
 
 help:
@@ -49,6 +49,7 @@ help:
 	@echo "  verify-sid-pins      enforce CVE + removal condition + date per pin"
 	@echo "  verify-traceability  enforce story ↔ plan ↔ test ↔ CAP links"
 	@echo "  verify-contracts     enforce image PROMISES ↔ EXPECTATIONS graph (FG-010)"
+	@echo "  verify-image-dirs    enforce source + local Dockerfile mutual exclusion (FG-012)"
 	@echo "  build                scripts/build-image.sh \$$IMAGE_DIR"
 	@echo "  scan                 syft SBOM + grype scan → $(OUT_DIR)/"
 	@echo "  sign-local           push $(IMAGE) to localhost:$(LOCAL_REGISTRY_PORT) and cosign-sign"
@@ -96,6 +97,9 @@ verify-traceability:
 verify-contracts:
 	@python3 scripts/verify-contracts.py
 
+verify-image-dirs:
+	@bash scripts/verify-image-dirs.sh
+
 build:
 	@bash scripts/build-image.sh "$(IMAGE_DIR)"
 
@@ -137,7 +141,7 @@ test-acceptance:
 test-images:
 	@bash scripts/test-images.sh
 
-test-fast: lint verify-sid-pins verify-traceability verify-contracts
+test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs
 
 check: test-fast test-acceptance test-images
 
