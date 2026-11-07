@@ -1,7 +1,7 @@
 # FG-028 — Plan: mosquitto-scratch-trixie
 
 **Story**: [`docs/stories/FG-028-mosquitto-scratch-trixie.md`](../stories/FG-028-mosquitto-scratch-trixie.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-028-mosquitto-scratch-trixie`
 
 ## Design delta
