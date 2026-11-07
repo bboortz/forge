@@ -1,7 +1,7 @@
 ---
 id: FG-024
 slug: parallel-acceptance
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-07
 ---
