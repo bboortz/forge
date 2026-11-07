@@ -57,11 +57,14 @@ jobs:
       (github.event_name == 'pull_request' && github.base_ref == 'dev')
     steps:
       - uses: actions/checkout@v4
+        with:
+          # FG-018: smart-check needs full history to resolve `git diff origin/dev..HEAD`.
+          fetch-depth: 0
 
       - name: Install lint + supply-chain tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck yamllint jq
+          sudo apt-get install -y shellcheck yamllint jq python3-yaml
           curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
           chmod +x /tmp/hadolint && sudo mv /tmp/hadolint /usr/local/bin/hadolint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
@@ -72,8 +75,29 @@ jobs:
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: make check (fast + acceptance)
-        run: make check
+      # FG-018: on PR we scope via smart-check (fast); on push-to-dev we still
+      # run the full `make check` (dev is the stable baseline). A `full-check`
+      # PR label forces check-strict for cross-cutting PRs that want extra
+      # confidence beyond smart-check's dispatch.
+      - name: Determine gate target
+        id: gate
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            labels='${{ toJSON(github.event.pull_request.labels.*.name) }}'
+            if echo "$labels" | grep -q '"full-check"'; then
+              echo "target=check-strict" >> "$GITHUB_OUTPUT"
+              echo "→ PR has 'full-check' label — using check-strict"
+            else
+              echo "target=check-smart" >> "$GITHUB_OUTPUT"
+              echo "→ PR CI — using check-smart (FG-018)"
+            fi
+          else
+            echo "target=check" >> "$GITHUB_OUTPUT"
+            echo "→ push-to-dev — using full check"
+          fi
+
+      - name: make ${{ steps.gate.outputs.target }}
+        run: make ${{ steps.gate.outputs.target }}
 
       - name: Upload scan artifacts
         if: always()
