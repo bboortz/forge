@@ -178,7 +178,11 @@ check: test-fast test-acceptance test-images
 clean-local-images:
 	@bash scripts/clean-local-images.sh
 
-check-strict: clean-local-images check
+# FG-023: wipe stamp-skip cache so check-strict is truly cold.
+clean-stamps:
+	@rm -rf .make/stamps/ && echo "clean-stamps: wiped .make/stamps/"
+
+check-strict: clean-local-images clean-stamps check
 
 # FG-017: scope-aware gate. Runs test-fast (full-repo lint) + builds + smokes
 # + acceptance only for images affected by the current diff vs origin/dev.

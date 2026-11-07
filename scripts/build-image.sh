@@ -49,6 +49,22 @@ TAG=$(image_yaml_get   "${SRC}/image.yaml" tag)
 [[ -n "${TAG}" ]] || { echo "${SRC}/image.yaml missing required 'tag:' field" >&2; exit 1; }
 IMAGE_REF="${REGISTRY}/${REPO}:${TAG}"
 
+# FG-023: stamp-skip. Before computing the rest of the build environment,
+# ask whether the inputs to this image's build have changed since the last
+# successful run on this runner. If not AND the tag still exists in the
+# daemon, skip docker build entirely. Daily cron (build.yml) ignores
+# stamps because it does not route through this script's skip path.
+STAMP_FILE="${ROOT}/.make/stamps/${IMAGE_DIR}.stamp"
+if [[ "${FORGE_NO_SKIP:-0}" != "1" && -f "${STAMP_FILE}" ]]; then
+  _OLD_STAMP=$(cat "${STAMP_FILE}")
+  _NEW_STAMP=$(bash "${ROOT}/scripts/stamp-image.sh" "${IMAGE_DIR}")
+  if [[ "${_OLD_STAMP}" == "${_NEW_STAMP}" ]] \
+     && docker image inspect "${IMAGE_REF}" >/dev/null 2>&1; then
+    echo "→ stamp-skip: ${IMAGE_REF} (inputs unchanged, tag present in daemon)"
+    exit 0
+  fi
+fi
+
 GIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
 BUILD_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -185,3 +201,8 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --file "${BUILD_DOCKERFILE}" \
   --tag "${IMAGE_REF}" \
   "${BUILD_CONTEXT}"
+
+# FG-023: record stamp of the inputs that produced this image so a
+# subsequent invocation with identical inputs can skip docker build.
+mkdir -p "${ROOT}/.make/stamps"
+bash "${ROOT}/scripts/stamp-image.sh" "${IMAGE_DIR}" > "${STAMP_FILE}"
