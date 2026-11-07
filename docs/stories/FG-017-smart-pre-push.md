@@ -1,7 +1,7 @@
 ---
 id: FG-017
 slug: smart-pre-push
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-07
 ---
