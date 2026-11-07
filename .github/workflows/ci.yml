@@ -61,6 +61,31 @@ jobs:
           # FG-018: smart-check needs full history to resolve `git diff origin/dev..HEAD`.
           fetch-depth: 0
 
+      # FG-021: enable buildx + GHCR auth for registry-backed layer cache.
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR for cache pull/push
+        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true   # fork PRs can't auth; fall back to cold build
+
+      - name: Current UTC day (for grype DB cache key)
+        id: dt
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # FG-022: cache grype's CVE DB across CI runs. ~20 MB; daily rotation.
+      - name: Cache grype DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/grype
+          key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
+          restore-keys: |
+            grype-db-${{ runner.os }}-
+
       - name: Install lint + supply-chain tools
         run: |
           sudo apt-get update -qq
@@ -97,6 +122,11 @@ jobs:
           fi
 
       - name: make ${{ steps.gate.outputs.target }}
+        env:
+          # FG-021: per-image buildx cache resolution happens in build-image.sh
+          # from this prefix. PR events: pull cache only (no write perm on forks).
+          FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
+          FORGE_CACHE_PUSH: ${{ github.event_name == 'push' && '1' || '0' }}
         run: make ${{ steps.gate.outputs.target }}
 
       - name: Upload scan artifacts
