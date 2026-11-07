@@ -1,7 +1,7 @@
 # FG-022 — Plan: grype DB cache in CI
 
 **Story**: [`docs/stories/FG-022-ci-grype-db-cache.md`](../stories/FG-022-ci-grype-db-cache.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-021-ci-cache` (shared with FG-021)
 
 ## Design delta
