@@ -28,7 +28,11 @@ say "1. /sbom.json present in Forge-native scratch images"
 for img in scratch-base-trixie python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie; do
   tag=$(awk '/^tag:/ {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${img}/image.yaml")
   ref="forge-local/${img}:${tag}"
-  bash scripts/build-image.sh "${img}" >/dev/null 2>&1
+  if ! bash scripts/build-image.sh "${img}" > "/tmp/fg020-build-${img}.log" 2>&1; then
+    echo "  ✗ ${img}: build failed (last 40 lines):" >&2
+    tail -40 "/tmp/fg020-build-${img}.log" >&2
+    exit 1
+  fi
   cid=$(docker create --entrypoint=/nonexistent "${ref}")
   tmp=$(mktemp -d)
   trap 'rm -rf "${tmp}"' RETURN
