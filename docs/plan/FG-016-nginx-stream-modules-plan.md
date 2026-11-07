@@ -1,7 +1,7 @@
 # FG-016 — Plan: nginx stream modules + mime.types
 
 **Story**: [`docs/stories/FG-016-nginx-stream-modules.md`](../stories/FG-016-nginx-stream-modules.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-016-nginx-stream-modules`
 
 ## Design delta

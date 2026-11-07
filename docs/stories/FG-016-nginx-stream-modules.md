@@ -1,7 +1,7 @@
 ---
 id: FG-016
 slug: nginx-stream-modules
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-07
 ---
