@@ -196,16 +196,22 @@ else
   exit 1
 fi
 
-# Bump version properly → semver gate passes
-python3 - "${tmp}/new.yaml" <<'PY'
-import sys, yaml, pathlib
-p = pathlib.Path(sys.argv[1])
-data = yaml.safe_load(p.read_text())
-data['version'] = '0.3'
-p.write_text(yaml.safe_dump(data, sort_keys=False))
+# Bump version properly → semver gate passes. Compute next minor dynamically
+# so this test stays green as scratch-base-trixie's real version advances.
+python3 - "${tmp}/old.yaml" "${tmp}/new.yaml" <<'PY'
+import sys, yaml, pathlib, re
+old = yaml.safe_load(pathlib.Path(sys.argv[1]).read_text())
+new_path = pathlib.Path(sys.argv[2])
+new = yaml.safe_load(new_path.read_text())
+# Parse "X.Y" or "X.Y.Z" from old, bump Y, reset Z to 0.
+m = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?$', str(old['version']))
+assert m, f"unparseable old version: {old['version']}"
+major, minor = int(m.group(1)), int(m.group(2))
+new['version'] = f"{major}.{minor + 1}.0"
+new_path.write_text(yaml.safe_dump(new, sort_keys=False))
 PY
 python3 "${SEMVER}" --compare "${tmp}/old.yaml" "${tmp}/new.yaml" >/dev/null
-pass "semver gate accepts the same change with 0.2 → 0.3 bump"
+pass "semver gate accepts the same change with a minor bump"
 
 # No change → silent
 python3 "${SEMVER}" --compare "${tmp}/old.yaml" "${tmp}/old.yaml" >/dev/null
