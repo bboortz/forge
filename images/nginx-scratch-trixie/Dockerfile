@@ -25,8 +25,23 @@ COPY sid-pins/ /etc/apt/preferences.d/
 RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install nginx libnginx-mod-stream ca-certificates; \
+    apt-get -y --no-install-recommends install nginx libnginx-mod-stream ca-certificates curl; \
     rm -rf /var/lib/apt/lists/*
+
+# FG-020: generate an SBOM from the builder stage (where dpkg metadata is
+# present with full Debian version suffixes like -deb13u10). COPY'd into
+# runtime below so grype honors Debian backports via its Debian matcher
+# rather than falling back to NVD-CPE (which doesn't know about -u suffixes).
+ARG SYFT_VERSION=v1.57.0
+# hadolint ignore=DL4006
+RUN set -eux; \
+    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
+      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
+    # Purge curl BEFORE scanning so builder-only install tooling doesn't leak
+    # its dpkg entries into the SBOM. Any dep brought in only for curl goes
+    # with it (--auto-remove).
+    apt-get -y --purge --auto-remove remove curl; \
+    syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Pull the baseline's /etc identity files into the builder so we can APPEND
 # the www-data service-user line rather than overwriting the whole file.
@@ -92,6 +107,10 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 # hadolint ignore=DL3067
 COPY --from=scratch_base / /
 COPY --from=builder /out /
+# FG-020: SBOM from the builder stage (with real Debian version suffixes).
+# scan-regression.py extracts this and uses `grype sbom:<path>` so Debian
+# backports (like nginx 1.26.3-3+deb13u10) are honored.
+COPY --from=builder /sbom.json /sbom.json
 
 # FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
 # re-declare here so nginx-side TLS (e.g. upstream SSL verification in

@@ -68,19 +68,56 @@ def resolve_image_ref(image_dir: Path) -> str:
     return f"{registry}/{repo}:{tag}"
 
 
-def run_grype(image_ref: str) -> dict:
-    """Runs grype against the given image and returns parsed JSON."""
+def extract_sbom(image_ref: str) -> Path | None:
+    """FG-020: if the image carries a `/sbom.json` (builder-stage syft output),
+    extract it to a temp path and return. Else None → caller falls back to
+    scanning the image directly.
+
+    Why: scratch runtime has no dpkg DB, so grype's Debian matcher is blind
+    there and falls back to NVD-CPE which doesn't know about Debian backports
+    like -deb13u10. The SBOM was generated in the builder stage where dpkg
+    was present, so it carries the real versions.
+    """
+    import tempfile
+    tmp = Path(tempfile.mkdtemp(prefix="forge-sbom-"))
+    # Use `docker create --entrypoint=/sbom.json` is nonsense; instead create
+    # with a dummy entrypoint override that bypasses image's own CMD. For
+    # scratch images with no /bin/true we can't exec anything, but `docker
+    # create` doesn't need to successfully *start* the container — it just
+    # needs a container to `docker cp` from. Pass an unlikely-to-collide
+    # entrypoint so even images without CMD/ENTRYPOINT accept create.
+    create = subprocess.run(
+        ["docker", "create", "--entrypoint=/nonexistent-forge-sbom-extract", image_ref],
+        capture_output=True, text=True,
+    )
+    if create.returncode != 0:
+        return None
+    cid = create.stdout.strip()
+    try:
+        cp = subprocess.run(
+            ["docker", "cp", f"{cid}:/sbom.json", str(tmp / "sbom.json")],
+            capture_output=True, text=True,
+        )
+        if cp.returncode == 0 and (tmp / "sbom.json").is_file():
+            return tmp / "sbom.json"
+        return None
+    finally:
+        subprocess.run(["docker", "rm", cid], capture_output=True)
+
+
+def run_grype(image_ref: str, sbom_path: Path | None = None) -> dict:
+    """Runs grype against the SBOM when available, else against the image.
+    Returns parsed JSON."""
     if not subprocess.run(["which", "grype"], capture_output=True).returncode == 0:
         err("grype not installed (install via: make tools)")
         sys.exit(2)
+    source = f"sbom:{sbom_path}" if sbom_path is not None else image_ref
     try:
         p = subprocess.run(
-            ["grype", image_ref, "-o", "json"],
+            ["grype", source, "-o", "json"],
             capture_output=True, text=True, check=True, timeout=120,
         )
     except subprocess.CalledProcessError as e:
-        # grype may exit non-zero with --fail-on; here we didn't pass --fail-on,
-        # so a non-zero exit is a real tool error.
         err(f"grype exited {e.returncode}: {e.stderr[:200]}")
         sys.exit(2)
     try:
@@ -171,7 +208,11 @@ def main() -> int:
     image_ref = resolve_image_ref(image_dir)
     say(f"scan-regression {image_name} ({image_ref})")
 
-    scan = run_grype(image_ref)
+    # FG-020: prefer the builder-stage SBOM if the image carries one.
+    sbom_path = extract_sbom(image_ref)
+    if sbom_path is not None:
+        say(f"using embedded SBOM: {sbom_path}")
+    scan = run_grype(image_ref, sbom_path)
     current = extract_critical_cves(scan)
 
     baseline, bpath = load_baseline(image_dir)

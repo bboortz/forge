@@ -31,9 +31,19 @@ RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
     apt-get -y --no-install-recommends install \
-      postgresql-17 postgresql-client-17 ca-certificates \
+      postgresql-17 postgresql-client-17 ca-certificates curl \
       locales libnss-db ; \
     rm -rf /var/lib/apt/lists/*
+
+# FG-020: builder-stage SBOM with real Debian versions. COPY'd into runtime
+# below so scan-regression can `grype sbom:<path>` and honor Debian backports.
+ARG SYFT_VERSION=v1.57.0
+# hadolint ignore=DL4006
+RUN set -eux; \
+    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
+      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
+    apt-get -y --purge --auto-remove remove curl; \
+    syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Pull baseline's /etc/passwd + /etc/group so we APPEND the postgres user
 # instead of overwriting (FG-005 append pattern — future baseline additions
@@ -99,6 +109,9 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 # hadolint ignore=DL3067
 COPY --from=scratch_base / /
 COPY --from=builder /out /
+# FG-020: SBOM from builder (dpkg-aware). scan-regression uses `grype sbom:`
+# so Debian backports are honored.
+COPY --from=builder /sbom.json /sbom.json
 
 # FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
 # re-declare here so postgres can do outbound TLS (e.g. postgres_fdw

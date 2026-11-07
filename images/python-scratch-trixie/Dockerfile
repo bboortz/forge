@@ -26,8 +26,20 @@ COPY sid-pins/ /etc/apt/preferences.d/
 RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install ca-certificates; \
+    apt-get -y --no-install-recommends install ca-certificates curl; \
     rm -rf /var/lib/apt/lists/*
+
+# FG-020: generate an SBOM from the builder stage with real Debian version
+# suffixes (e.g., `-deb13u10`). Runtime COPYs it below so scan-regression
+# via `grype sbom:` honors Debian backports instead of falling back to
+# NVD-CPE (which only knows upstream version strings).
+ARG SYFT_VERSION=v1.57.0
+# hadolint ignore=DL4006
+RUN set -eux; \
+    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
+      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
+    apt-get -y --purge --auto-remove remove curl; \
+    syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Collect the Python-specific overlay. Baseline already supplies glibc + TLS
 # + DNS + zoneinfo + minimal /etc (including /etc/passwd + /etc/group with
@@ -85,6 +97,10 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 COPY --from=scratch_base / /
 # Python-specific overlay. Later COPYs win if paths collide.
 COPY --from=builder /out /
+# FG-020: SBOM from the builder stage (with real Debian version suffixes).
+# scan-regression.py extracts this and uses `grype sbom:<path>` so Debian
+# backports are honored.
+COPY --from=builder /sbom.json /sbom.json
 
 # FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
 # we must re-declare here or every TLS call (urllib, requests, pip install,
