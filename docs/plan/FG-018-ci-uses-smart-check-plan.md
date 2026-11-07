@@ -1,7 +1,7 @@
 # FG-018 — Plan: CI PR uses smart-check
 
 **Story**: [`docs/stories/FG-018-ci-uses-smart-check.md`](../stories/FG-018-ci-uses-smart-check.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-018-ci-uses-smart-check`
 
 ## Design delta
