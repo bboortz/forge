@@ -1,7 +1,7 @@
 # FG-024 — Plan: parallel acceptance-test matrix in CI
 
 **Story**: [`docs/stories/FG-024-parallel-acceptance.md`](../stories/FG-024-parallel-acceptance.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-024-parallel-acceptance`
 
 ## Design delta
