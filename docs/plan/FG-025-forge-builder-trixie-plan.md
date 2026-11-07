@@ -1,7 +1,7 @@
 # FG-025 — Plan: Shared forge-builder-trixie (Phase 1)
 
 **Story**: [`docs/stories/FG-025-forge-builder-trixie.md`](../stories/FG-025-forge-builder-trixie.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-025-forge-builder-trixie`
 
 ## Design delta
