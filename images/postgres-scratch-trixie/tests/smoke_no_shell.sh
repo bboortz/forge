@@ -5,7 +5,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-postgres-scratch-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-17}"
+IMAGE_TAG="${IMAGE_TAG:-18}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 

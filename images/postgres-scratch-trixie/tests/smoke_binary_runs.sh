@@ -5,7 +5,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-postgres-scratch-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-17}"
+IMAGE_TAG="${IMAGE_TAG:-18}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
@@ -18,8 +18,8 @@ if [[ $rc -ne 0 ]]; then
   echo "${out}" >&2
   exit 1
 fi
-if ! grep -q 'PostgreSQL) 17' <<<"${out}"; then
-  echo "  ✗ expected 'PostgreSQL) 17' in postgres --version output, got: ${out}" >&2
+if ! grep -q 'PostgreSQL) 18' <<<"${out}"; then
+  echo "  ✗ expected 'PostgreSQL) 18' in postgres --version output, got: ${out}" >&2
   exit 1
 fi
 echo "  ✓ ${out}"

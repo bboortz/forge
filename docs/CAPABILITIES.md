@@ -153,10 +153,17 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 ### image.postgres-serves-sql
 
-`postgres-scratch-trixie` starts and answers `psql -c 'SELECT 1'` end-to-end against an externally-initialized cluster. Binary-compatible with Debian postgres data directories (uid 999 pinned to match Docker Hub).
+`postgres-scratch-trixie` starts and answers `psql -c 'SELECT 1'` end-to-end against an externally-initialized cluster. Binary-compatible with Debian postgres data directories (uid 999 pinned to match Docker Hub). FG-026 bumped the postgres major version from 17 → 18.
 
-- **Delivered by**: FG-007
+- **Delivered by**: FG-007 (bumped to postgres 18 in FG-026)
 - **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
+
+### image.postgres-slim-nextcloud-compatible
+
+`postgres-slim-trixie` is a Debian-trixie-based PostgreSQL 18 image that preserves the upstream `postgres:18` entrypoint behavior — `POSTGRES_*_FILE` secrets-from-file handling, `/docker-entrypoint-initdb.d/*.sql` execution, custom config mounts via `postgres -c config_file=...`, and shell-script maintenance hooks (`psql`, `pg_isready`, bash) all work. Consumer-facing counterpart to the minimalist `postgres-scratch-trixie:18`. Enables homelab/nextcloud-style deployments that need the full upstream postgres contract without giving up Forge's signed/scanned/attested supply chain.
+
+- **Delivered by**: FG-026
+- **Covered by**: `tests/acceptance/test_FG_026_postgres-18.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/postgres-slim-trixie/tests/smoke_psql.sh`
 
 ### test.sidecar-init
 

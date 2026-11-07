@@ -3,13 +3,13 @@
 #
 # Scratch has no /bin/sh, so initdb — which uses system() to probe the
 # postgres binary — cannot run in-container. We use the official
-# postgres:17 image as a one-shot init sidecar to populate a named volume
+# postgres:18 image as a one-shot init sidecar to populate a named volume
 # with a Debian-compatible data directory, then start our scratch postgres
 # from that volume. This validates that our scratch binary is wire- and
-# on-disk-compatible with a stock postgres 17 cluster.
+# on-disk-compatible with a stock postgres 18 cluster.
 #
 # Pipeline:
-#   1. docker run --rm -v vol:/data postgres:17 initdb → initialize cluster
+#   1. docker run --rm -v vol:/data postgres:18 initdb → initialize cluster
 #   2. docker run -d -v vol:/var/lib/postgresql/data -p 0:5432 <scratch>
 #      postgres -D /var/lib/postgresql/data → start our server
 #   3. poll pg_isready from a scratch sidecar until the socket is up
@@ -19,10 +19,10 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-postgres-scratch-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-17}"
+IMAGE_TAG="${IMAGE_TAG:-18}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-INIT_IMAGE="${POSTGRES_INIT_IMAGE:-postgres:17}"
+INIT_IMAGE="${POSTGRES_INIT_IMAGE:-postgres:18}"
 
 VOLUME="smoke-pg-$$-$RANDOM"
 SERVER="smoke-pg-server-$$"
@@ -39,7 +39,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# 1. init cluster with the official postgres:17 (shelled image can run initdb).
+# 1. init cluster with the official postgres:18 (shelled image can run initdb).
 docker run --rm -v "${VOLUME}:/var/lib/postgresql/data" \
   -e POSTGRES_PASSWORD=smoketest -e POSTGRES_INITDB_ARGS='--locale=C --encoding=UTF8' \
   --entrypoint="" "${INIT_IMAGE}" \
