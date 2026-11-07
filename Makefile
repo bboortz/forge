@@ -39,6 +39,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 .PHONY: help tools install-hooks lint build scan sign-local verify \
         test-images test-acceptance test-fast check check-strict \
         check-smart check-smart-strict \
+        scan-regression scan-baseline-update \
         verify-sid-pins verify-traceability verify-contracts verify-image-dirs clean-local-images \
         _local-registry _local-registry-stop
 
@@ -62,6 +63,8 @@ help:
 	@echo "  check-strict         clean-local-images + check (nightly / release gate)"
 	@echo "  check-smart          FG-017: scope-aware gate (test-fast + affected images only)"
 	@echo "  check-smart-strict   check-smart with per-image wipe (pre-push gate)"
+	@echo "  scan-regression      FG-019: new-CRITICAL diff for \$$IMAGE_DIR vs baseline"
+	@echo "  scan-baseline-update FG-019: regenerate scan-baseline.json for \$$IMAGE_DIR"
 	@echo "  clean-local-images   docker rmi every forge-local/* image"
 	@echo ""
 	@echo "Variables: IMAGE_DIR=$(IMAGE_DIR) REGISTRY=$(REGISTRY)"
@@ -111,6 +114,18 @@ verify-contracts:
 
 verify-image-dirs:
 	@bash scripts/verify-image-dirs.sh
+
+# FG-019: scan-regression gate. Diffs grype CRITICAL findings for IMAGE_DIR
+# vs the committed images/$(IMAGE_DIR)/scan-baseline.json, subtracting any
+# waivers listed in PROMISES.yaml's absence.os-cves entry. Also invoked
+# per-image by scripts/smart-check.sh's scoped loop.
+scan-regression:
+	@python3 scripts/scan-regression.py "$(IMAGE_DIR)"
+
+# FG-019: regenerate the baseline from the current build's grype scan.
+# Devs run this when intentionally accepting a baseline change.
+scan-baseline-update: build
+	@python3 scripts/scan-baseline-update.py "$(IMAGE_DIR)"
 
 build:
 	@bash scripts/build-image.sh "$(IMAGE_DIR)"

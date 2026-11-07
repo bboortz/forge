@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "critical_cves": [],
+  "generated_at": "2026-11-07T12:29:42Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
+}
