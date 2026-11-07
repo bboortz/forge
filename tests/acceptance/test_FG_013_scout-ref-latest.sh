@@ -57,8 +57,12 @@ pass "image revision == upstream main HEAD (${upstream_head})"
 # Section 4 — all smokes still pass against the latest-resolved build
 # -----------------------------------------------------------------------------
 say "4. beaconry-scout smokes still pass"
-bash scripts/test-images.sh beaconry-scout | grep -E '0 failure\(s\)' >/dev/null
-pass "all 5 beaconry-scout smokes passed"
+if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then
+  pass "beaconry-scout smokes (skipped — covered by make check's test-images phase, FG-017 B)"
+else
+  bash scripts/test-images.sh beaconry-scout | grep -E '0 failure\(s\)' >/dev/null
+  pass "all 5 beaconry-scout smokes passed"
+fi
 
 echo
 echo "FG-013 acceptance: all sections passed."

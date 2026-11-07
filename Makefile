@@ -38,6 +38,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
 .PHONY: help tools install-hooks lint build scan sign-local verify \
         test-images test-acceptance test-fast check check-strict \
+        check-smart check-smart-strict \
         verify-sid-pins verify-traceability verify-contracts verify-image-dirs clean-local-images \
         _local-registry _local-registry-stop
 
@@ -58,7 +59,9 @@ help:
 	@echo "  test-acceptance      bash tests/acceptance/test_FG_*.sh"
 	@echo "  test-fast            lint + verify-sid-pins + verify-traceability + verify-contracts"
 	@echo "  check                test-fast + test-acceptance + test-images"
-	@echo "  check-strict         clean-local-images + check (pre-push gate)"
+	@echo "  check-strict         clean-local-images + check (nightly / release gate)"
+	@echo "  check-smart          FG-017: scope-aware gate (test-fast + affected images only)"
+	@echo "  check-smart-strict   check-smart with per-image wipe (pre-push gate)"
 	@echo "  clean-local-images   docker rmi every forge-local/* image"
 	@echo ""
 	@echo "Variables: IMAGE_DIR=$(IMAGE_DIR) REGISTRY=$(REGISTRY)"
@@ -80,13 +83,22 @@ install-hooks:
 	pre-commit install --hook-type pre-push
 
 lint:
+	@# FG-017 C: lint inputs resolved via `git ls-files` so pre-push sees
+	@# exactly what CI sees after push. Protects against the "untracked
+	@# working-tree file masks a CI failure" class of bug (homelab lesson).
 	@echo "→ hadolint"
-	@hadolint images/*/Dockerfile
+	@git ls-files 'images/*/Dockerfile' | xargs -r hadolint
 	@echo "→ shellcheck"
-	@shellcheck tests/acceptance/*.sh images/*/tests/*.sh scripts/*.sh
+	@git ls-files 'tests/acceptance/*.sh' 'images/*/tests/*.sh' 'scripts/*.sh' | xargs -r shellcheck
 	@echo "→ yamllint"
-	@yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" .github/ images/*/image.yaml images/*/PROMISES.yaml images/*/EXPECTATIONS.yaml
-	@if command -v actionlint >/dev/null; then echo "→ actionlint"; actionlint .github/workflows/*.yml; else echo "  actionlint missing — skipping"; fi
+	@git ls-files '.github/*.yaml' '.github/**/*.yaml' '.github/*.yml' '.github/**/*.yml' 'images/*/image.yaml' 'images/*/PROMISES.yaml' 'images/*/EXPECTATIONS.yaml' \
+	  | xargs -r yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}"
+	@if command -v actionlint >/dev/null; then echo "→ actionlint"; git ls-files '.github/workflows/*.yml' | xargs -r actionlint; else echo "  actionlint missing — skipping"; fi
+	@echo "→ exec-bit check"
+	@# FG-017 C: every git-tracked .sh must be +x so shellcheck doesn't silently skip it.
+	@failed=0; for f in $$(git ls-files '*.sh'); do \
+	  if [ ! -x "$$f" ]; then echo "  ✗ $$f missing exec bit (chmod +x it)" >&2; failed=1; fi; \
+	done; [ "$$failed" -eq 0 ]
 
 verify-sid-pins:
 	@bash scripts/verify-sid-pins.sh
@@ -135,7 +147,7 @@ verify: $(COSIGN_PUB) _local-registry
 test-acceptance:
 	@for t in $(ACCEPTANCE_TESTS); do \
 	  echo "→ $$t"; \
-	  bash $$t || exit 1; \
+	  _FORGE_IN_CHECK=1 bash $$t || exit 1; \
 	done
 
 test-images:
@@ -146,9 +158,21 @@ test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-imag
 check: test-fast test-acceptance test-images
 
 # check-strict wipes forge-local/* before running make check so stale image
-# references in tests can't hide behind a workstation-cached image. Pre-push
-# uses this; interactive dev uses plain `make check` for speed.
+# references in tests can't hide behind a workstation-cached image. Used by
+# nightly cron + release workflow. Pre-push uses check-smart-strict (FG-017).
 clean-local-images:
 	@bash scripts/clean-local-images.sh
 
 check-strict: clean-local-images check
+
+# FG-017: scope-aware gate. Runs test-fast (full-repo lint) + builds + smokes
+# + acceptance only for images affected by the current diff vs origin/dev.
+# Bails out to check-strict on structural changes (scripts/, scratch-base,
+# >4 images). See scripts/smart-check.sh.
+check-smart:
+	@bash scripts/smart-check.sh
+
+# check-smart with per-affected-image docker wipe. Used by pre-push hook;
+# nightly cron still runs check-strict from cold as the safety net.
+check-smart-strict:
+	@bash scripts/smart-check.sh

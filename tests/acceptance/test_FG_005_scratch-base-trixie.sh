@@ -71,8 +71,13 @@ pass "all 3 derivatives wired to scratch-base-trixie"
 say "5. each derivative builds + smoke suite still passes"
 for d in "${DERIVATIVES[@]}"; do
   bash scripts/build-image.sh "${d}" >/dev/null
-  bash scripts/test-images.sh "${d}" >/dev/null
-  pass "${d} builds + smokes green on refactored baseline"
+  # FG-017 B: skip per-derivative smokes under `make check` (test-images runs globally).
+  if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then
+    pass "${d} builds green (smokes covered by make check's test-images phase)"
+  else
+    bash scripts/test-images.sh "${d}" >/dev/null
+    pass "${d} builds + smokes green on refactored baseline"
+  fi
 done
 
 # -----------------------------------------------------------------------------

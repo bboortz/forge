@@ -1,0 +1,35 @@
+---
+# FG-017: nightly safety-net gate. Runs the full `make check-strict` (clean
+# cache, every image rebuilt cold, every acceptance test, every smoke) on
+# `dev` HEAD. Catches "smart pre-push was wrong about the affected set" —
+# the safety net that makes scope-based pre-push acceptable.
+name: Nightly check-strict
+
+on:
+  schedule:
+    # 02:30 UTC — well before the 03:00 UTC build.yml cron so a failure
+    # here can block the daily publish via a slack/email signal.
+    - cron: '30 2 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check-strict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -qq hadolint shellcheck yamllint python3-yaml
+          command -v grype >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          command -v syft  >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b /usr/local/bin
+
+      - name: make check-strict
+        run: make check-strict
