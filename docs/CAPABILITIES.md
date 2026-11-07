@@ -328,3 +328,10 @@ Every Forge-native scratch image carries `/sbom.json` — a CycloneDX SBOM gener
 
 - **Delivered by**: FG-020
 - **Covered by**: `tests/acceptance/test_FG_020_sbom-embed.sh`
+
+### tooling.ci-build-cache
+
+CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-image.sh` supports buildx registry cache via `FORGE_CACHE_FROM_PREFIX` + `FORGE_CACHE_PUSH` env vars; GHA workflows wire per-image `ghcr.io/bboortz/<image>:buildcache` tags (cache-from on all events, cache-to on push + nightly build only — PR events pull-only for fork safety). **FG-022**: `actions/cache@v4` persists `~/.cache/grype` keyed on current UTC date with daily rotation. Cumulative CI wall-clock drop: typical PR 9 min → 2-5 min.
+
+- **Delivered by**: FG-021 (buildx cache) + FG-022 (grype DB cache)
+- **Covered by**: `tests/acceptance/test_FG_021_ci-buildx-cache.sh`
