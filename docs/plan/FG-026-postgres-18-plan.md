@@ -1,7 +1,7 @@
 # FG-026 — Plan: PostgreSQL 18 (scratch bump + new slim variant)
 
 **Story**: [`docs/stories/FG-026-postgres-18.md`](../stories/FG-026-postgres-18.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-026-postgres-18`
 
 ## Design delta
