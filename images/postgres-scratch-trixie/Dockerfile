@@ -6,7 +6,7 @@
 #   2. postgres-specific overlay (binaries + ICU + krb5 + ldap + xml + pam
 #      + readline + libpq + share data + postgres user)
 #
-# No LLVM JIT (postgresql-17-jit omitted — saves ~100 MB of libLLVM for
+# No LLVM JIT (postgresql-18-jit omitted — saves ~100 MB of libLLVM for
 # marginal gain). No shell → initdb cannot run in-scratch; use a shelled
 # sidecar for one-time cluster init (see FG-007 smoke_server_accepts.sh).
 
@@ -26,15 +26,24 @@ ARG BUILD_TIMESTAMP=unknown
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# forge-builder-trixie cleared apt lists + applied apt-upgrade. Re-populate
-# the lists and install postgres-specific packages. apt-upgrade NOT repeated.
+# FG-026: PostgreSQL 18 is not in Debian trixie yet — pull from the PGDG
+# official apt repository (same source Docker Hub's `postgres:18` image
+# uses). forge-builder-trixie cleared apt lists + applied apt-upgrade;
+# we add the PGDG source, then install postgres 18 + extras.
 # DL3008: postgres + deps float within the trixie release channel.
-# hadolint ignore=DL3008
+# hadolint ignore=DL3008,DL4006
 RUN set -eux; \
     apt-get update; \
+    apt-get -y --no-install-recommends install gnupg wget; \
+    wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg; \
+    echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list; \
+    apt-get update; \
     apt-get -y --no-install-recommends install \
-      postgresql-17 postgresql-client-17 \
-      locales libnss-db ; \
+      postgresql-18 postgresql-client-18 \
+      locales libnss-db; \
+    apt-get -y --purge --auto-remove remove gnupg wget; \
     rm -rf /var/lib/apt/lists/*
 
 # FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
@@ -51,22 +60,22 @@ COPY --from=scratch_base /etc/group  /tmp/baseline-group
 # Assemble the postgres-specific overlay. Baseline supplies the core glibc +
 # TLS + DNS + zoneinfo + minimal /etc. We add postgres binaries, postgres-
 # specific shared libs (ICU + krb5 + ldap + pam + xml + readline + libpq +
-# ...), /usr/share/postgresql/17 shared data, the postgres service user at
+# ...), /usr/share/postgresql/18 shared data, the postgres service user at
 # uid 999, and writable data/run directories.
 RUN set -eux; \
-    PG=/usr/lib/postgresql/17; \
+    PG=/usr/lib/postgresql/18; \
     install -d /out/etc /out/lib/x86_64-linux-gnu \
-               /out/usr/lib/postgresql/17/bin /out/usr/lib/postgresql/17/lib \
+               /out/usr/lib/postgresql/18/bin /out/usr/lib/postgresql/18/lib \
                /out/usr/share/postgresql \
                /out/var/lib/postgresql /out/var/run/postgresql; \
     # Binary subset (no Debian wrappers; they need perl + multi-cluster
     # config we deliberately don't ship).
     for b in postgres initdb pg_ctl pg_isready psql pg_dump \
              pg_restore pg_config pg_dumpall; do \
-      cp "${PG}/bin/${b}" "/out/usr/lib/postgresql/17/bin/${b}"; \
+      cp "${PG}/bin/${b}" "/out/usr/lib/postgresql/18/bin/${b}"; \
     done; \
-    cp -r "${PG}/lib" "/out/usr/lib/postgresql/17/"; \
-    cp -r /usr/share/postgresql/17 /out/usr/share/postgresql/17; \
+    cp -r "${PG}/lib" "/out/usr/lib/postgresql/18/"; \
+    cp -r /usr/share/postgresql/18 /out/usr/share/postgresql/18; \
     # Postgres-specific libs on top of baseline (baseline supplies
     # libc/m/dl/pthread/crypt/gcc_s/ssl/crypto/z/zstd/nss_* — NOT libutil).
     for lib in libutil.so.1 liblz4.so.1 libxml2.so.2 libpam.so.0 \
@@ -77,6 +86,7 @@ RUN set -eux; \
                libicui18n.so.76 libicuuc.so.76 libicudata.so.76 \
                libsystemd.so.0 libaudit.so.1 libcap.so.2 libcap-ng.so.0 \
                libstdc++.so.6 libreadline.so.8 libtinfo.so.6 \
+               libnuma.so.1 liburing.so.2 \
                libpq.so.5; do \
       cp "/lib/x86_64-linux-gnu/${lib}" "/out/lib/x86_64-linux-gnu/${lib}"; \
     done; \
@@ -98,7 +108,7 @@ ARG BUILD_TIMESTAMP=unknown
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Minimal, continuously patched PostgreSQL 17 base image (FROM scratch runtime, derives from scratch-base-trixie, no LLVM JIT)"
+LABEL org.opencontainers.image.description="Minimal, continuously patched PostgreSQL 18 base image (FROM scratch runtime, derives from scratch-base-trixie, no LLVM JIT)"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 
@@ -114,7 +124,7 @@ COPY --from=builder /sbom.json /sbom.json
 # re-declare here so postgres can do outbound TLS (e.g. postgres_fdw
 # connecting to a TLS-encrypted remote instance, extensions issuing HTTPS
 # calls). See docs/baseline-contract.md § "TLS trust".
-ENV PATH=/usr/lib/postgresql/17/bin \
+ENV PATH=/usr/lib/postgresql/18/bin \
     PGDATA=/var/lib/postgresql/data \
     LANG=C.UTF-8 \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \

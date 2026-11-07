@@ -1,0 +1,7 @@
+# FG-026: Debian-based PostgreSQL 18, scanned + signed. Preserves the
+# upstream postgres entrypoint (secrets-from-FILE, init.d SQL, custom
+# config mounts, shell-script maintenance hooks). Companion to the
+# minimalist postgres-scratch-trixie:18. Consumer-facing.
+tag: "18"
+platforms:
+  - linux/amd64

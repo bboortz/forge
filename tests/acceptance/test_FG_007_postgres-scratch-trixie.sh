@@ -18,7 +18,7 @@ say() { printf '\n\033[1;36m[FG-007]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
 IMAGE_DIR="postgres-scratch-trixie"
-IMAGE="forge-local/${IMAGE_DIR}:17"
+IMAGE="forge-local/${IMAGE_DIR}:18"
 
 # -----------------------------------------------------------------------------
 # Section 1 — image dir in place
@@ -77,8 +77,8 @@ if [[ "${PUBLISHED:-0}" == "1" ]]; then
   cosign verify \
     --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-    "ghcr.io/bboortz/${IMAGE_DIR}:17" >/dev/null
-  pass "cosign verify exits 0 for the published postgres-scratch-trixie:17"
+    "ghcr.io/bboortz/${IMAGE_DIR}:18" >/dev/null
+  pass "cosign verify exits 0 for the published postgres-scratch-trixie:18"
 else
   say "5. published-digest checks skipped (set PUBLISHED=1 to run)"
 fi

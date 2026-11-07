@@ -1,16 +1,16 @@
 # Authoritative contract for postgres-scratch-trixie.
 #
-# Scratch runtime: PostgreSQL 17 FROM scratch. postgres uid pinned to 999
+# Scratch runtime: PostgreSQL 18 FROM scratch. postgres uid pinned to 999
 # (Docker Hub convention) for data-dir compatibility. Init requires a
 # shelled sidecar (initdb uses system() internally) — see FG-007 pattern.
 
 spec_version: 1
 image: postgres-scratch-trixie
-version: "0.1"
+version: "0.2"
 
 promises:
   - id: runtime.postgres-binary
-    description: /usr/lib/postgresql/17/bin/postgres present, executes, `postgres --version` prints a version string.
+    description: /usr/lib/postgresql/18/bin/postgres present, executes, `postgres --version` prints a version string.
     caps: [build.two-stage-scratch]
     tests:
       - images/postgres-scratch-trixie/tests/smoke_binary_runs.sh
@@ -22,7 +22,7 @@ promises:
       - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
 
   - id: identity.postgres-uid
-    description: postgres user at uid 999 / gid 999 (Docker Hub convention). Data dirs initialized by Docker Hub's postgres:17 or Forge postgres-scratch-trixie are mutually readable.
+    description: postgres user at uid 999 / gid 999 (Docker Hub convention). Data dirs initialized by Docker Hub's postgres:18 or Forge postgres-scratch-trixie are mutually readable.
     caps: [image.postgres-serves-sql]
     tests:
       - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
