@@ -22,33 +22,26 @@
 #   COPY --from=scratch_base / /
 #   COPY --from=builder /out /
 
-ARG DEBIAN_BASE=python:3.13-slim-trixie
+# FG-025: builder base pre-loads apt-upgrade + ca-certificates + syft. The
+# ARG default lets a cold local dev build fall back to python:3.13-slim-trixie
+# directly; CI + scripts/build-image.sh override FORGE_BUILDER_REF to the
+# forge-local (or ghcr.io/bboortz) tag of forge-builder-trixie.
+ARG FORGE_BUILDER_REF=forge-local/forge-builder-trixie:0.1
 
 # --- Stage 1: builder ---------------------------------------------------------
-FROM ${DEBIAN_BASE} AS builder
+FROM ${FORGE_BUILDER_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
+# Re-populate apt lists for this stage (forge-builder-trixie cleared them per
+# its PROMISES.yaml). apt-upgrade was already done in forge-builder-trixie —
+# we don't repeat it here. Only sid pins get applied.
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# hadolint ignore=DL3005,DL3008
+# FG-020: embedded SBOM from builder-stage dpkg. syft is already installed
+# in forge-builder-trixie (FG-025).
 RUN set -eux; \
-    apt-get update; \
-    apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install ca-certificates curl; \
-    rm -rf /var/lib/apt/lists/*
-
-# FG-020: SBOM from builder-stage dpkg. Each scratch derivative gets its
-# own /sbom.json (from its own builder), but scratch-base-trixie itself
-# also carries one so direct consumers of the baseline see Debian version
-# detail. scan-regression reads /sbom.json via `grype sbom:`.
-ARG SYFT_VERSION=v1.57.0
-# hadolint ignore=DL4006
-RUN set -eux; \
-    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
-      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
-    apt-get -y --purge --auto-remove remove curl; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Assemble the baseline tree — the common standard every Forge scratch

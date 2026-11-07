@@ -15,6 +15,21 @@ set -euo pipefail
 
 MODE="${1:-all}"
 
+# FG-025: forge-builder-trixie is a pre-base image — every scratch
+# derivative's builder stage FROMs it. It must publish BEFORE anything
+# that depends on it (scratch-base-trixie's Dockerfile FROMs it in its
+# own builder stage, even though image.yaml does not list it as a
+# scratch-source dependency). Centralizing the special-case here keeps
+# build.yml table-driven.
+_FORGE_BUILDERS=(forge-builder-trixie)
+_is_builder() {
+  local name="$1"
+  for b in "${_FORGE_BUILDERS[@]}"; do
+    [[ "${name}" == "${b}" ]] && return 0
+  done
+  return 1
+}
+
 ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/_image_yaml.sh
 . "${ROOT}/scripts/_image_yaml.sh"
@@ -33,10 +48,11 @@ while IFS= read -r -d '' dir; do
   done < <(image_yaml_depends "${dir}/image.yaml")
 
   case "${MODE}" in
-    base)        [[ ${dep_count} -eq 0 ]] || continue ;;
+    builders)    _is_builder "${name}" || continue ;;
+    base)        { [[ ${dep_count} -eq 0 ]] && ! _is_builder "${name}"; } || continue ;;
     derivatives) [[ ${dep_count} -gt 0 ]] || continue ;;
     all)         ;;
-    *) echo "unknown mode: ${MODE} (base|derivatives|all)" >&2; exit 2 ;;
+    *) echo "unknown mode: ${MODE} (builders|base|derivatives|all)" >&2; exit 2 ;;
   esac
 
   entries+=("$(printf '{"image_dir":"%s","repo":"%s","tag":"%s"}' "${name}" "${repo}" "${tag}")")

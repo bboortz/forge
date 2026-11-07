@@ -44,6 +44,22 @@ while IFS= read -r dep; do
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" "${dep}"
 done < <(image_yaml_depends "${SRC}/image.yaml")
 
+# FG-025: forge-builder-trixie is a builder-stage dependency, not a scratch_base
+# COPY-from dependency. It's not listed in image.yaml depends_on (to preserve
+# the current CI publish ordering model), but it must exist locally before any
+# scratch-image build. Build it on demand if any scratch image is being built.
+_FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-trixie"
+case "${IMAGE_DIR}" in
+  forge-builder-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout)
+    _needs_forge_builder=0 ;;
+  *)
+    _needs_forge_builder=1 ;;
+esac
+if [[ "${_needs_forge_builder}" == "1" && -d "${_FORGE_BUILDER_DIR}" ]]; then
+  echo "→ builder-stage dependency: forge-builder-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-trixie
+fi
+
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
 TAG=$(image_yaml_get   "${SRC}/image.yaml" tag)
 [[ -n "${TAG}" ]] || { echo "${SRC}/image.yaml missing required 'tag:' field" >&2; exit 1; }
@@ -79,6 +95,20 @@ else
   _BASELINE_TAG="latest"
 fi
 SCRATCH_BASE_REF="${REGISTRY}/scratch-base-trixie:${_BASELINE_TAG}"
+
+# FG-025: resolve FORGE_BUILDER_REF the same way — prefer the local tag if
+# present (we just built it above), else fall back to GHCR.
+_BUILDER_YAML="${ROOT}/images/forge-builder-trixie/image.yaml"
+if [[ -f "${_BUILDER_YAML}" ]]; then
+  _BUILDER_TAG=$(image_yaml_get "${_BUILDER_YAML}" tag)
+else
+  _BUILDER_TAG="latest"
+fi
+FORGE_BUILDER_REF="${REGISTRY}/forge-builder-trixie:${_BUILDER_TAG}"
+if ! docker image inspect "${FORGE_BUILDER_REF}" >/dev/null 2>&1; then
+  FORGE_BUILDER_REF="ghcr.io/bboortz/forge-builder-trixie:${_BUILDER_TAG}"
+fi
+
 PULL_FLAG="--pull"
 if docker image inspect "${SCRATCH_BASE_REF}" >/dev/null 2>&1; then
   # Local baseline present; don't --pull or the legacy builder tries to
@@ -196,6 +226,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg GIT_SHA="${RESOLVED_SHA}" \
   --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
+  --build-arg FORGE_BUILDER_REF="${FORGE_BUILDER_REF}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \
   --file "${BUILD_DOCKERFILE}" \

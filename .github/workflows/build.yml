@@ -12,26 +12,118 @@ permissions:
 
 jobs:
 
-  # Discovery emits two matrices: base images (no depends_on) and
-  # derivatives (with depends_on). Baselines publish before derivatives
-  # so a derivative's `FROM ghcr.io/.../scratch-base-trixie:latest`
-  # resolves on a cold runner.
+  # FG-025: three-tier publish. Builders (forge-builder-trixie) publish
+  # first so scratch-base-trixie's builder stage can FROM it. Then bases
+  # (scratch-base-trixie, slim variants, externally-sourced leaf images)
+  # publish in parallel. Finally derivatives (scratch image variants,
+  # beaconry hub/scout) publish against those bases.
   discover:
     name: Discover image dirs
     runs-on: ubuntu-latest
     outputs:
+      builders: ${{ steps.disc.outputs.builders }}
       base: ${{ steps.disc.outputs.base }}
       derivatives: ${{ steps.disc.outputs.derivatives }}
     steps:
       - uses: actions/checkout@v4
       - id: disc
         run: |
+          echo "builders=$(bash scripts/discover-images.sh builders | jq -c .)" >> "$GITHUB_OUTPUT"
           echo "base=$(bash scripts/discover-images.sh base | jq -c .)" >> "$GITHUB_OUTPUT"
           echo "derivatives=$(bash scripts/discover-images.sh derivatives | jq -c .)" >> "$GITHUB_OUTPUT"
 
-  publish-base:
+  publish-builders:
     name: Publish ${{ matrix.image_dir }}
     needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.builders) }}
+    env:
+      REGISTRY: ghcr.io/bboortz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Current UTC day (for grype DB cache key)
+        id: dt
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - name: Cache grype DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/grype
+          key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
+          restore-keys: |
+            grype-db-${{ runner.os }}-
+      - name: Install syft + grype + cosign (v2.4.3 pinned — review by 2026-11-17)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b "$HOME/.local/bin"
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b "$HOME/.local/bin"
+          curl -sSfL -o "$HOME/.local/bin/cosign" https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
+          chmod +x "$HOME/.local/bin/cosign"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        env:
+          IMAGE_DIR: ${{ matrix.image_dir }}
+          FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
+          FORGE_CACHE_PUSH: '1'
+        run: REGISTRY="$REGISTRY" bash scripts/build-image.sh "$IMAGE_DIR"
+      - name: Scan + SBOM
+        env:
+          IMAGE_DIR: ${{ matrix.image_dir }}
+        run: make scan IMAGE_DIR="$IMAGE_DIR" REGISTRY="$REGISTRY"
+      - name: Push image (4 tags per variant — FG-004)
+        id: push
+        env:
+          REPO: ${{ matrix.repo }}
+          TAG: ${{ matrix.tag }}
+          ARCH: amd64
+        run: |
+          IMAGE_REF="${REGISTRY}/${REPO}:${TAG}"
+          docker push "${IMAGE_REF}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_REF}" | sed 's/.*@//')
+          for extra in "${TAG}-${ARCH}" "latest" "latest-${ARCH}"; do
+            docker tag  "${IMAGE_REF}" "${REGISTRY}/${REPO}:${extra}"
+            docker push "${REGISTRY}/${REPO}:${extra}"
+          done
+          echo "image_digest=${REGISTRY}/${REPO}@${DIGEST}" >> "$GITHUB_OUTPUT"
+      - name: cosign sign (keyless)
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+        run: cosign sign --yes "$IMAGE_DIGEST"
+      - name: cosign attest — CycloneDX SBOM
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+          SBOM: build/${{ matrix.repo }}-${{ matrix.tag }}.sbom.json
+        run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
+      - name: cosign attest — grype vuln scan
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+          GRYPE: build/${{ matrix.repo }}-${{ matrix.tag }}.grype.json
+        run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
+      - name: Publish-time verify
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+        run: |
+          cosign verify \
+            --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$IMAGE_DIGEST"
+      - name: Upload scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-${{ matrix.repo }}-${{ matrix.tag }}
+          path: build/
+          retention-days: 30
+
+  publish-base:
+    name: Publish ${{ matrix.image_dir }}
+    needs: [discover, publish-builders]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

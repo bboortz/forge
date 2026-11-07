@@ -1,0 +1,39 @@
+# FG-010 contract for forge-builder-trixie (FG-025).
+#
+# Not a runtime image — this is a builder-stage base. Every Forge scratch
+# image's `FROM ${FORGE_BUILDER_REF} AS builder` relies on these guarantees.
+
+spec_version: 1
+image: forge-builder-trixie
+version: "0.1"
+
+promises:
+  - id: files.syft-binary
+    description: /usr/local/bin/syft exists and runs (`syft version` exits 0). Downstream scratch builder stages invoke `syft dir:/ ...` without reinstalling.
+    caps: [build.shared-builder]
+    tests:
+      - images/forge-builder-trixie/tests/smoke_has_syft.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt is present (Debian ca-certificates). Downstream curl/TLS work without re-apt-installing.
+    caps: [build.shared-builder]
+    tests:
+      - images/forge-builder-trixie/tests/smoke_ca_bundle.sh
+
+  - id: apt.freshly-upgraded
+    description: Image was built with `apt-get update && apt-get -y --no-install-recommends upgrade` applied. Any trixie / trixie-security package update released before the image's BUILD_TIMESTAMP is included. Downstream scratch builders can skip the apt-upgrade step.
+    caps: [build.shared-builder]
+    tests:
+      - images/forge-builder-trixie/tests/smoke_builder_hygiene.sh
+
+  - id: apt.no-cache
+    description: /var/lib/apt/lists/ carries no Packages/Release/InRelease files. Downstream builders that `apt-get install` MUST re-run `apt-get update` first.
+    caps: [build.shared-builder]
+    tests:
+      - images/forge-builder-trixie/tests/smoke_ca_bundle.sh
+
+  - id: apt.no-curl
+    description: curl was removed after syft install. Downstream builders that need curl MUST re-install it.
+    caps: [build.shared-builder]
+    tests:
+      - images/forge-builder-trixie/tests/smoke_builder_hygiene.sh
