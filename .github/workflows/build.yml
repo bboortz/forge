@@ -28,9 +28,11 @@ jobs:
       - uses: actions/checkout@v4
       - id: disc
         run: |
-          echo "builders=$(bash scripts/discover-images.sh builders | jq -c .)" >> "$GITHUB_OUTPUT"
-          echo "base=$(bash scripts/discover-images.sh base | jq -c .)" >> "$GITHUB_OUTPUT"
-          echo "derivatives=$(bash scripts/discover-images.sh derivatives | jq -c .)" >> "$GITHUB_OUTPUT"
+          {
+            echo "builders=$(bash scripts/discover-images.sh builders | jq -c .)"
+            echo "base=$(bash scripts/discover-images.sh base | jq -c .)"
+            echo "derivatives=$(bash scripts/discover-images.sh derivatives | jq -c .)"
+          } >> "$GITHUB_OUTPUT"
 
   publish-builders:
     name: Publish ${{ matrix.image_dir }}
