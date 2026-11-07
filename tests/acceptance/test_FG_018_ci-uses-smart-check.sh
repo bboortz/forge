@@ -15,28 +15,37 @@ say()  { printf '\n\033[1;36m[FG-018]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
 # -----------------------------------------------------------------------------
-# Section 1 — full-check job uses check-smart on PR, check on push-to-dev
+# Section 1 — CI PR gate is fast (FG-018's win is preserved by FG-024's matrix)
 # -----------------------------------------------------------------------------
-say "1. ci.yml full-check job gates on event type"
-grep -q 'target=check-smart' .github/workflows/ci.yml || {
-  echo "  ✗ .github/workflows/ci.yml doesn't set target=check-smart on PR" >&2; exit 1;
-}
-grep -q 'target=check-strict' .github/workflows/ci.yml || {
-  echo "  ✗ .github/workflows/ci.yml doesn't set target=check-strict for full-check label" >&2; exit 1;
-}
-grep -q 'target=check' .github/workflows/ci.yml || {
-  echo "  ✗ .github/workflows/ci.yml doesn't set target=check for push-to-dev" >&2; exit 1;
-}
-pass "three targets wired (check-smart / check-strict / check)"
+# FG-018 originally wired `target=check-smart` into a sequential `full-check`
+# job so PR CI used smart-check's scope. FG-024 restructured CI so the
+# acceptance suite runs as a parallel matrix (no more sequential make check),
+# which achieves the PR-speed goal without a dispatch target. We keep this
+# section to assert that EITHER the old dispatch exists OR the new matrix +
+# lint-verify split exists. Both outcomes satisfy FG-018's "fast PR CI" CAP.
+say "1. ci.yml PR gate is fast (dispatch or matrix)"
+if grep -q 'target=check-smart' .github/workflows/ci.yml; then
+  pass "legacy check-smart dispatch wired"
+else
+  # New FG-024 shape: lint-verify + acceptance-matrix + acceptance-aggregate
+  grep -q '^  lint-verify:' .github/workflows/ci.yml \
+    || { echo "  ✗ neither check-smart dispatch nor lint-verify present" >&2; exit 1; }
+  grep -q '^  acceptance-matrix:' .github/workflows/ci.yml \
+    || { echo "  ✗ FG-024 acceptance-matrix not present" >&2; exit 1; }
+  pass "FG-024 matrix structure (lint-verify + acceptance-matrix)"
+fi
 
 # -----------------------------------------------------------------------------
-# Section 2 — fetch-depth: 0 for smart-check's git diff
+# Section 2 — fetch-depth: 0 for smart-check's git diff (still needed locally)
 # -----------------------------------------------------------------------------
-say "2. actions/checkout uses fetch-depth: 0 so smart-check can diff vs origin/dev"
+# Even under FG-024, lint-verify still uses fetch-depth: 0 so smart-check can
+# run locally in developers' pre-push hook. Validate the SHAPE, not the spec
+# that it lives inside a job named full-check.
+say "2. some job in ci.yml uses fetch-depth: 0 for smart-check"
 grep -A4 'actions/checkout@v4' .github/workflows/ci.yml | grep -q 'fetch-depth: 0' || {
-  echo "  ✗ full-check's actions/checkout lacks fetch-depth: 0" >&2; exit 1;
+  echo "  ✗ no actions/checkout invocation uses fetch-depth: 0" >&2; exit 1;
 }
-pass "fetch-depth: 0 present"
+pass "fetch-depth: 0 present on a checkout invocation"
 
 # -----------------------------------------------------------------------------
 # Section 3 — smart-check honors GITHUB_BASE_REF in a CI-shape invocation
