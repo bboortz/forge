@@ -336,6 +336,13 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 - **Delivered by**: FG-021 (buildx cache) + FG-022 (grype DB cache) + FG-023 (stamp-skip)
 - **Covered by**: `tests/acceptance/test_FG_021_ci-buildx-cache.sh` + `tests/acceptance/test_FG_023_smart-rebuild-skip.sh`
 
+### tooling.ci-parallel-tests
+
+The acceptance test suite runs as a GitHub Actions matrix (one job per `tests/acceptance/test_FG_*.sh`) instead of a sequential `make test-acceptance` call. `scripts/discover-tests.sh` emits the matrix JSON from `tests/acceptance/`; CI's `acceptance-matrix` job consumes it via `strategy.matrix.include`. `acceptance-aggregate` is a single pass/fail gate for branch protection. Each matrix job still consumes `tooling.ci-build-cache` (buildx + grype DB cache per-job). Local `make check` + `make check-smart` keep running tests sequentially (FG-023 made that fast enough).
+
+- **Delivered by**: FG-024
+- **Covered by**: `tests/acceptance/test_FG_024_parallel-acceptance.sh`
+
 ### build.stamp-skip
 
 `scripts/build-image.sh` consults a per-image stamp at `.make/stamps/<image>.stamp` before invoking `docker build`. The stamp is a SHA-256 over (tree hash of `images/<dir>/`, resolved upstream FROM digest via `docker buildx imagetools inspect`, baseline image ID for scratch derivatives, resolved external SHA for FG-012 images). If the stamp matches the current inputs AND `docker image inspect <tag>` succeeds, `docker build` is skipped and the existing daemon image is reused — scan + smoke + verify still run against it. `FORGE_NO_SKIP=1` forces a build. `make check-strict` wipes `.make/stamps/` via `clean-stamps`. Daily `build.yml` cron is unaffected (does not route through check-smart). Upstream-change detection is handled by re-resolving the FROM digest on each stamp check — a mutable tag like `python:3.13-slim-trixie` that gets a new digest invalidates the stamp.

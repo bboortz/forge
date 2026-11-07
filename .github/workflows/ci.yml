@@ -1,8 +1,11 @@
 ---
-# Stratified CI, inherited from beaconry's ci.yml shape:
-#   feat/fix/docs/chore/refactor push → fast tier    (lint + verify-* only)
-#   dev push + PRs to dev             → full tier    (make check: fast + acceptance)
+# Stratified CI:
+#   feat/fix/docs/chore/refactor push → fast-check   (lint only)
+#   dev push + PRs to dev             → lint-verify + acceptance-matrix + acceptance-aggregate
 #   main push                         → release-check (minimal in V1)
+#
+# FG-024: acceptance tests fan out as a GHA matrix (one job per test file).
+# Wall-clock bound = slowest single test. Local `make check` is unchanged.
 
 name: CI
 
@@ -49,25 +52,64 @@ jobs:
       - name: make test-fast
         run: make test-fast
 
-  full-check:
-    name: Full check (make check)
+  # FG-024: lint + verify-* on PR/dev (no acceptance here — that's the matrix).
+  lint-verify:
+    name: Lint & verify (PR + push-to-dev)
     runs-on: ubuntu-latest
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
       (github.event_name == 'pull_request' && github.base_ref == 'dev')
-    # FG-021: push-to-dev writes buildx cache to ghcr.io/bboortz/<image>:buildcache,
-    # which requires packages:write. PR runs don't write (FORGE_CACHE_PUSH=0) so
-    # fork PRs don't need the token — the job-level grant only fires on push.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install lint tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck yamllint jq python3-yaml
+          curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          chmod +x /tmp/hadolint && sudo mv /tmp/hadolint /usr/local/bin/hadolint
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: make test-fast
+        run: make test-fast
+
+  # FG-024: emit the acceptance-test matrix. One include entry per test_FG_*.sh.
+  discover:
+    name: Discover acceptance tests
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'dev')
+    outputs:
+      matrix: ${{ steps.disc.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: disc
+        run: |
+          echo "matrix=$(bash scripts/discover-tests.sh)" >> "$GITHUB_OUTPUT"
+
+  # FG-024: run EACH acceptance test in its own GHA job.
+  acceptance-matrix:
+    name: ${{ matrix.fg_id }}
+    runs-on: ubuntu-latest
+    needs: discover
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'dev')
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
         with:
-          # FG-018: smart-check needs full history to resolve `git diff origin/dev..HEAD`.
           fetch-depth: 0
 
-      # FG-021: enable buildx + GHCR auth for registry-backed layer cache.
       - uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR for cache pull/push
@@ -77,13 +119,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true   # fork PRs can't auth; fall back to cold build
+        continue-on-error: true
 
       - name: Current UTC day (for grype DB cache key)
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
-      # FG-022: cache grype's CVE DB across CI runs. ~20 MB; daily rotation.
       - name: Cache grype DB
         uses: actions/cache@v4
         with:
@@ -92,56 +133,50 @@ jobs:
           restore-keys: |
             grype-db-${{ runner.os }}-
 
-      - name: Install lint + supply-chain tools
+      - name: Install supply-chain tools
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq python3-yaml
-          curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-          chmod +x /tmp/hadolint && sudo mv /tmp/hadolint /usr/local/bin/hadolint
-          go install github.com/rhysd/actionlint/cmd/actionlint@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b "$HOME/.local/bin"
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b "$HOME/.local/bin"
           curl -sSfL -o "$HOME/.local/bin/cosign" https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      # FG-018: on PR we scope via smart-check (fast); on push-to-dev we still
-      # run the full `make check` (dev is the stable baseline). A `full-check`
-      # PR label forces check-strict for cross-cutting PRs that want extra
-      # confidence beyond smart-check's dispatch.
-      - name: Determine gate target
-        id: gate
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            labels='${{ toJSON(github.event.pull_request.labels.*.name) }}'
-            if echo "$labels" | grep -q '"full-check"'; then
-              echo "target=check-strict" >> "$GITHUB_OUTPUT"
-              echo "→ PR has 'full-check' label — using check-strict"
-            else
-              echo "target=check-smart" >> "$GITHUB_OUTPUT"
-              echo "→ PR CI — using check-smart (FG-018)"
-            fi
-          else
-            echo "target=check" >> "$GITHUB_OUTPUT"
-            echo "→ push-to-dev — using full check"
-          fi
-
-      - name: make ${{ steps.gate.outputs.target }}
+      - name: Run ${{ matrix.fg_id }}
         env:
-          # FG-021: per-image buildx cache resolution happens in build-image.sh
-          # from this prefix. PR events: pull cache only (no write perm on forks).
+          _FORGE_IN_CHECK: '1'   # dedup sentinel used by tests that call test-images.sh
           FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
           FORGE_CACHE_PUSH: ${{ github.event_name == 'push' && '1' || '0' }}
-        run: make ${{ steps.gate.outputs.target }}
+        run: bash "${{ matrix.test }}"
 
       - name: Upload scan artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: scan-artifacts
+          name: scan-${{ matrix.fg_id }}
           path: build/
-          retention-days: 14
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # FG-024: single green/red gate that aggregates the matrix for branch protection.
+  acceptance-aggregate:
+    name: Acceptance aggregate (all green)
+    runs-on: ubuntu-latest
+    needs: acceptance-matrix
+    if: >
+      always() &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+       (github.event_name == 'pull_request' && github.base_ref == 'dev'))
+    steps:
+      - name: Assert every matrix job passed
+        run: |
+          result="${{ needs.acceptance-matrix.result }}"
+          echo "acceptance-matrix result: ${result}"
+          if [[ "${result}" != "success" ]]; then
+            echo "::error::one or more acceptance tests failed"
+            exit 1
+          fi
 
   release-check:
     name: Release check
