@@ -1,7 +1,7 @@
 # FG-027 — Plan: redis-scratch-trixie
 
 **Story**: [`docs/stories/FG-027-redis-scratch-trixie.md`](../stories/FG-027-redis-scratch-trixie.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-027-redis-scratch-trixie`
 
 ## Design delta
