@@ -55,6 +55,12 @@ jobs:
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
       (github.event_name == 'pull_request' && github.base_ref == 'dev')
+    # FG-021: push-to-dev writes buildx cache to ghcr.io/bboortz/<image>:buildcache,
+    # which requires packages:write. PR runs don't write (FORGE_CACHE_PUSH=0) so
+    # fork PRs don't need the token — the job-level grant only fires on push.
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
