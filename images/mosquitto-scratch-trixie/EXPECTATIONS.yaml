@@ -1,0 +1,49 @@
+# What mosquitto-scratch-trixie requires from its dependencies.
+
+spec_version: 1
+image: mosquitto-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: mosquitto binary interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: mosquitto links against libc / libm / libpthread (via libgcc_s).
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.tls-stack
+        reason: mosquitto's TLS listener (port 8883 / websocket-over-tls) and bridge connections link against libssl.so.3 + libcrypto.so.3. /etc/ssl/certs/ca-certificates.crt is the Debian trust root.
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_binary_runs.sh
+          - images/mosquitto-scratch-trixie/tests/smoke_contents.sh
+
+      - promise: files.compression
+        reason: libz.so.1 + libzstd.so.1 — mosquitto uses zlib for MQTT 5 payload compression; zstd is linked for broker-to-broker bridging payloads.
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.network-data
+        reason: /etc/hosts for localhost resolution; mosquitto_pub / mosquitto_sub honor /etc/services when client specifies a service name instead of a port number.
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: files.time
+        reason: mosquitto timestamps log entries + retained-message TTLs via /etc/localtime. Without the symlink times would report UTC which is correct but matters for log analysis expectations.
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: writable-dirs.tmp
+        reason: mosquitto uses /tmp for the default Unix socket (if config enables listeners on unix paths) + for persistence file staging during background saves.
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract. mosquitto runs natively without a shell — entrypoint is the server binary, healthchecks are mosquitto_sub binary calls. Enables `scan.zero-os-cves` by construction.
+        preflight:
+          - images/mosquitto-scratch-trixie/tests/smoke_no_shell.sh

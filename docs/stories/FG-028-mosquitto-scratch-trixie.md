@@ -1,7 +1,7 @@
 ---
 id: FG-028
 slug: mosquitto-scratch-trixie
-status: draft
+status: in-progress
 owner: bboortz
 created: 2026-11-07
 ---

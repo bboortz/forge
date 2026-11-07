@@ -158,6 +158,13 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 - **Delivered by**: FG-007 (bumped to postgres 18 in FG-026)
 - **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
 
+### image.mosquitto-serves-mqtt
+
+`mosquitto-scratch-trixie:2` starts on `/usr/sbin/mosquitto` (ENTRYPOINT direct, no shell), accepts PUBLISH / SUBSCRIBE via a sidecar container sharing its network namespace, and honors password-file authentication (`allow_anonymous false`). Mosquitto user pinned to uid 1883 (Eclipse convention) — persistent data dirs from existing `eclipse-mosquitto:2` deployments remain mutually readable. Default-permissive config baked at `/mosquitto/config/mosquitto.conf` so config-less `docker run` works for dev; production consumers mount their own at the same path. SIGHUP reloads the config without restarting the broker. Image ≤ 30 MB. Zero OS CVEs.
+
+- **Delivered by**: FG-028
+- **Covered by**: `tests/acceptance/test_FG_028_mosquitto-scratch-trixie.sh`, `images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh`, `images/mosquitto-scratch-trixie/tests/smoke_password_auth.sh`
+
 ### image.redis-serves-cache
 
 `redis-scratch-trixie:8` starts on `redis-server` (ENTRYPOINT direct, no shell entrypoint script), accepts PING / SET / GET end-to-end via a sidecar container sharing its network namespace (standard pattern for protected-mode). Redis user pinned to uid 999 (Docker Hub convention). Image ≤ 50 MB. Zero OS CVEs (no dpkg database in the runtime). Enables homelab/nextcloud cache deployment with a 1-line adoption diff.

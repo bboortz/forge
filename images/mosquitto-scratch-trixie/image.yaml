@@ -1,0 +1,8 @@
+# FG-028: Debian-native mosquitto 2.0.x in a scratch runtime.
+# Uid 1883 pinned (Eclipse convention) — preserves data-dir compat with
+# existing eclipse-mosquitto deployments. No shell, no apt, no dpkg.
+tag: "2"
+platforms:
+  - linux/amd64
+depends_on:
+  - scratch-base-trixie
