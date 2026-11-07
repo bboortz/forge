@@ -1,0 +1,49 @@
+# What redis-scratch-trixie requires from its dependencies.
+
+spec_version: 1
+image: redis-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: redis-server interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: redis links against libc / libm / libpthread (via libgcc_s). libutil not needed (no pty).
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.tls-stack
+        reason: redis builds with --tls — redis-server's `tls-*` config options + redis-cli --tls both resolve libssl.so.3 + libcrypto.so.3. /etc/ssl/certs/ca-certificates.crt is the Debian trust root for client TLS verification.
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_binary_runs.sh
+          - images/redis-scratch-trixie/tests/smoke_contents.sh
+
+      - promise: files.compression
+        reason: libz.so.1 + libzstd.so.1 — redis uses zlib for RDB header compression; zstd is the compression backend for cluster-level replication payloads.
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.network-data
+        reason: /etc/hosts for localhost resolution (replication / sentinel / cluster discovery when running outside the first hostname). /etc/services isn't required but harmless.
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: files.time
+        reason: redis timestamps log entries in local TZ via /etc/localtime; without it log output reports UTC which is still correct, but matters for deployments where config sets `timezone-aware` behavior.
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: writable-dirs.tmp
+        reason: redis uses /tmp for the default Unix socket path when unixsocket is configured + for temporary RDB snapshot staging during background save.
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_server_accepts.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract. redis doesn't need a shell for entrypoint or healthchecks (redis-server is a direct exec; redis-cli ping is a direct binary call). Enables `scan.zero-os-cves` by construction.
+        preflight:
+          - images/redis-scratch-trixie/tests/smoke_no_shell.sh

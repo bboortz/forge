@@ -1,0 +1,9 @@
+# Image metadata consumed by scripts/{build,test,discover}-image(s).sh.
+# Scratch runtime: redis 8 + minimal glibc/openssl/crypto closure.
+# No shell, no apt, no dpkg database. Entrypoint = redis-server binary.
+# Debian trixie ships redis 8.0.x; our tag mirrors the upstream major.
+tag: "8"
+platforms:
+  - linux/amd64
+depends_on:
+  - scratch-base-trixie

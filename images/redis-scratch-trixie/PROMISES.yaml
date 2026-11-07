@@ -1,0 +1,60 @@
+# Authoritative contract for redis-scratch-trixie (FG-027).
+#
+# Scratch runtime: Redis 8 FROM scratch. Redis uid pinned to 999 (Docker
+# Hub convention). No shell → no docker-entrypoint.sh, no init scripts.
+# Entrypoint is redis-server directly; CMD is empty (defaults load).
+# Healthcheck via `redis-cli ping` works without a shell.
+
+spec_version: 1
+image: redis-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.redis-server-binary
+    description: /usr/bin/redis-server present + executable; `redis-server --version` prints "Redis server v=8.x.y".
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.redis-cli-binary
+    description: /usr/bin/redis-cli present + executable. Healthchecks (`redis-cli ping`) work without any shell in the image.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_binary_runs.sh
+      - images/redis-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: runtime.server-accepts-clients
+    description: redis-server binds :6379 and answers PING / SET / GET. Demonstrates end-to-end usability for homelab-style cache deployments.
+    caps: [image.redis-serves-cache]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: runtime.user-redis
+    description: Container runs as uid 999 (Docker Hub redis convention). /etc/passwd has `redis:x:999:999` with HOME=/data.
+    caps: [image.redis-serves-cache]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_user_redis.sh
+
+  - id: image.no-shell
+    description: No /bin/sh, /bin/bash, /bin/busybox in the image. Reduces attack surface and satisfies `scan.zero-os-cves` by construction.
+    caps: [image.no-shell]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_no_shell.sh
+
+  - id: files.sbom-embed
+    description: /sbom.json present in the runtime image (FG-020). scan-regression resolves to `grype sbom:<path>` so Debian backports (e.g., `-deb13u*`) are honored.
+    caps: [scan.sbom-embed]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_contents.sh
+
+  - id: files.tls-stack
+    description: /etc/ssl/certs/ca-certificates.crt present (inherited from scratch-base). Redis TLS replication / connections resolve the Debian trust store without further config.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_contents.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ 50 MB absolute ceiling (redis is small — jemalloc + glibc + redis binaries only).
+    caps: [test.size-budget]
+    tests:
+      - images/redis-scratch-trixie/tests/smoke_size.sh
