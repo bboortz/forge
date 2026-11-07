@@ -1,7 +1,7 @@
 # FG-017 — Plan: smart pre-push
 
 **Story**: [`docs/stories/FG-017-smart-pre-push.md`](../stories/FG-017-smart-pre-push.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-017-smart-pre-push`
 
 ## Design delta
