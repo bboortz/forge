@@ -98,8 +98,12 @@ pass "image labels: revision=${revision} (sha) + source=upstream repo"
 # Section 5 — beaconry-scout smoke suite passes
 # -----------------------------------------------------------------------------
 say "5. beaconry-scout smoke suite"
-bash scripts/test-images.sh beaconry-scout | grep -E '0 failure\(s\)' >/dev/null
-pass "all 5 beaconry-scout smokes passed"
+if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then
+  pass "beaconry-scout smokes (skipped — covered by make check's test-images phase, FG-017 B)"
+else
+  bash scripts/test-images.sh beaconry-scout | grep -E '0 failure\(s\)' >/dev/null
+  pass "all 5 beaconry-scout smokes passed"
+fi
 
 # -----------------------------------------------------------------------------
 # Section 6 — Post-publish (opt-in via PUBLISHED=1)

@@ -31,8 +31,12 @@ source=$(docker image inspect "${IMAGE}" --format '{{index .Config.Labels "org.o
 pass "revision=${revision} source=${source}"
 
 say "4. hub smoke suite"
-bash scripts/test-images.sh beaconry-hub | grep -E '0 failure\(s\)' >/dev/null
-pass "all 7 hub smokes passed"
+if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then
+  pass "beaconry-hub smokes (skipped — covered by make check's test-images phase, FG-017 B)"
+else
+  bash scripts/test-images.sh beaconry-hub | grep -E '0 failure\(s\)' >/dev/null
+  pass "all 7 hub smokes passed"
+fi
 
 if [[ "${PUBLISHED:-0}" == "1" ]]; then
   say "5. published digest + cosign verify"

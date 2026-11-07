@@ -30,8 +30,12 @@ source=$(docker image inspect "${IMAGE}" --format '{{index .Config.Labels "org.o
 pass "revision=${revision} source=${source}"
 
 say "4. mock smoke suite"
-bash scripts/test-images.sh beaconry-telegram-mock | grep -E '0 failure\(s\)' >/dev/null
-pass "all 3 mock smokes passed"
+if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then
+  pass "telegram-mock smokes (skipped — covered by make check's test-images phase, FG-017 B)"
+else
+  bash scripts/test-images.sh beaconry-telegram-mock | grep -E '0 failure\(s\)' >/dev/null
+  pass "all 3 mock smokes passed"
+fi
 
 if [[ "${PUBLISHED:-0}" == "1" ]]; then
   say "5. cosign verify published digest"

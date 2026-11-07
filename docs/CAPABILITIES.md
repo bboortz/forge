@@ -285,3 +285,17 @@ Forge's scan + sign + attest + publish pipeline (per-image smokes, grype scan, s
 
 - **Delivered by**: FG-015
 - **Covered by**: `tests/acceptance/test_FG_015_beaconry-telegram-mock.sh`, `images/beaconry-telegram-mock/tests/smoke_http_mock.sh`, `images/beaconry-telegram-mock/tests/smoke_driver_api.sh`
+
+### tooling.smart-check
+
+Scope-aware pre-push gate (`make check-smart-strict`, implemented by `scripts/smart-check.sh` + `scripts/affected_images.py`). Reads `git diff $BASE..HEAD`, derives the affected image set (direct path match + FG-010 EXPECTATIONS fan-out on promise-removal/modification), and runs only that scoped build+smoke+acceptance. Full-run bailouts: `scripts/*`, `Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `images/scratch-base-trixie/*`, or `>4` images affected. Dispatch is observable via `SMART_CHECK_DRY_RUN=1`. Dedup under `make check` via `_FORGE_IN_CHECK=1` env — acceptance tests' internal `scripts/test-images.sh` invocations are skipped since the global `test-images` phase covers them.
+
+- **Delivered by**: FG-017
+- **Covered by**: `tests/acceptance/test_FG_017_smart-pre-push.sh`
+
+### tooling.unscoped-lint
+
+`make lint` resolves every input via `git ls-files` (not working-tree globs) so pre-push lints exactly the file set CI sees after push. Includes an exec-bit check that rejects any git-tracked `*.sh` without `+x` — closes the "shellcheck silently skips non-executable scripts" hole. Pre-push and CI call the same `make test-fast` target; no scoping, no drift (direct response to homelab's "CI fails lint after local passes" class of bug).
+
+- **Delivered by**: FG-017
+- **Covered by**: `tests/acceptance/test_FG_017_smart-pre-push.sh`

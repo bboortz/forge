@@ -60,8 +60,13 @@ pass "baseline-contract.md references every required term"
 say "4. existing derivatives build + smoke green against 0.2 baseline"
 for d in python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
-  bash scripts/test-images.sh "${d}" >/dev/null
-  pass "${d} still passes its own smoke suite on 0.2 baseline"
+  # FG-017 B: skip per-derivative smokes under `make check` (test-images runs globally).
+  if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then
+    pass "${d} builds green on 0.2 baseline (smokes covered globally)"
+  else
+    bash scripts/test-images.sh "${d}" >/dev/null
+    pass "${d} still passes its own smoke suite on 0.2 baseline"
+  fi
 done
 
 # -----------------------------------------------------------------------------

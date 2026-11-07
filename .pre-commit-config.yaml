@@ -54,14 +54,13 @@ repos:
         pass_filenames: false
         files: ^images/.*/(image\.yaml|Dockerfile)$
 
-      # Pre-push: `make check-strict` — wipes forge-local/* images first
-      # so stale image references in tests can't hide behind a workstation-
-      # cached image (lesson from PR #7 CI failure). Then runs the full
-      # fast tier + acceptance + per-image smoke suites. Takes a few minutes
-      # locally. Bypass with --no-verify only in emergencies.
-      - id: make-check-strict-pre-push
-        name: make check-strict (pre-push)
+      # FG-017: scope-aware pre-push. Typical 1-image PR is ~2-3 min (was ~15).
+      # Lint stays full-repo (unscoped) so pre-push can't pass while CI fails
+      # on an untouched file (homelab lesson). Full check-strict runs via
+      # nightly cron on dev as the safety net.
+      - id: make-check-smart-pre-push
+        name: make check-smart-strict (pre-push, FG-017)
         language: system
-        entry: bash -c 'make check-strict'
+        entry: bash -c 'make check-smart-strict'
         pass_filenames: false
         stages: [pre-push]
