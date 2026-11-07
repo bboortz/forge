@@ -1,7 +1,7 @@
 ---
 id: FG-026
 slug: postgres-18
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-07
 ---
