@@ -47,7 +47,11 @@ def main() -> int:
     image_ref = sr.resolve_image_ref(image_dir)
     print(f"→ scan-baseline-update {image_name} ({image_ref})")
 
-    scan = sr.run_grype(image_ref)
+    # FG-020: prefer the embedded SBOM when available (dpkg-aware Debian matcher)
+    sbom_path = sr.extract_sbom(image_ref)
+    if sbom_path is not None:
+        print(f"  using embedded SBOM: {sbom_path}")
+    scan = sr.run_grype(image_ref, sbom_path)
     current = sr.extract_critical_cves(scan)
 
     bpath = image_dir / "scan-baseline.json"

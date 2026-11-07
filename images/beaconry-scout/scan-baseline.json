@@ -3,6 +3,6 @@
   "critical_cves": [
     "GO-2026-6888"
   ],
-  "generated_at": "2026-11-07T12:29:01Z",
+  "generated_at": "2026-11-07T13:12:38Z",
   "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
 }

@@ -36,8 +36,20 @@ COPY sid-pins/ /etc/apt/preferences.d/
 RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install ca-certificates; \
+    apt-get -y --no-install-recommends install ca-certificates curl; \
     rm -rf /var/lib/apt/lists/*
+
+# FG-020: SBOM from builder-stage dpkg. Each scratch derivative gets its
+# own /sbom.json (from its own builder), but scratch-base-trixie itself
+# also carries one so direct consumers of the baseline see Debian version
+# detail. scan-regression reads /sbom.json via `grype sbom:`.
+ARG SYFT_VERSION=v1.57.0
+# hadolint ignore=DL4006
+RUN set -eux; \
+    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
+      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
+    apt-get -y --purge --auto-remove remove curl; \
+    syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Assemble the baseline tree — the common standard every Forge scratch
 # image can rely on. Documented in docs/baseline-contract.md.
@@ -97,5 +109,8 @@ LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 
 COPY --from=builder /out /
+# FG-020: SBOM from builder-stage dpkg. scan-regression reads this via
+# `grype sbom:` so Debian version detail (and backports) are honored.
+COPY --from=builder /sbom.json /sbom.json
 
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt

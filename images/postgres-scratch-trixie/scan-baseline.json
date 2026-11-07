@@ -1,6 +1,8 @@
 {
   "version": 1,
-  "critical_cves": [],
-  "generated_at": "2026-11-07T12:28:20Z",
+  "critical_cves": [
+    "CVE-2026-6653"
+  ],
+  "generated_at": "2026-11-07T13:12:35Z",
   "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
 }
