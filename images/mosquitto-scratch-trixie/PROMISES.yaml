@@ -1,0 +1,74 @@
+# Authoritative contract for mosquitto-scratch-trixie (FG-028).
+#
+# Scratch runtime: mosquitto 2 FROM scratch. Mosquitto uid pinned to
+# 1883 (Eclipse convention) for data-dir compatibility with existing
+# eclipse-mosquitto deployments. No shell → no docker-entrypoint.sh.
+# ENTRYPOINT = /usr/sbin/mosquitto directly; CMD loads the baked default
+# config (consumers mount their own at the same path to override).
+
+spec_version: 1
+image: mosquitto-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.mosquitto-server-binary
+    description: /usr/sbin/mosquitto present + executable; boots with "mosquitto version 2.x.y running" in stdout logs.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.mosquitto-clients
+    description: /usr/bin/mosquitto_sub + /usr/bin/mosquitto_pub + /usr/bin/mosquitto_passwd present + executable. Healthchecks and operator-bootstrap flows work without a shell.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_binary_runs.sh
+      - images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: runtime.server-accepts-clients
+    description: mosquitto-server binds :1883, accepts a PUBLISH, serves a SUBSCRIBE round-trip end-to-end. Demonstrates usability for homelab-style MQTT deployments.
+    caps: [image.mosquitto-serves-mqtt]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: runtime.password-file-auth
+    description: "Mounted `password_file` + `allow_anonymous false` rejects wrong credentials with 'Connection Refused not authorised' and accepts correct credentials. Enables homelab-style authenticated broker deployments."
+    caps: [image.mosquitto-serves-mqtt]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_password_auth.sh
+
+  - id: runtime.user-mosquitto
+    description: Container runs as uid 1883 (Eclipse mosquitto convention). /etc/passwd has `mosquitto:x:1883:1883` with HOME=/mosquitto. Data dirs initialized by eclipse-mosquitto or Forge mosquitto-scratch-trixie are mutually readable.
+    caps: [image.mosquitto-serves-mqtt]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_user_mosquitto.sh
+
+  - id: image.no-shell
+    description: No /bin/sh, /bin/bash, /bin/busybox in the image. Reduces attack surface; satisfies `scan.zero-os-cves` by construction.
+    caps: [image.no-shell]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_no_shell.sh
+
+  - id: files.default-config
+    description: /mosquitto/config/mosquitto.conf is pre-populated with a permissive default (listener 1883, allow_anonymous true) so a config-less `docker run` works for dev. Production consumers mount their own config at the same path.
+    caps: [image.mosquitto-serves-mqtt]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_contents.sh
+      - images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: files.sbom-embed
+    description: /sbom.json present in the runtime image (FG-020). scan-regression resolves to `grype sbom:<path>` so Debian backports are honored.
+    caps: [scan.sbom-embed]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_contents.sh
+
+  - id: files.tls-stack
+    description: /etc/ssl/certs/ca-certificates.crt present (inherited from scratch-base). Mosquitto TLS listener / bridge connections resolve the Debian trust store without further config.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_contents.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ 30 MB absolute ceiling (mosquitto is tiny — binaries + 7 overlay libs + default config).
+    caps: [test.size-budget]
+    tests:
+      - images/mosquitto-scratch-trixie/tests/smoke_size.sh
