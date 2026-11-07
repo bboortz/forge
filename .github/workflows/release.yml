@@ -41,18 +41,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # The source-of-truth check-run name is "Full check (make check)"
-          # per ci.yml. If CI hasn't finished yet, there's no success record
-          # and we abort — operator should wait for the badge to turn green
-          # then re-run.
-          STATUS=$(gh api "repos/${{ github.repository }}/commits/${SRC_SHA}/check-runs" \
-            --jq '[.check_runs[] | select(.name == "Full check (make check)")] | sort_by(.started_at) | .[-1].conclusion' \
-            2>/dev/null || echo "")
-          if [[ "$STATUS" != "success" ]]; then
-            echo "::error::Full check on ${SRC_SHA:0:8} not green (status=${STATUS:-not-yet-run}). Wait for CI to pass before promoting."
-            exit 1
-          fi
-          echo "✓ CI green on ${SRC_SHA:0:8}"
+          # FG-024: the source-of-truth check-run name is now
+          # "Acceptance aggregate (all green)" (the matrix gate) +
+          # "Lint & verify (PR + push-to-dev)" (the lint gate). Both must
+          # be green. If CI hasn't finished yet, there's no success record
+          # and we abort — operator should wait for the badges to turn
+          # green then re-run.
+          for check in "Acceptance aggregate (all green)" "Lint & verify (PR + push-to-dev)"; do
+            STATUS=$(gh api "repos/${{ github.repository }}/commits/${SRC_SHA}/check-runs" \
+              --jq "[.check_runs[] | select(.name == \"${check}\")] | sort_by(.started_at) | .[-1].conclusion" \
+              2>/dev/null || echo "")
+            if [[ "$STATUS" != "success" ]]; then
+              echo "::error::'${check}' on ${SRC_SHA:0:8} not green (status=${STATUS:-not-yet-run}). Wait for CI to pass before promoting."
+              exit 1
+            fi
+            echo "✓ ${check} green on ${SRC_SHA:0:8}"
+          done
 
       - name: Fast-forward main from source
         run: |
