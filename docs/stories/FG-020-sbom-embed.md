@@ -1,7 +1,7 @@
 ---
 id: FG-020
 slug: sbom-embed
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-07
 ---

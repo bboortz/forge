@@ -1,7 +1,7 @@
 # FG-020 — Plan: embed syft SBOM in runtime
 
 **Story**: [`docs/stories/FG-020-sbom-embed.md`](../stories/FG-020-sbom-embed.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-020-sbom-embed`
 
 ## Design delta
