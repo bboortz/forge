@@ -1,7 +1,7 @@
 # FG-023 — Plan: Stamp-based rebuild skip
 
 **Story**: [`docs/stories/FG-023-smart-rebuild-skip.md`](../stories/FG-023-smart-rebuild-skip.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-023-smart-rebuild-skip`
 
 ## Design delta
