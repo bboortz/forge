@@ -40,6 +40,21 @@ grep -q 'CACHE_ARGS+=.*--cache-to' scripts/build-image.sh || {
 pass "buildx + --cache-from/--cache-to wired"
 
 # -----------------------------------------------------------------------------
+# Section 2b — derivatives with forge-local baseline fall back to docker build
+# -----------------------------------------------------------------------------
+say "2b. derivative with forge-local baseline skips buildx (daemon-only FROM)"
+# buildx docker-container driver can't resolve FROM forge-local/..., so the
+# script must fall back to classic docker build for derivatives that resolve
+# their baseline to a daemon-only tag. Baseline + no-deps still use buildx.
+grep -q '_HAS_LOCAL_DEP' scripts/build-image.sh || {
+  echo "  ✗ scripts/build-image.sh missing local-dep fallback guard" >&2; exit 1;
+}
+grep -qE 'image_yaml_depends.*grep -q' scripts/build-image.sh || {
+  echo "  ✗ fallback guard doesn't test depends_on presence" >&2; exit 1;
+}
+pass "forge-local baseline triggers classic docker build for derivatives"
+
+# -----------------------------------------------------------------------------
 # Section 3 — FORGE_CACHE_FROM_PREFIX resolves per-image buildcache ref
 # -----------------------------------------------------------------------------
 say "3. FORGE_CACHE_FROM_PREFIX derives per-image :buildcache tag"

@@ -152,13 +152,26 @@ if [[ -z "${BUILDX_CACHE_TO}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" && "${FORGE_C
   BUILDX_CACHE_TO="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache,mode=max"
 fi
 
+# FG-021: buildx's docker-container driver can't resolve `FROM forge-local/...`
+# references (daemon-only, not reachable from the builder container). If this
+# image declares a depends_on AND the dependency resolved to a forge-local tag,
+# fall back to classic docker build so the FROM resolves via daemon. Baselines
+# (no depends_on) + externally-sourced images still get buildx cache.
+_HAS_LOCAL_DEP=0
+if [[ "${SCRATCH_BASE_REF}" == forge-local/* ]] \
+   && image_yaml_depends "${SRC}/image.yaml" | grep -q .; then
+  _HAS_LOCAL_DEP=1
+fi
+
 BUILD_CMD=(docker build)
 CACHE_ARGS=()
-if [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" ]]; then
+if [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" && "${_HAS_LOCAL_DEP}" == "0" ]]; then
   BUILD_CMD=(docker buildx build --load)
   [[ -n "${BUILDX_CACHE_FROM}" ]] && CACHE_ARGS+=("--cache-from=${BUILDX_CACHE_FROM}")
   [[ -n "${BUILDX_CACHE_TO}" ]]   && CACHE_ARGS+=("--cache-to=${BUILDX_CACHE_TO}")
   echo "→ buildx cache: from=${BUILDX_CACHE_FROM:-<none>} to=${BUILDX_CACHE_TO:-<none>}"
+elif [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" ]]; then
+  echo "→ local baseline (${SCRATCH_BASE_REF}): skipping buildx cache (daemon-only FROM)"
 fi
 
 echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=${BUILD_CONTEXT}, revision=${RESOLVED_SHA})"
