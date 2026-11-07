@@ -43,3 +43,6 @@ build/
 .DS_Store
 Thumbs.db
 .env.pre-*
+
+# FG-023: stamp-skip cache (local; wiped by `make clean-stamps`)
+.make/

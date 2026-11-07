@@ -331,7 +331,14 @@ Every Forge-native scratch image carries `/sbom.json` — a CycloneDX SBOM gener
 
 ### tooling.ci-build-cache
 
-CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-image.sh` supports buildx registry cache via `FORGE_CACHE_FROM_PREFIX` + `FORGE_CACHE_PUSH` env vars; GHA workflows wire per-image `ghcr.io/bboortz/<image>:buildcache` tags (cache-from on all events, cache-to on push + nightly build only — PR events pull-only for fork safety). **FG-022**: `actions/cache@v4` persists `~/.cache/grype` keyed on current UTC date with daily rotation. Cumulative CI wall-clock drop: typical PR 9 min → 2-5 min.
+CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-image.sh` supports buildx registry cache via `FORGE_CACHE_FROM_PREFIX` + `FORGE_CACHE_PUSH` env vars; GHA workflows wire per-image `ghcr.io/bboortz/<image>:buildcache` tags (cache-from on all events, cache-to on push + nightly build only — PR events pull-only for fork safety). **FG-022**: `actions/cache@v4` persists `~/.cache/grype` keyed on current UTC date with daily rotation. **FG-023** (stamp-skip): per-image stamp at `.make/stamps/<image>.stamp` lets `build-image.sh` skip `docker build` when inputs are unchanged — deduplicates the ~49 builds per check-smart down to ~6 unique images. Cumulative CI wall-clock drop: typical PR 9 min → 2-5 min with buildx cache alone; intra-run dedup reclaims another 300-400s on cold runners.
 
-- **Delivered by**: FG-021 (buildx cache) + FG-022 (grype DB cache)
-- **Covered by**: `tests/acceptance/test_FG_021_ci-buildx-cache.sh`
+- **Delivered by**: FG-021 (buildx cache) + FG-022 (grype DB cache) + FG-023 (stamp-skip)
+- **Covered by**: `tests/acceptance/test_FG_021_ci-buildx-cache.sh` + `tests/acceptance/test_FG_023_smart-rebuild-skip.sh`
+
+### build.stamp-skip
+
+`scripts/build-image.sh` consults a per-image stamp at `.make/stamps/<image>.stamp` before invoking `docker build`. The stamp is a SHA-256 over (tree hash of `images/<dir>/`, resolved upstream FROM digest via `docker buildx imagetools inspect`, baseline image ID for scratch derivatives, resolved external SHA for FG-012 images). If the stamp matches the current inputs AND `docker image inspect <tag>` succeeds, `docker build` is skipped and the existing daemon image is reused — scan + smoke + verify still run against it. `FORGE_NO_SKIP=1` forces a build. `make check-strict` wipes `.make/stamps/` via `clean-stamps`. Daily `build.yml` cron is unaffected (does not route through check-smart). Upstream-change detection is handled by re-resolving the FROM digest on each stamp check — a mutable tag like `python:3.13-slim-trixie` that gets a new digest invalidates the stamp.
+
+- **Delivered by**: FG-023
+- **Covered by**: `tests/acceptance/test_FG_023_smart-rebuild-skip.sh`
