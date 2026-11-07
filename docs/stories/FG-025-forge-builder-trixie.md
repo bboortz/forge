@@ -1,7 +1,7 @@
 ---
 id: FG-025
 slug: forge-builder-trixie
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-07
 ---
