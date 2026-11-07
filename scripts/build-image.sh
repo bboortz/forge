@@ -44,6 +44,22 @@ while IFS= read -r dep; do
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" "${dep}"
 done < <(image_yaml_depends "${SRC}/image.yaml")
 
+# FG-025: forge-builder-trixie is a builder-stage dependency, not a scratch_base
+# COPY-from dependency. It's not listed in image.yaml depends_on (to preserve
+# the current CI publish ordering model), but it must exist locally before any
+# scratch-image build. Build it on demand if any scratch image is being built.
+_FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-trixie"
+case "${IMAGE_DIR}" in
+  forge-builder-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout)
+    _needs_forge_builder=0 ;;
+  *)
+    _needs_forge_builder=1 ;;
+esac
+if [[ "${_needs_forge_builder}" == "1" && -d "${_FORGE_BUILDER_DIR}" ]]; then
+  echo "→ builder-stage dependency: forge-builder-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-trixie
+fi
+
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
 TAG=$(image_yaml_get   "${SRC}/image.yaml" tag)
 [[ -n "${TAG}" ]] || { echo "${SRC}/image.yaml missing required 'tag:' field" >&2; exit 1; }
@@ -79,14 +95,33 @@ else
   _BASELINE_TAG="latest"
 fi
 SCRATCH_BASE_REF="${REGISTRY}/scratch-base-trixie:${_BASELINE_TAG}"
+
+# FG-025: resolve FORGE_BUILDER_REF the same way — prefer the local tag if
+# present (we just built it above), else fall back to GHCR.
+_BUILDER_YAML="${ROOT}/images/forge-builder-trixie/image.yaml"
+if [[ -f "${_BUILDER_YAML}" ]]; then
+  _BUILDER_TAG=$(image_yaml_get "${_BUILDER_YAML}" tag)
+else
+  _BUILDER_TAG="latest"
+fi
+FORGE_BUILDER_REF="${REGISTRY}/forge-builder-trixie:${_BUILDER_TAG}"
+if ! docker image inspect "${FORGE_BUILDER_REF}" >/dev/null 2>&1; then
+  FORGE_BUILDER_REF="ghcr.io/bboortz/forge-builder-trixie:${_BUILDER_TAG}"
+fi
+
 PULL_FLAG="--pull"
+# Drop --pull if either referenced base is a daemon-only forge-local tag —
+# docker build --pull tries to resolve it from a registry and aborts with
+# "pull access denied" because forge-local isn't a real registry.
 if docker image inspect "${SCRATCH_BASE_REF}" >/dev/null 2>&1; then
-  # Local baseline present; don't --pull or the legacy builder tries to
-  # fetch it from the forge-local "registry" which doesn't exist and
-  # the build aborts with "pull access denied".
   PULL_FLAG=""
 else
   SCRATCH_BASE_REF="ghcr.io/bboortz/scratch-base-trixie:latest"
+fi
+# FG-025: same guard for FORGE_BUILDER_REF. When it's forge-local/... we must
+# drop --pull regardless of SCRATCH_BASE_REF.
+if [[ "${FORGE_BUILDER_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
 fi
 
 # FG-012: resolve the build context + Dockerfile. For Forge-local images,
@@ -168,14 +203,22 @@ if [[ -z "${BUILDX_CACHE_TO}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" && "${FORGE_C
   BUILDX_CACHE_TO="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache,mode=max"
 fi
 
-# FG-021: buildx's docker-container driver can't resolve `FROM forge-local/...`
-# references (daemon-only, not reachable from the builder container). If this
-# image declares a depends_on AND the dependency resolved to a forge-local tag,
-# fall back to classic docker build so the FROM resolves via daemon. Baselines
-# (no depends_on) + externally-sourced images still get buildx cache.
+# FG-021 / FG-025: buildx's docker-container driver can't resolve
+# `FROM forge-local/...` references (daemon-only, not reachable from the
+# builder container). Fall back to classic docker build if ANY FROM
+# reference this image will use resolves to a forge-local tag:
+#   - SCRATCH_BASE_REF for scratch derivatives (FG-021)
+#   - FORGE_BUILDER_REF for images whose builder stage FROMs forge-builder-trixie (FG-025)
 _HAS_LOCAL_DEP=0
 if [[ "${SCRATCH_BASE_REF}" == forge-local/* ]] \
    && image_yaml_depends "${SRC}/image.yaml" | grep -q .; then
+  _HAS_LOCAL_DEP=1
+fi
+# FG-025: check Dockerfile actually references the forge-builder FROM. Only
+# images whose Dockerfile declares ARG FORGE_BUILDER_REF trigger this.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "FORGE_BUILDER_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
 
@@ -187,7 +230,7 @@ if [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" && "${_HAS_LOCAL_DEP}" == "0" 
   [[ -n "${BUILDX_CACHE_TO}" ]]   && CACHE_ARGS+=("--cache-to=${BUILDX_CACHE_TO}")
   echo "→ buildx cache: from=${BUILDX_CACHE_FROM:-<none>} to=${BUILDX_CACHE_TO:-<none>}"
 elif [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" ]]; then
-  echo "→ local baseline (${SCRATCH_BASE_REF}): skipping buildx cache (daemon-only FROM)"
+  echo "→ local base (SCRATCH_BASE_REF=${SCRATCH_BASE_REF}, FORGE_BUILDER_REF=${FORGE_BUILDER_REF}): skipping buildx cache (daemon-only FROM)"
 fi
 
 echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=${BUILD_CONTEXT}, revision=${RESOLVED_SHA})"
@@ -196,6 +239,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg GIT_SHA="${RESOLVED_SHA}" \
   --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
+  --build-arg FORGE_BUILDER_REF="${FORGE_BUILDER_REF}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \
   --file "${BUILD_DOCKERFILE}" \

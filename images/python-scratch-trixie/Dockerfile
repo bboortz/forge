@@ -9,36 +9,27 @@
 # works for wheel-only packages at runtime.
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-ARG DEBIAN_BASE=python:3.13-slim-trixie
+# FG-025 Phase 2: builder stage FROMs the shared forge-builder-trixie image
+# (apt-upgraded + CA certs + syft pre-installed). Local build overrides this
+# to forge-local/forge-builder-trixie:0.1 via scripts/build-image.sh.
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
 
 # --- Stage 1: builder ---------------------------------------------------------
-FROM ${DEBIAN_BASE} AS builder
+FROM ${FORGE_BUILDER_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
+# apt lists are empty per forge-builder-trixie's PROMISES.apt.no-cache —
+# re-populate, then apply image-specific sid-pins before anything else.
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# hadolint ignore=DL3005,DL3008
+# FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
+# forge-builder-trixie (FG-025). We don't re-apt-upgrade — that's pre-done.
 RUN set -eux; \
-    apt-get update; \
-    apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install ca-certificates curl; \
-    rm -rf /var/lib/apt/lists/*
-
-# FG-020: generate an SBOM from the builder stage with real Debian version
-# suffixes (e.g., `-deb13u10`). Runtime COPYs it below so scan-regression
-# via `grype sbom:` honors Debian backports instead of falling back to
-# NVD-CPE (which only knows upstream version strings).
-ARG SYFT_VERSION=v1.57.0
-# hadolint ignore=DL4006
-RUN set -eux; \
-    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
-      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
-    apt-get -y --purge --auto-remove remove curl; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Collect the Python-specific overlay. Baseline already supplies glibc + TLS

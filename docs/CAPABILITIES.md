@@ -336,6 +336,13 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 - **Delivered by**: FG-021 (buildx cache) + FG-022 (grype DB cache) + FG-023 (stamp-skip)
 - **Covered by**: `tests/acceptance/test_FG_021_ci-buildx-cache.sh` + `tests/acceptance/test_FG_023_smart-rebuild-skip.sh`
 
+### build.shared-builder
+
+`ghcr.io/bboortz/forge-builder-trixie` is a published builder-base image containing `apt-get upgrade` + CA certificates + syft (`v1.57.0`), on top of `python:3.13-slim-trixie`. Every Forge-native scratch image's builder stage can `FROM ghcr.io/bboortz/forge-builder-trixie:<tag>` instead of repeating the apt + syft install work per-image. Published via a dedicated `publish-builders` tier that runs before `publish-base` in `build.yml`. PROMISES: `files.syft-binary`, `files.ca-certificates`, `apt.freshly-upgraded`, `apt.no-cache`, `apt.no-curl`.
+
+- **Delivered by**: FG-025 (Phase 1: scratch-base-trixie migration; Phase 2 TBD for python/nginx/postgres)
+- **Covered by**: `tests/acceptance/test_FG_025_forge-builder-trixie.sh`
+
 ### tooling.ci-parallel-tests
 
 The acceptance test suite runs as a GitHub Actions matrix (one job per `tests/acceptance/test_FG_*.sh`) instead of a sequential `make test-acceptance` call. `scripts/discover-tests.sh` emits the matrix JSON from `tests/acceptance/`; CI's `acceptance-matrix` job consumes it via `strategy.matrix.include`. `acceptance-aggregate` is a single pass/fail gate for branch protection. Each matrix job still consumes `tooling.ci-build-cache` (buildx + grype DB cache per-job). Local `make check` + `make check-smart` keep running tests sequentially (FG-023 made that fast enough).
