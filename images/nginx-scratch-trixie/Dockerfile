@@ -25,7 +25,7 @@ COPY sid-pins/ /etc/apt/preferences.d/
 RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install nginx ca-certificates; \
+    apt-get -y --no-install-recommends install nginx libnginx-mod-stream ca-certificates; \
     rm -rf /var/lib/apt/lists/*
 
 # Pull the baseline's /etc identity files into the builder so we can APPEND
@@ -41,6 +41,7 @@ RUN set -eux; \
     install -d /out/usr/sbin /out/usr/share/nginx/html \
                /out/etc /out/etc/nginx \
                /out/lib/x86_64-linux-gnu \
+               /out/usr/lib/nginx/modules \
                /out/var/log/nginx /out/var/cache/nginx \
                /out/var/lib/nginx /out/var/lib/nginx/body \
                /out/var/lib/nginx/fastcgi /out/var/lib/nginx/proxy \
@@ -48,6 +49,19 @@ RUN set -eux; \
     # nginx binary + its one lib not in baseline.
     cp /usr/sbin/nginx                    /out/usr/sbin/nginx; \
     cp /lib/x86_64-linux-gnu/libpcre2-8.so.0 /out/lib/x86_64-linux-gnu/libpcre2-8.so.0; \
+    # FG-016: bundle every dynamic module nginx-full ships (currently just
+    # ngx_stream_module.so, which bundles ssl_preread). Enables consumers
+    # to use `load_module` + stream{}/ssl_preread configs by mounting
+    # their own config — no derived image needed.
+    cp /usr/lib/nginx/modules/*.so        /out/usr/lib/nginx/modules/; \
+    # nginx's compile-time module prefix is /usr/share/nginx/modules, but
+    # Debian places modules at /usr/lib/nginx/modules. Symlink so relative
+    # `load_module modules/<name>.so;` directives resolve without forcing
+    # consumers to use absolute paths.
+    ln -s /usr/lib/nginx/modules          /out/usr/share/nginx/modules; \
+    # FG-016: ship mime.types — standard-ish nginx distribution file that
+    # any HTTP config `include /etc/nginx/mime.types;` expects to resolve.
+    cp /etc/nginx/mime.types              /out/etc/nginx/mime.types; \
     # Build /etc/passwd + /etc/group by appending service-user lines to
     # baseline's contents (append semantic via build-time concat + full-file
     # COPY in the runtime stage).

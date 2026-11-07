@@ -5,7 +5,7 @@
 
 spec_version: 1
 image: nginx-scratch-trixie
-version: "0.1"
+version: "0.2"
 
 promises:
   - id: runtime.nginx-binary
@@ -25,6 +25,13 @@ promises:
     caps: [image.nginx-serves-http, test.smoke-server-helper]
     tests:
       - images/nginx-scratch-trixie/tests/smoke_serves_200.sh
+
+  - id: runtime.dynamic-modules
+    description: "/usr/lib/nginx/modules/*.so are bundled. Specifically ngx_stream_module.so (also carries ssl_preread for SNI routing). Consumers with stream-based configs (e.g. SNI dispatcher) can `load_module modules/ngx_stream_module.so;` and mount their own nginx.conf without a derived image."
+    caps: [image.nginx-serves-http]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_modules_present.sh
+      - images/nginx-scratch-trixie/tests/smoke_stream_config_validates.sh
 
   - id: absence.shell
     description: No /bin/sh, /bin/bash, or any shell binary.
