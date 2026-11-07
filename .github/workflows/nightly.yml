@@ -24,6 +24,19 @@ jobs:
           ref: dev
           fetch-depth: 0
 
+      # FG-022: cache grype CVE DB (daily rotation).
+      - name: Current UTC day
+        id: dt
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache grype DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/grype
+          key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
+          restore-keys: |
+            grype-db-${{ runner.os }}-
+
       - name: Install tooling
         run: |
           sudo apt-get update
@@ -31,5 +44,21 @@ jobs:
           command -v grype >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
           command -v syft  >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b /usr/local/bin
 
+      # FG-021: nightly runs check-strict (clean-cache rebuild). Buildx cache
+      # is still useful here for the FROM-base-image layer (saves the python-
+      # slim-trixie pull per image). Don't push cache from nightly — it
+      # intentionally rebuilds everything cold.
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
       - name: make check-strict
+        env:
+          FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
+          FORGE_CACHE_PUSH: '0'
         run: make check-strict

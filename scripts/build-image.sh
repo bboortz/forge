@@ -139,13 +139,36 @@ if [[ -n "${CLONE_DIR}" ]]; then
   EXTRA_LABELS+=(--label "org.opencontainers.image.created=${BUILD_TIMESTAMP}")
 fi
 
-echo "→ docker build ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=${BUILD_CONTEXT}, revision=${RESOLVED_SHA})"
-docker build \
+# FG-021: resolve per-image buildx cache args from env. The CI workflows set
+# FORGE_CACHE_FROM_PREFIX (ghcr.io/bboortz) + FORGE_CACHE_PUSH (0 on PRs, 1
+# on push-to-dev + nightly + build). Script derives per-image :buildcache
+# tags so the CI YAML doesn't need per-image knowledge.
+BUILDX_CACHE_FROM="${BUILDX_CACHE_FROM:-}"
+BUILDX_CACHE_TO="${BUILDX_CACHE_TO:-}"
+if [[ -z "${BUILDX_CACHE_FROM}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" ]]; then
+  BUILDX_CACHE_FROM="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache"
+fi
+if [[ -z "${BUILDX_CACHE_TO}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" && "${FORGE_CACHE_PUSH:-0}" == "1" ]]; then
+  BUILDX_CACHE_TO="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache,mode=max"
+fi
+
+BUILD_CMD=(docker build)
+CACHE_ARGS=()
+if [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" ]]; then
+  BUILD_CMD=(docker buildx build --load)
+  [[ -n "${BUILDX_CACHE_FROM}" ]] && CACHE_ARGS+=("--cache-from=${BUILDX_CACHE_FROM}")
+  [[ -n "${BUILDX_CACHE_TO}" ]]   && CACHE_ARGS+=("--cache-to=${BUILDX_CACHE_TO}")
+  echo "→ buildx cache: from=${BUILDX_CACHE_FROM:-<none>} to=${BUILDX_CACHE_TO:-<none>}"
+fi
+
+echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=${BUILD_CONTEXT}, revision=${RESOLVED_SHA})"
+"${BUILD_CMD[@]}" \
   ${PULL_FLAG} \
   --build-arg GIT_SHA="${RESOLVED_SHA}" \
   --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
   "${EXTRA_LABELS[@]}" \
+  "${CACHE_ARGS[@]}" \
   --file "${BUILD_DOCKERFILE}" \
   --tag "${IMAGE_REF}" \
   "${BUILD_CONTEXT}"
