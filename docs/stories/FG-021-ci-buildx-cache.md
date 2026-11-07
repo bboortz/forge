@@ -1,7 +1,7 @@
 ---
 id: FG-021
 slug: ci-buildx-cache
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-07
 ---

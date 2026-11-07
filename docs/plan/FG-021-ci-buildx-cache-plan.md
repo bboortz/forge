@@ -1,7 +1,7 @@
 # FG-021 — Plan: docker buildx registry cache
 
 **Story**: [`docs/stories/FG-021-ci-buildx-cache.md`](../stories/FG-021-ci-buildx-cache.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-021-ci-cache` (shared with FG-022)
 
 ## Design delta
