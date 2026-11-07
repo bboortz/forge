@@ -25,7 +25,9 @@ COPY sid-pins/ /etc/apt/preferences.d/
 # Upstream postgres:18 ships only `ssl-cert-snakeoil.pem` — add the Debian
 # ca-certificates bundle so outbound TLS (replication, pg_restore from
 # remote URLs, etc.) works without extra apt-installs in consumer Dockerfiles.
-# hadolint ignore=DL3005
+# DL3005: apt-get upgrade is the point.
+# DL3008: ca-certificates floats with the Debian trust-store release cadence.
+# hadolint ignore=DL3005,DL3008
 RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
