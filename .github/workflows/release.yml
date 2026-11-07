@@ -47,8 +47,12 @@ jobs:
           # be green. If CI hasn't finished yet, there's no success record
           # and we abort — operator should wait for the badges to turn
           # green then re-run.
+          # --paginate + per_page=100: GitHub's default page size is 30;
+          # once we hit ~30+ matrix jobs on dev, "Lint & verify" fell off
+          # page 1 and the check lookup returned null (observed in run
+          # 42407540875). Fetch all pages so the check-name search is reliable.
           for check in "Acceptance aggregate (all green)" "Lint & verify (PR + push-to-dev)"; do
-            STATUS=$(gh api "repos/${{ github.repository }}/commits/${SRC_SHA}/check-runs" \
+            STATUS=$(gh api --paginate "repos/${{ github.repository }}/commits/${SRC_SHA}/check-runs?per_page=100" \
               --jq "[.check_runs[] | select(.name == \"${check}\")] | sort_by(.started_at) | .[-1].conclusion" \
               2>/dev/null || echo "")
             if [[ "$STATUS" != "success" ]]; then
