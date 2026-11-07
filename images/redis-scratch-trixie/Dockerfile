@@ -98,7 +98,10 @@ COPY --from=builder /sbom.json /sbom.json
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
     SSL_CERT_DIR=/etc/ssl/certs
 
-USER redis
+# hadolint DL3066: numeric uid — the redis user IS present in /etc/passwd
+# at uid 999 (verified by smoke_user_redis.sh), but hadolint can't reason
+# across stages, and numeric form is the robust recommendation.
+USER 999:999
 WORKDIR /data
 EXPOSE 6379
 ENTRYPOINT ["/usr/bin/redis-server"]
