@@ -11,38 +11,35 @@
 # sidecar for one-time cluster init (see FG-007 smoke_server_accepts.sh).
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-ARG DEBIAN_BASE=python:3.13-slim-trixie
+# FG-025 Phase 2: builder stage FROMs the shared forge-builder-trixie image
+# (apt-upgraded + CA certs + syft pre-installed).
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
 
 # --- Stage 1: builder ---------------------------------------------------------
-FROM ${DEBIAN_BASE} AS builder
+FROM ${FORGE_BUILDER_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# DL3005: apt-get upgrade IS the point.
+# forge-builder-trixie cleared apt lists + applied apt-upgrade. Re-populate
+# the lists and install postgres-specific packages. apt-upgrade NOT repeated.
 # DL3008: postgres + deps float within the trixie release channel.
-# hadolint ignore=DL3005,DL3008
+# hadolint ignore=DL3008
 RUN set -eux; \
     apt-get update; \
-    apt-get -y --no-install-recommends upgrade; \
     apt-get -y --no-install-recommends install \
-      postgresql-17 postgresql-client-17 ca-certificates curl \
+      postgresql-17 postgresql-client-17 \
       locales libnss-db ; \
     rm -rf /var/lib/apt/lists/*
 
-# FG-020: builder-stage SBOM with real Debian versions. COPY'd into runtime
-# below so scan-regression can `grype sbom:<path>` and honor Debian backports.
-ARG SYFT_VERSION=v1.57.0
-# hadolint ignore=DL4006
+# FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
+# forge-builder-trixie (FG-025). Scan AFTER apt-get install.
 RUN set -eux; \
-    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
-      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
-    apt-get -y --purge --auto-remove remove curl; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Pull baseline's /etc/passwd + /etc/group so we APPEND the postgres user

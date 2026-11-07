@@ -6,11 +6,11 @@ owner: bboortz
 created: 2026-11-07
 ---
 
-# FG-025 — Shared `forge-builder-trixie` image (Phase 1: scratch-base migration)
+# FG-025 — Shared `forge-builder-trixie` image (Phase 1+2: all scratch images migrated)
 
 Every Forge-native scratch image's builder stage duplicates the same ~30-60s of work: `apt-get update` + `apt-get upgrade` + install ca-certificates + install syft (for FG-020 SBOM). With FG-021 (buildx cache) + FG-023 (stamp-skip) landed, this still shows up in CI cold-cache runs and on the daily cron where every image rebuilds from scratch.
 
-Phase 1 of FG-025 publishes a new base image `ghcr.io/bboortz/forge-builder-trixie` that pre-bakes this common work, and migrates `scratch-base-trixie`'s builder stage to use it. Phase 2 (deferred) migrates python-scratch, nginx-scratch, postgres-scratch.
+FG-025 publishes a new base image `ghcr.io/bboortz/forge-builder-trixie` that pre-bakes this common work, and migrates every Forge scratch image's builder stage to use it (scratch-base-trixie, python-scratch-trixie, nginx-scratch-trixie, postgres-scratch-trixie).
 
 ## 9 canonical answers
 

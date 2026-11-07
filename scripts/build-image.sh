@@ -110,13 +110,18 @@ if ! docker image inspect "${FORGE_BUILDER_REF}" >/dev/null 2>&1; then
 fi
 
 PULL_FLAG="--pull"
+# Drop --pull if either referenced base is a daemon-only forge-local tag —
+# docker build --pull tries to resolve it from a registry and aborts with
+# "pull access denied" because forge-local isn't a real registry.
 if docker image inspect "${SCRATCH_BASE_REF}" >/dev/null 2>&1; then
-  # Local baseline present; don't --pull or the legacy builder tries to
-  # fetch it from the forge-local "registry" which doesn't exist and
-  # the build aborts with "pull access denied".
   PULL_FLAG=""
 else
   SCRATCH_BASE_REF="ghcr.io/bboortz/scratch-base-trixie:latest"
+fi
+# FG-025: same guard for FORGE_BUILDER_REF. When it's forge-local/... we must
+# drop --pull regardless of SCRATCH_BASE_REF.
+if [[ "${FORGE_BUILDER_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
 fi
 
 # FG-012: resolve the build context + Dockerfile. For Forge-local images,
