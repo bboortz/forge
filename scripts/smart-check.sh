@@ -126,6 +126,15 @@ for img in "${AFFECTED[@]}"; do
   fi
   bash scripts/build-image.sh "${img}"
   bash scripts/test-images.sh "${img}"
+  # FG-019: scan-regression gate. Reuses the just-built image; grype diff vs
+  # images/${img}/scan-baseline.json; fails on any new CRITICAL CVE not
+  # waivered in PROMISES.yaml absence.os-cves.waivers. Skips cleanly when
+  # grype isn't installed (local dev); CI always has it.
+  if command -v grype >/dev/null 2>&1; then
+    python3 scripts/scan-regression.py "${img}"
+  else
+    warn "grype not installed — skipping scan-regression for ${img} (install via: make tools)"
+  fi
   # Find the matching acceptance test (slug-based).
   shopt -s nullglob
   accept_tests=(tests/acceptance/test_FG_*_"${img#*-}"*.sh)

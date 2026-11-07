@@ -307,3 +307,17 @@ On push to `dev` or PR targeting `dev`, build the affected image(s) and run gryp
 - **Delivered by**: FG-001
 - **Extended by**: FG-018 (PR gate uses smart-check)
 - **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`, `tests/acceptance/test_FG_018_ci-uses-smart-check.sh`
+
+### scan.regression-gate
+
+PR fails if grype finds a new CRITICAL CVE in an affected image that isn't in the committed `images/<name>/scan-baseline.json`. Runs per-image inside FG-017's smart-check scoped loop (no full-repo scan overhead). Baseline is CVE-ID-set only (not full grype JSON) so diffs stay readable. `make scan-baseline-update IMAGE_DIR=<name>` regenerates intentionally. Missing baseline auto-bootstraps on first run (Q4). HIGH/MEDIUM/LOW findings are NOT gated (Q1 — avoids waiver thrash on python-slim's ~60 Python-stdlib HIGHs).
+
+- **Delivered by**: FG-019
+- **Covered by**: `tests/acceptance/test_FG_019_scan-regression.sh`
+
+### scan.cve-waivers
+
+When a CRITICAL CVE must be accepted (no upstream fix, risk assessed), the image's `PROMISES.yaml` `absence.os-cves` promise gains a `waivers: [{cve, reason, until}]` list. `scripts/verify-contracts.py` validates waiver shape + rejects expired waivers (forces renewal or fix). FG-010's semver gate catches silent waiver removal. Cleaner audit than commit-message overrides.
+
+- **Delivered by**: FG-019
+- **Covered by**: `tests/acceptance/test_FG_019_scan-regression.sh`

@@ -156,6 +156,43 @@ def load_promises(path: Path, errors: list[str]) -> ImagePromises | None:
             err(errors, f"{path}: promise {pid!r} tests must be a non-empty list of path strings")
             tests = []
         inverse = bool(raw.get("inverse", False))
+        # FG-019: validate absence.os-cves waivers (optional list of
+        # {cve, reason, until} per promise). Only meaningful on the
+        # inverse absence.os-cves promise; we validate shape wherever present.
+        raw_waivers = raw.get("waivers")
+        if raw_waivers is not None:
+            if not isinstance(raw_waivers, list):
+                err(errors, f"{path}: promise {pid!r} waivers must be a list")
+            else:
+                import datetime as _dt
+                today = _dt.date.today()
+                seen_cves: set[str] = set()
+                for widx, w in enumerate(raw_waivers):
+                    if not isinstance(w, dict):
+                        err(errors, f"{path}: promise {pid!r} waivers[{widx}] must be a mapping")
+                        continue
+                    wcve = w.get("cve")
+                    wreason = w.get("reason")
+                    wuntil = w.get("until")
+                    if not isinstance(wcve, str) or not wcve:
+                        err(errors, f"{path}: promise {pid!r} waivers[{widx}] missing 'cve'")
+                        continue
+                    if wcve in seen_cves:
+                        err(errors, f"{path}: promise {pid!r} duplicate waiver for {wcve}")
+                        continue
+                    seen_cves.add(wcve)
+                    if not isinstance(wreason, str) or not wreason:
+                        err(errors, f"{path}: promise {pid!r} waiver {wcve!r} missing 'reason'")
+                    if not isinstance(wuntil, str):
+                        err(errors, f"{path}: promise {pid!r} waiver {wcve!r} missing 'until' (ISO date)")
+                        continue
+                    try:
+                        wdate = _dt.date.fromisoformat(wuntil)
+                    except ValueError:
+                        err(errors, f"{path}: promise {pid!r} waiver {wcve!r} has invalid date {wuntil!r} (want ISO YYYY-MM-DD)")
+                        continue
+                    if wdate < today:
+                        err(errors, f"{path}: promise {pid!r} waiver {wcve!r} expired {wdate} — renew or fix the CVE")
         promises[pid] = Promise(
             id=pid,
             description=desc,
