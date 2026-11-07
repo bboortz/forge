@@ -1,7 +1,7 @@
 # FG-019 — Plan: scan-regression gate
 
 **Story**: [`docs/stories/FG-019-scan-regression.md`](../stories/FG-019-scan-regression.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-019-scan-regression`
 
 ## Design delta
