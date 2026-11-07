@@ -64,6 +64,7 @@ grep -q 'docker/login-action' .github/workflows/ci.yml \
   || { echo "  ✗ ci.yml missing docker/login-action" >&2; exit 1; }
 grep -q 'actions/cache@v4' .github/workflows/ci.yml \
   || { echo "  ✗ ci.yml missing actions/cache" >&2; exit 1; }
+# shellcheck disable=SC2088  # literal ~ in YAML, not shell-expanded
 grep -q '~/\.cache/grype' .github/workflows/ci.yml \
   || { echo "  ✗ ci.yml cache path isn't ~/.cache/grype" >&2; exit 1; }
 grep -q 'FORGE_CACHE_FROM_PREFIX' .github/workflows/ci.yml \
@@ -90,6 +91,7 @@ pass "build.yml covers both publish jobs"
 say "6. nightly.yml has buildx + grype cache"
 grep -q 'docker/setup-buildx-action' .github/workflows/nightly.yml \
   || { echo "  ✗ nightly.yml missing buildx setup" >&2; exit 1; }
+# shellcheck disable=SC2088  # literal ~ in YAML, not shell-expanded
 grep -q '~/\.cache/grype' .github/workflows/nightly.yml \
   || { echo "  ✗ nightly.yml missing grype cache" >&2; exit 1; }
 # Nightly doesn't push cache (it's a clean-cache audit).
