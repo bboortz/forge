@@ -299,3 +299,11 @@ Scope-aware pre-push gate (`make check-smart-strict`, implemented by `scripts/sm
 
 - **Delivered by**: FG-017
 - **Covered by**: `tests/acceptance/test_FG_017_smart-pre-push.sh`
+
+### build.pr-ci
+
+On push to `dev` or PR targeting `dev`, build the affected image(s) and run grype against each. Does not push to GHCR. Lives in `.github/workflows/ci.yml` as the full-check job. **FG-018**: PR runs `make check-smart` (scope-aware); push-to-dev runs full `make check`; a `full-check` PR label forces `make check-strict` for cross-cutting changes.
+
+- **Delivered by**: FG-001
+- **Extended by**: FG-018 (PR gate uses smart-check)
+- **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`, `tests/acceptance/test_FG_018_ci-uses-smart-check.sh`
