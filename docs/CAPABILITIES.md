@@ -158,6 +158,13 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 - **Delivered by**: FG-007 (bumped to postgres 18 in FG-026)
 - **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
 
+### image.redis-serves-cache
+
+`redis-scratch-trixie:8` starts on `redis-server` (ENTRYPOINT direct, no shell entrypoint script), accepts PING / SET / GET end-to-end via a sidecar container sharing its network namespace (standard pattern for protected-mode). Redis user pinned to uid 999 (Docker Hub convention). Image ≤ 50 MB. Zero OS CVEs (no dpkg database in the runtime). Enables homelab/nextcloud cache deployment with a 1-line adoption diff.
+
+- **Delivered by**: FG-027
+- **Covered by**: `tests/acceptance/test_FG_027_redis-scratch-trixie.sh`, `images/redis-scratch-trixie/tests/smoke_server_accepts.sh`
+
 ### image.postgres-slim-nextcloud-compatible
 
 `postgres-slim-trixie` is a Debian-trixie-based PostgreSQL 18 image that preserves the upstream `postgres:18` entrypoint behavior — `POSTGRES_*_FILE` secrets-from-file handling, `/docker-entrypoint-initdb.d/*.sql` execution, custom config mounts via `postgres -c config_file=...`, and shell-script maintenance hooks (`psql`, `pg_isready`, bash) all work. Consumer-facing counterpart to the minimalist `postgres-scratch-trixie:18`. Enables homelab/nextcloud-style deployments that need the full upstream postgres contract without giving up Forge's signed/scanned/attested supply chain.
