@@ -41,8 +41,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y -qq hadolint shellcheck yamllint python3-yaml
-          command -v grype >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-          command -v syft  >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b /usr/local/bin
+          command -v grype >/dev/null || sudo bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype /usr/local/bin/grype
+          command -v syft  >/dev/null || sudo bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  /usr/local/bin/syft
 
       # FG-021: nightly runs check-strict (clean-cache rebuild). Buildx cache
       # is still useful here for the FROM-base-image layer (saves the python-

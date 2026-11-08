@@ -1,0 +1,60 @@
+# Authoritative contract for healthy-scratch-trixie (FG-030, :2).
+#
+# v2: hc-based. Raw FROM scratch + /hc (static Zig binary from
+# bboortz/healthy) + /sbom.json. No libc, no sleep, no wget, no shell.
+# Uses hc's `idle` subcommand (HC-006) as the container PID 1.
+
+spec_version: 1
+image: healthy-scratch-trixie
+version: "0.2"
+
+promises:
+  - id: runtime.hc-binary
+    description: "/hc present + runnable (hc 0.1+ from bboortz/healthy — static Zig, no libc, no heap). Supports tcp/tls/http/https probe modes. Exit codes: 0 healthy, 1 unhealthy, 2 usage error."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+      - images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh
+
+  - id: runtime.hc-idle-pid1
+    description: "Default CMD = hc idle. Blocks on SIGTERM/SIGINT with ~0 CPU. Container stays alive between docker healthchecks without needing a sleep binary or libc. Clean exit on `docker stop`."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_cmd_idle.sh
+
+  - id: runtime.sidecar-netns-compatible
+    description: "With `network_mode: service:<name>` or `--network=container:<name>`, hc reaches the target service via the shared loopback. End-to-end validated against redis-scratch-trixie :6379 — hc exits 0 for live port, 1 for closed port."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh
+
+  - id: runtime.user-nonroot
+    description: "Container runs as uid 65532 (distroless nonroot convention). hc runs as non-root; no privileged capabilities needed. No /etc/passwd lookup required (hc doesn't do uid-to-name)."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_cmd_idle.sh
+
+  - id: image.no-shell
+    description: "No /bin/sh, /bin/bash, /bin/busybox, /usr/bin/sh. Docker healthchecks use the exec form [CMD, /hc, ...] which doesn't need a shell."
+    caps: [image.no-shell]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_no_shell.sh
+
+  - id: absence.libc-stack
+    description: "No glibc, no coreutils, no wget, no GnuTLS, no nc. The entire OS-package closure is gone compared to FG-029's :1 (24 MB). Image is just /hc + /sbom.json."
+    caps: [image.no-shell]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+      - images/healthy-scratch-trixie/tests/smoke_contents.sh
+
+  - id: files.sbom-embed
+    description: "/sbom.json present (FG-020). syft scans the hc binary directly — minimal CycloneDX SBOM (one component: hc)."
+    caps: [scan.sbom-embed]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_contents.sh
+
+  - id: shape.size-budget
+    description: "Image size ≤ 1 MB absolute ceiling. Actual: ~400 KB (hc binary + SBOM JSON + OCI metadata). ~10× smaller than busybox:latest (4.2 MB)."
+    caps: [test.size-budget]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_size.sh

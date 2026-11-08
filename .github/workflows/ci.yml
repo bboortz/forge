@@ -44,8 +44,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq
-          curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-          chmod +x /tmp/hadolint && sudo mv /tmp/hadolint /usr/local/bin/hadolint
+          # hadolint via Docker Hub (different CDN than GitHub releases; GH flapped 504s on 2026-11-08).
+          sudo bash scripts/install-tool-from-docker.sh hadolint/hadolint:latest-debian /bin/hadolint /usr/local/bin/hadolint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
@@ -68,8 +68,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq python3-yaml
-          curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-          chmod +x /tmp/hadolint && sudo mv /tmp/hadolint /usr/local/bin/hadolint
+          # hadolint via Docker Hub (different CDN than GitHub releases; GH flapped 504s on 2026-11-08).
+          sudo bash scripts/install-tool-from-docker.sh hadolint/hadolint:latest-debian /bin/hadolint /usr/local/bin/hadolint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
@@ -137,9 +137,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq python3-yaml
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b "$HOME/.local/bin"
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b "$HOME/.local/bin"
-          curl -sSfL -o "$HOME/.local/bin/cosign" https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
+          # syft + grype via Docker Hub (GitHub release CDN flaps 504s; Docker Hub is separate).
+          mkdir -p "$HOME/.local/bin"
+          bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
+          bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
+          # cosign from the Sigstore project's gcr.io image (v2.4.3 pinned).
+          bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.4.3 /ko-app/cosign "$HOME/.local/bin/cosign"
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 

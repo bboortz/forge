@@ -1,0 +1,14 @@
+# FG-030: healthy-scratch-trixie v2 — hc-based minimal sidecar.
+# Replaces the FG-029 wget-based :1 (24 MB) with hc (~400 KB static Zig
+# binary) + sleep from coreutils. Target size ~2-3 MB.
+#
+# Uses raw `FROM scratch` (NOT scratch-base-trixie) because hc is static
+# (no libc) and only needs libc + ld-linux for the sleep binary that
+# keeps the sidecar container alive. The baseline's TLS stack + nss +
+# zoneinfo + /etc are unused by hc (it ignores system CAs by design).
+tag: "2"
+platforms:
+  - linux/amd64
+# No depends_on — image is raw FROM scratch with minimal manual libc.
+# Builder-stage sources (hc image, forge-builder-trixie for sleep) are
+# handled by the Dockerfile's FROM args, not by image.yaml dependencies.

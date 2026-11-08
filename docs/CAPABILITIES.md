@@ -158,6 +158,13 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 - **Delivered by**: FG-007 (bumped to postgres 18 in FG-026)
 - **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
 
+### image.healthy-sidecar
+
+`healthy-scratch-trixie:2` is the most minimal possible scratch sidecar: raw `FROM scratch` + `/hc` (static Zig healthcheck binary from `bboortz/healthy`) + `/sbom.json`. No libc, no coreutils, no sleep, no wget, no shell, no OS packages at all. Uses `hc idle` (HC-006) as the container PID 1 — a single static binary that blocks on SIGTERM/SIGINT with ~0 CPU. Docker's healthcheck invokes `/hc <url>` via a shared network namespace (`network_mode: service:<name>`). Runs as uid 65532 (distroless nonroot; no /etc/passwd needed since hc doesn't do uid lookups). Image ≤ 1 MB (~400 KB actual) — **10× smaller than `busybox:latest`** (4.2 MB).
+
+- **Delivered by**: FG-030
+- **Covered by**: `tests/acceptance/test_FG_030_healthy-scratch-v2.sh`, `images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh`
+
 ### image.mosquitto-serves-mqtt
 
 `mosquitto-scratch-trixie:2` starts on `/usr/sbin/mosquitto` (ENTRYPOINT direct, no shell), accepts PUBLISH / SUBSCRIBE via a sidecar container sharing its network namespace, and honors password-file authentication (`allow_anonymous false`). Mosquitto user pinned to uid 1883 (Eclipse convention) — persistent data dirs from existing `eclipse-mosquitto:2` deployments remain mutually readable. Default-permissive config baked at `/mosquitto/config/mosquitto.conf` so config-less `docker run` works for dev; production consumers mount their own at the same path. SIGHUP reloads the config without restarting the broker. Image ≤ 30 MB. Zero OS CVEs.
