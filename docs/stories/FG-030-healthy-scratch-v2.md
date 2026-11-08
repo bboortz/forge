@@ -1,7 +1,7 @@
 ---
 id: FG-030
 slug: healthy-scratch-v2
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-08
 ---

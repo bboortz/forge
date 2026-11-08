@@ -1,7 +1,7 @@
 # FG-030 — Plan: healthy-scratch-trixie v2 (hc)
 
 **Story**: [`docs/stories/FG-030-healthy-scratch-v2.md`](../stories/FG-030-healthy-scratch-v2.md)
-**Status**: in-progress — blocked on HC-005 publishing `ghcr.io/bboortz/hc:0.1.0`
+**Status**: shipped
 **Branch**: `feat/FG-030-healthy-scratch-v2`
 
 ## Design delta
