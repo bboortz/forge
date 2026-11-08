@@ -5,7 +5,7 @@
 
 spec_version: 1
 image: python-scratch-trixie
-version: "0.4"
+version: "0.5"
 
 promises:
   - id: runtime.python3-interp
@@ -38,6 +38,12 @@ promises:
     caps: [build.two-stage-scratch]
     tests:
       - images/python-scratch-trixie/tests/smoke_pip_runtime_install.sh
+
+  - id: runtime.locale-utf8
+    description: "C.UTF-8 + en_US.UTF-8 locales are compiled into /usr/lib/locale/ so glibc honors ENV LANG=C.UTF-8 and `locale.setlocale(locale.LC_ALL, 'C.UTF-8')` / `locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')` succeed. The two locales produce distinct strcoll behavior (en_US.UTF-8 = Unicode-alphabetical, C.UTF-8 = byte order)."
+    caps: [image.locale-utf8, image.python-scratch-nonroot]
+    tests:
+      - images/python-scratch-trixie/tests/smoke_locale_utf8.sh
 
   - id: runtime.hc-binary
     description: "/hc is present and executable (static Zig binary from ghcr.io/bboortz/hc). Consumer apps wire a docker HEALTHCHECK against their own listener; the image does NOT bake its own because consumer port + path vary. Example: `HEALTHCHECK CMD [\"/hc\", \"-t\", \"5\", \"http://127.0.0.1:8000/healthz\"]`."

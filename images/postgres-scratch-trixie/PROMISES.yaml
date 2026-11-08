@@ -6,7 +6,7 @@
 
 spec_version: 1
 image: postgres-scratch-trixie
-version: "0.2"
+version: "0.3"
 
 promises:
   - id: runtime.postgres-binary
@@ -20,6 +20,12 @@ promises:
     caps: [image.postgres-serves-sql, test.sidecar-init, test.smoke-server-helper]
     tests:
       - images/postgres-scratch-trixie/tests/smoke_server_accepts.sh
+
+  - id: runtime.locale-utf8
+    description: "C.UTF-8 + en_US.UTF-8 locales are compiled into /usr/lib/locale/ so glibc's setlocale(LC_ALL, 'C.UTF-8') and setlocale(LC_ALL, 'en_US.UTF-8') succeed at runtime. initdb --locale=<either> produces a cluster where lc_ctype + lc_collate match, UPPER/LOWER respect Latin-1 Supplement, length('€') == 1, and en_US.UTF-8 ORDER BY sorts Unicode-alphabetically rather than byte-wise."
+    caps: [image.locale-utf8, image.postgres-serves-sql]
+    tests:
+      - images/postgres-scratch-trixie/tests/smoke_locale_utf8.sh
 
   - id: identity.postgres-uid
     description: postgres user at uid 999 / gid 999 (Docker Hub convention). Data dirs initialized by Docker Hub's postgres:18 or Forge postgres-scratch-trixie are mutually readable.

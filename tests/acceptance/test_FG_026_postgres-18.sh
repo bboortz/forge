@@ -99,11 +99,14 @@ pass "image.yaml tag = 18; Dockerfile has no postgresql-17 refs"
 # -----------------------------------------------------------------------------
 say "5. postgres-scratch-trixie PROMISES.yaml version bumped"
 promises_ver=$(awk '/^version:/ {gsub(/"/, "", $2); print $2}' images/postgres-scratch-trixie/PROMISES.yaml)
-[[ "${promises_ver}" == "0.2" ]] || {
-  echo "  ✗ PROMISES.yaml version is '${promises_ver}', expected '0.2' (semver bump for 17→18)" >&2
+# Accept any version >= 0.2 — FG-026 bumped 0.1 → 0.2, later stories
+# (FG-033, …) bump further. Use sort -V for semver-aware comparison.
+lowest=$(printf '0.2\n%s\n' "${promises_ver}" | sort -V | head -1)
+[[ "${lowest}" == "0.2" ]] || {
+  echo "  ✗ PROMISES.yaml version is '${promises_ver}', expected >= '0.2' (bumped for 17→18)" >&2
   exit 1
 }
-pass "PROMISES version = 0.2"
+pass "PROMISES version = ${promises_ver} (≥ 0.2)"
 
 echo
 echo "FG-026 acceptance: all sections passed."
