@@ -9,9 +9,16 @@ ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
 # FG-025 Phase 2: builder stage FROMs the shared forge-builder-trixie image
 # (apt-upgraded + CA certs + syft pre-installed).
 ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+# FG-031: embed `hc` (static Zig healthcheck binary from bboortz/healthy) so
+# a docker-native HEALTHCHECK can replace the FG-030 sidecar companion.
+# Same pin as FG-030's healthy-scratch-trixie.
+ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
+
+# --- Stage 0b: hc binary source (FG-031) -------------------------------------
+FROM ${HC_REF} AS hc
 
 # --- Stage 1: builder ---------------------------------------------------------
 FROM ${FORGE_BUILDER_REF} AS builder
@@ -104,6 +111,8 @@ COPY --from=builder /out /
 # scan-regression.py extracts this and uses `grype sbom:<path>` so Debian
 # backports (like nginx 1.26.3-3+deb13u10) are honored.
 COPY --from=builder /sbom.json /sbom.json
+# FG-031: healthcheck binary. Placed at /hc to match FG-030's convention.
+COPY --from=hc /hc /hc
 
 # FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
 # re-declare here so nginx-side TLS (e.g. upstream SSL verification in
@@ -114,6 +123,14 @@ ENV PATH=/usr/sbin \
     SSL_CERT_DIR=/etc/ssl/certs
 
 EXPOSE 80
+
+# FG-031: docker-native healthcheck via the embedded /hc binary. Points at
+# the dedicated /healthz handler shipped in nginx.conf — consumers who mount
+# their own nginx.conf wholesale should either add a `location = /healthz`
+# block or override this HEALTHCHECK in their derived Dockerfile
+# (`HEALTHCHECK NONE` or a custom one).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD ["/hc", "-t", "3", "http://127.0.0.1/healthz"]
 
 ENTRYPOINT ["/usr/sbin/nginx"]
 CMD ["-g", "daemon off;"]

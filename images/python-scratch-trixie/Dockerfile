@@ -13,9 +13,17 @@ ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
 # (apt-upgraded + CA certs + syft pre-installed). Local build overrides this
 # to forge-local/forge-builder-trixie:0.1 via scripts/build-image.sh.
 ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+# FG-031: embed `hc` (static Zig healthcheck binary from bboortz/healthy) so
+# consumer apps can wire a docker HEALTHCHECK at their own path/port without
+# a sidecar. We do NOT bake HEALTHCHECK here — consumer apps vary too much
+# in port + path for a safe default. Same pin as FG-030.
+ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
+
+# --- Stage 0b: hc binary source (FG-031) -------------------------------------
+FROM ${HC_REF} AS hc
 
 # --- Stage 1: builder ---------------------------------------------------------
 FROM ${FORGE_BUILDER_REF} AS builder
@@ -92,6 +100,10 @@ COPY --from=builder /out /
 # scan-regression.py extracts this and uses `grype sbom:<path>` so Debian
 # backports are honored.
 COPY --from=builder /sbom.json /sbom.json
+# FG-031: healthcheck binary (static Zig, ~400 KB). Consumer apps wire a
+# docker HEALTHCHECK against their own listener, e.g.:
+#   HEALTHCHECK CMD ["/hc", "-t", "5", "http://127.0.0.1:8000/healthz"]
+COPY --from=hc /hc /hc
 
 # FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
 # we must re-declare here or every TLS call (urllib, requests, pip install,
