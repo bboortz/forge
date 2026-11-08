@@ -14,7 +14,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-python}"
-IMAGE_TAG="${IMAGE_TAG:-3.13-slim-trixie}"
+IMAGE_TAG="${IMAGE_TAG:-3.14-slim-trixie}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 

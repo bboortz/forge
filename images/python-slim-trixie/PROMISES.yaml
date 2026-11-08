@@ -7,11 +7,11 @@
 
 spec_version: 1
 image: python-slim-trixie
-version: "0.1"
+version: "0.2"
 
 promises:
   - id: runtime.python3
-    description: /usr/local/bin/python3 is python 3.13; stdlib imports (ssl, hashlib, json, urllib) succeed at container boot.
+    description: /usr/local/bin/python3 is python 3.14; stdlib imports (ssl, hashlib, json, urllib) succeed at container boot.
     caps: [build.pr-ci, build.daily-publish]
     tests:
       - images/python-slim-trixie/tests/smoke_imports.sh

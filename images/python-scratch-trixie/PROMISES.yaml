@@ -5,11 +5,11 @@
 
 spec_version: 1
 image: python-scratch-trixie
-version: "0.3"
+version: "0.4"
 
 promises:
   - id: runtime.python3-interp
-    description: /usr/local/bin/python3 is python 3.13 with working stdlib — ssl, hashlib, json, urllib.request import and work out of the box.
+    description: /usr/local/bin/python3 is python 3.14 with working stdlib — ssl, hashlib, json, urllib.request import and work out of the box.
     caps: [build.two-stage-scratch]
     tests:
       - images/python-scratch-trixie/tests/smoke_imports.sh

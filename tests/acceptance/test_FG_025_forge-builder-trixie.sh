@@ -5,7 +5,7 @@
 #
 # Validates FG-025: a shared forge-builder-trixie image exists, carries
 # syft + apt-upgrade + CA certs, is published separately in CI, and
-# scratch-base-trixie's builder stage FROMs it (not python:3.13-slim-trixie
+# scratch-base-trixie's builder stage FROMs it (not python:3.14-slim-trixie
 # directly).
 
 set -euo pipefail
@@ -31,8 +31,9 @@ pass "all required files present"
 say "2. discover-images.sh: builders mode exposes forge-builder-trixie; base excludes it"
 bash scripts/discover-images.sh builders | jq -e '.include[] | select(.image_dir == "forge-builder-trixie")' >/dev/null \
   || { echo "  ✗ 'builders' mode missing forge-builder-trixie" >&2; exit 1; }
-bash scripts/discover-images.sh base | jq -e '.include[] | select(.image_dir == "forge-builder-trixie")' >/dev/null 2>&1 \
-  && { echo "  ✗ 'base' mode should NOT include forge-builder-trixie" >&2; exit 1; } || true
+if bash scripts/discover-images.sh base | jq -e '.include[] | select(.image_dir == "forge-builder-trixie")' >/dev/null 2>&1; then
+  echo "  ✗ 'base' mode should NOT include forge-builder-trixie" >&2; exit 1
+fi
 pass "builders/base split correct"
 
 # -----------------------------------------------------------------------------
@@ -44,8 +45,9 @@ grep -q 'ARG FORGE_BUILDER_REF' images/scratch-base-trixie/Dockerfile \
 grep -q 'forge-builder-trixie' images/scratch-base-trixie/Dockerfile \
   || { echo "  ✗ scratch-base-trixie Dockerfile doesn't reference forge-builder-trixie" >&2; exit 1; }
 # The apt-upgrade step should be GONE from scratch-base (now in forge-builder)
-grep -q 'apt-get -y --no-install-recommends upgrade' images/scratch-base-trixie/Dockerfile \
-  && { echo "  ✗ scratch-base-trixie still runs apt-upgrade (should be in forge-builder)" >&2; exit 1; } || true
+if grep -q 'apt-get -y --no-install-recommends upgrade' images/scratch-base-trixie/Dockerfile; then
+  echo "  ✗ scratch-base-trixie still runs apt-upgrade (should be in forge-builder)" >&2; exit 1
+fi
 pass "scratch-base-trixie delegates builder-stage boilerplate to forge-builder-trixie"
 
 # -----------------------------------------------------------------------------

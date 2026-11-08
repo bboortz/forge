@@ -6,7 +6,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-python}"
-IMAGE_TAG="${IMAGE_TAG:-3.13-scratch-trixie}"
+IMAGE_TAG="${IMAGE_TAG:-3.14-scratch-trixie}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 

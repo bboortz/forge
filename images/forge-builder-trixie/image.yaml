@@ -1,6 +1,6 @@
 # FG-025: shared builder image pre-loaded with apt-upgrade + CA certs +
 # syft. Every Forge-native scratch image's builder stage FROMs this
-# instead of python:3.13-slim-trixie, eliminating the per-image repetition
+# instead of python:3.14-slim-trixie, eliminating the per-image repetition
 # of apt-get update / upgrade / syft install. Daily cron rebuilds this
 # first; derivatives pull it as a FROM reference.
 tag: "0.1"

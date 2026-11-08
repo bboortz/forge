@@ -2,6 +2,6 @@
 # `repo` is derived from the directory name (per FG-004) — do not add it back.
 # `tag` is the published version tag; the build workflow additionally pushes
 # -amd64 / :latest / :latest-amd64 siblings pointing at the same digest.
-tag: "3.13"
+tag: "3.14"
 platforms:
   - linux/amd64

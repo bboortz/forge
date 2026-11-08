@@ -11,7 +11,7 @@ Forge solves a specific problem: upstream base images (Google distroless, Docker
 Every image is a two-stage build:
 
 ```
-Stage 1 — builder     python:3.13-slim-trixie (full apt, curl, pip)
+Stage 1 — builder     python:3.14-slim-trixie (full apt, curl, pip)
                        ↓ apt-get upgrade + pinned sid packages where needed
                        ↓ install application dependencies
 
@@ -33,8 +33,8 @@ Each variant lives in its own GHCR package. Every daily publish pushes a 4-tag f
 
 | Repo | Shape | Size | Tags published every run |
 |---|---|---|---|
-| `ghcr.io/bboortz/python-slim-trixie`    | `python:3.13-slim-trixie` + `apt upgrade`                                         | ~121 MB | `:3.13` · `:3.13-amd64` · `:latest` · `:latest-amd64` |
-| `ghcr.io/bboortz/python-scratch-trixie` | Two-stage, `FROM scratch` runtime (interpreter + stdlib + libs + CA bundle + pip) | ~45 MB  | `:3.13` · `:3.13-amd64` · `:latest` · `:latest-amd64` |
+| `ghcr.io/bboortz/python-slim-trixie`    | `python:3.14-slim-trixie` + `apt upgrade`                                         | ~121 MB | `:3.14` · `:3.14-amd64` · `:latest` · `:latest-amd64` |
+| `ghcr.io/bboortz/python-scratch-trixie` | Two-stage, `FROM scratch` runtime (interpreter + stdlib + libs + CA bundle + pip) | ~47 MB  | `:3.14` · `:3.14-amd64` · `:latest` · `:latest-amd64` |
 
 Every published digest ships with:
 - A syft CycloneDX SBOM attached as a cosign attestation (predicate type `cyclonedx`)
@@ -43,7 +43,7 @@ Every published digest ships with:
 
 The scratch variant has **no shell**, **no apt**, **no dpkg database** — `grype` against the base layer reports zero Debian-source matches, so every CVE a consumer sees is a PyPI dep they installed themselves. The slim variant keeps shell + apt for builder stages and interactive debugging.
 
-When `arm64` lands (FG-005), `:3.13-arm64` and `:latest-arm64` join each package, and `:3.13` / `:latest` become manifest lists — existing consumers pulling `:3.13` get the right arch transparently.
+When `arm64` lands (FG-005), `:3.14-arm64` and `:latest-arm64` join each package, and `:3.14` / `:latest` become manifest lists — existing consumers pulling `:3.14` get the right arch transparently. The previous `:3.13` tag remains fetchable on GHCR as the last published 3.13 digest (no further CVE patches — migrate to `:3.14` or `:latest` for continued updates).
 
 Rebuilt daily at 03:00 UTC.
 
@@ -56,7 +56,7 @@ Roadmap: multi-arch via arm64 (FG-005), first sid pin (FG-006), `nginx:stable`, 
 ### Slim variant — when you need pip + apt + shell
 
 ```dockerfile
-FROM ghcr.io/bboortz/python-slim-trixie:3.13
+FROM ghcr.io/bboortz/python-slim-trixie:3.14
 COPY app.py /app/app.py
 CMD ["python3", "/app/app.py"]
 ```
@@ -64,16 +64,16 @@ CMD ["python3", "/app/app.py"]
 ### Scratch variant — minimal attack surface, pip still works for wheels
 
 ```dockerfile
-FROM ghcr.io/bboortz/python-scratch-trixie:3.13
+FROM ghcr.io/bboortz/python-scratch-trixie:3.14
 # pip install works at runtime for wheel-only packages:
 #   docker run --rm <image> pip install --target /opt/pkgs requests
 COPY app.py /app/app.py
 CMD ["python3", "/app/app.py"]
 ```
 
-Daily rebuilds move each tag's digest, so pin by digest (`@sha256:...`) in production if you need reproducibility. Use `:3.13-amd64` if you want to pin a specific arch. The attached SBOM + scan + signature always describe the digest, never the tag.
+Daily rebuilds move each tag's digest, so pin by digest (`@sha256:...`) in production if you need reproducibility. Use `:3.14-amd64` if you want to pin a specific arch. The attached SBOM + scan + signature always describe the digest, never the tag.
 
-> `:latest` silently rolls on every publish. Pin `:3.13` or a digest in production.
+> `:latest` silently rolls on every publish. Pin `:3.14` or a digest in production.
 
 ### Verify any image before pulling
 
@@ -81,7 +81,7 @@ Daily rebuilds move each tag's digest, so pin by digest (`@sha256:...`) in produ
 cosign verify \
   --certificate-identity https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/bboortz/python-scratch-trixie:3.13   # or python-slim-trixie:3.13
+  ghcr.io/bboortz/python-scratch-trixie:3.14   # or python-slim-trixie:3.14
 ```
 
 > Requires `cosign` **v2.x**. See `memory/supply-chain.md` for the cosign-version pin rationale.

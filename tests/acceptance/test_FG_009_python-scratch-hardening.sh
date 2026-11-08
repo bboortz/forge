@@ -13,7 +13,7 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-009]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-IMAGE="forge-local/python-scratch-trixie:3.13"
+IMAGE="forge-local/python-scratch-trixie:3.14"
 
 # -----------------------------------------------------------------------------
 # Section 1 — build python-scratch-trixie
@@ -97,13 +97,13 @@ if [[ "${PUBLISHED:-0}" == "1" ]]; then
   cosign verify \
     --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-    "ghcr.io/bboortz/python-scratch-trixie:3.13" >/dev/null
-  pass "cosign verify ghcr.io/bboortz/python-scratch-trixie:3.13"
+    "ghcr.io/bboortz/python-scratch-trixie:3.14" >/dev/null
+  pass "cosign verify ghcr.io/bboortz/python-scratch-trixie:3.14"
 
-  docker run --rm ghcr.io/bboortz/python-scratch-trixie:3.13 \
+  docker run --rm ghcr.io/bboortz/python-scratch-trixie:3.14 \
     -c "import urllib.request; print(urllib.request.urlopen('https://example.com').status)" \
     | grep -qx 200
-  pass "ghcr.io/bboortz/python-scratch-trixie:3.13 serves HTTPS 200 out of the box"
+  pass "ghcr.io/bboortz/python-scratch-trixie:3.14 serves HTTPS 200 out of the box"
 else
   say "8. published-digest checks skipped (set PUBLISHED=1 to run)"
 fi

@@ -290,7 +290,7 @@ Forge's scan + sign + attest + publish pipeline (per-image smokes, grype scan, s
 
 ### image.beaconry-scout
 
-`beaconry-scout` (bb-claw/beaconry → `poc/scout/Dockerfile`) published by Forge as `ghcr.io/bboortz/beaconry-scout:<ver>`. Composed on `python-scratch-trixie:3.13` — inherits every FG-009 guarantee (nonroot, no shell, SSL_CERT_FILE, ENTRYPOINT=python3). Boots a uvicorn FastAPI app on :8001 serving `/healthz` + `/readyz`.
+`beaconry-scout` (bb-claw/beaconry → `poc/scout/Dockerfile`) published by Forge as `ghcr.io/bboortz/beaconry-scout:<ver>`. Composed on `python-scratch-trixie:3.14` — inherits every FG-009 guarantee (nonroot, no shell, SSL_CERT_FILE, ENTRYPOINT=python3). Boots a uvicorn FastAPI app on :8001 serving `/healthz` + `/readyz`.
 
 - **Delivered by**: FG-012
 - **Covered by**: `tests/acceptance/test_FG_012_external-sourced-images.sh`, `images/beaconry-scout/tests/smoke_http_healthz.sh`
@@ -304,7 +304,7 @@ Forge's scan + sign + attest + publish pipeline (per-image smokes, grype scan, s
 
 ### image.beaconry-hub
 
-`beaconry-hub` (bb-claw/beaconry → `poc/hub/Dockerfile`) published by Forge as `ghcr.io/bboortz/beaconry-hub:<ver>`. Composes on `python-scratch-trixie:3.13` — inherits every FG-009 guarantee. Boots a uvicorn FastAPI app on :8000 serving `/healthz` + `/readyz`. Tracks beaconry `main` via `ref: latest`.
+`beaconry-hub` (bb-claw/beaconry → `poc/hub/Dockerfile`) published by Forge as `ghcr.io/bboortz/beaconry-hub:<ver>`. Composes on `python-scratch-trixie:3.14` — inherits every FG-009 guarantee. Boots a uvicorn FastAPI app on :8000 serving `/healthz` + `/readyz`. Tracks beaconry `main` via `ref: latest`.
 
 - **Delivered by**: FG-014
 - **Covered by**: `tests/acceptance/test_FG_014_beaconry-hub.sh`, `images/beaconry-hub/tests/smoke_http_healthz.sh`
@@ -375,7 +375,7 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 
 ### build.shared-builder
 
-`ghcr.io/bboortz/forge-builder-trixie` is a published builder-base image containing `apt-get upgrade` + CA certificates + syft (`v1.57.0`), on top of `python:3.13-slim-trixie`. Every Forge-native scratch image's builder stage can `FROM ghcr.io/bboortz/forge-builder-trixie:<tag>` instead of repeating the apt + syft install work per-image. Published via a dedicated `publish-builders` tier that runs before `publish-base` in `build.yml`. PROMISES: `files.syft-binary`, `files.ca-certificates`, `apt.freshly-upgraded`, `apt.no-cache`, `apt.no-curl`.
+`ghcr.io/bboortz/forge-builder-trixie` is a published builder-base image containing `apt-get upgrade` + CA certificates + syft (`v1.57.0`), on top of `python:3.14-slim-trixie`. Every Forge-native scratch image's builder stage can `FROM ghcr.io/bboortz/forge-builder-trixie:<tag>` instead of repeating the apt + syft install work per-image. Published via a dedicated `publish-builders` tier that runs before `publish-base` in `build.yml`. PROMISES: `files.syft-binary`, `files.ca-certificates`, `apt.freshly-upgraded`, `apt.no-cache`, `apt.no-curl`.
 
 - **Delivered by**: FG-025 (Phase 1: scratch-base-trixie migration; Phase 2 TBD for python/nginx/postgres)
 - **Covered by**: `tests/acceptance/test_FG_025_forge-builder-trixie.sh`
@@ -389,7 +389,7 @@ The acceptance test suite runs as a GitHub Actions matrix (one job per `tests/ac
 
 ### build.stamp-skip
 
-`scripts/build-image.sh` consults a per-image stamp at `.make/stamps/<image>.stamp` before invoking `docker build`. The stamp is a SHA-256 over (tree hash of `images/<dir>/`, resolved upstream FROM digest via `docker buildx imagetools inspect`, baseline image ID for scratch derivatives, resolved external SHA for FG-012 images). If the stamp matches the current inputs AND `docker image inspect <tag>` succeeds, `docker build` is skipped and the existing daemon image is reused — scan + smoke + verify still run against it. `FORGE_NO_SKIP=1` forces a build. `make check-strict` wipes `.make/stamps/` via `clean-stamps`. Daily `build.yml` cron is unaffected (does not route through check-smart). Upstream-change detection is handled by re-resolving the FROM digest on each stamp check — a mutable tag like `python:3.13-slim-trixie` that gets a new digest invalidates the stamp.
+`scripts/build-image.sh` consults a per-image stamp at `.make/stamps/<image>.stamp` before invoking `docker build`. The stamp is a SHA-256 over (tree hash of `images/<dir>/`, resolved upstream FROM digest via `docker buildx imagetools inspect`, baseline image ID for scratch derivatives, resolved external SHA for FG-012 images). If the stamp matches the current inputs AND `docker image inspect <tag>` succeeds, `docker build` is skipped and the existing daemon image is reused — scan + smoke + verify still run against it. `FORGE_NO_SKIP=1` forces a build. `make check-strict` wipes `.make/stamps/` via `clean-stamps`. Daily `build.yml` cron is unaffected (does not route through check-smart). Upstream-change detection is handled by re-resolving the FROM digest on each stamp check — a mutable tag like `python:3.14-slim-trixie` that gets a new digest invalidates the stamp.
 
 - **Delivered by**: FG-023
 - **Covered by**: `tests/acceptance/test_FG_023_smart-rebuild-skip.sh`

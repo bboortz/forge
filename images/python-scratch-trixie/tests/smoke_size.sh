@@ -9,7 +9,7 @@ set -euo pipefail
 SIZE_CEILING=${SIZE_CEILING:-60000000}
 export SIZE_CEILING
 export IMAGE_NAME="${IMAGE_NAME:-python}"
-export IMAGE_TAG="${IMAGE_TAG:-3.13-scratch-trixie}"
+export IMAGE_TAG="${IMAGE_TAG:-3.14-scratch-trixie}"
 export REGISTRY="${REGISTRY:-forge-local}"
 
 exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../python-slim-trixie/tests" && pwd)/smoke_size.sh"
