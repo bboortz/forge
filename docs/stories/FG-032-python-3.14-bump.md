@@ -1,7 +1,7 @@
 ---
 id: FG-032
 slug: python-3.14-bump
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-08
 ---

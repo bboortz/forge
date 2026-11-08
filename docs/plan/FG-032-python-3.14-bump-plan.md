@@ -1,7 +1,7 @@
 # FG-032 — Plan: Python 3.13 → 3.14 in-place bump
 
 **Story**: [`docs/stories/FG-032-python-3.14-bump.md`](../stories/FG-032-python-3.14-bump.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-032-python-3.14-bump`
 
 ## Design delta
