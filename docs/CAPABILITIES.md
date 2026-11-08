@@ -154,10 +154,10 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 ### image.postgres-serves-sql
 
-`postgres-scratch-trixie` starts and answers `psql -c 'SELECT 1'` end-to-end against an externally-initialized cluster. Binary-compatible with Debian postgres data directories (uid 999 pinned to match Docker Hub). FG-026 bumped the postgres major version from 17 → 18.
+`postgres-scratch-trixie` starts and answers `psql -c 'SELECT 1'` end-to-end against an externally-initialized cluster. Binary-compatible with Debian postgres data directories (uid 999 pinned to match Docker Hub). FG-026 bumped the postgres major version from 17 → 18. FG-033 adds C.UTF-8 + en_US.UTF-8 locale support, so `initdb --locale=<either>` produces a cluster where `UPPER()`/`LOWER()`/`ORDER BY` respect UTF-8 semantics.
 
-- **Delivered by**: FG-007 (bumped to postgres 18 in FG-026)
-- **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
+- **Delivered by**: FG-007 (bumped to postgres 18 in FG-026; UTF-8 locales added in FG-033)
+- **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `tests/acceptance/test_FG_033_locale-utf8.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`, `images/postgres-scratch-trixie/tests/smoke_locale_utf8.sh`
 
 ### image.healthy-sidecar
 
@@ -165,6 +165,13 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 - **Delivered by**: FG-030
 - **Covered by**: `tests/acceptance/test_FG_030_healthy-scratch-v2.sh`, `images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh`
+
+### image.locale-utf8
+
+`postgres-scratch-trixie` + `python-scratch-trixie` ship compiled `C.UTF-8` + `en_US.UTF-8` locales at `/usr/lib/locale/C.utf8/` + `/usr/lib/locale/en_US.utf8/` so glibc's `setlocale(LC_ALL, "C.UTF-8")` and `setlocale(LC_ALL, "en_US.UTF-8")` succeed at runtime. Prior to FG-033 both images set `ENV LANG=C.UTF-8` but glibc silently fell back to the `C` locale (postgres reported `lc_ctype=C` from `initdb`; python's `locale.setlocale` raised `locale.Error`). Compiled via `localedef -c -i <base> -f UTF-8 <locale>` in the builder stage — exactly two locales, no full `locale-gen` bloat (~2-3 MB combined vs. ~55 MB for the full Debian locale set). `locale-archive` is included for glibc's fast-path lookup. postgres `initdb --locale=en_US.UTF-8` produces a cluster where `UPPER('ä') = Ä`, `length('€') = 1`, and `ORDER BY` respects Unicode alphabetical order; python's `locale.strcoll` distinguishes byte-order (C.UTF-8) from Unicode-alphabetical (en_US.UTF-8).
+
+- **Delivered by**: FG-033
+- **Covered by**: `tests/acceptance/test_FG_033_locale-utf8.sh`, `images/postgres-scratch-trixie/tests/smoke_locale_utf8.sh`, `images/python-scratch-trixie/tests/smoke_locale_utf8.sh`
 
 ### image.hc-embedded
 
@@ -233,11 +240,11 @@ Every Forge scratch derivative re-declares `ENV SSL_CERT_FILE=/etc/ssl/certs/ca-
 
 ### image.python-scratch-nonroot
 
-`python-scratch-trixie` defaults to `USER 65532:65532`, `WORKDIR /nonroot`, `ENTRYPOINT ["/usr/local/bin/python3"]`, `CMD []`, with `PYTHONDONTWRITEBYTECODE=1` + `PYTHONFAULTHANDLER=1` baked. Distroless convention: `docker run <image> script.py` just works; `docker run <image> pip install ...` needs `--entrypoint=pip`. FG-031 adds `/hc` so consumer apps can wire a docker HEALTHCHECK against their own listener without a sidecar.
+`python-scratch-trixie` defaults to `USER 65532:65532`, `WORKDIR /nonroot`, `ENTRYPOINT ["/usr/local/bin/python3"]`, `CMD []`, with `PYTHONDONTWRITEBYTECODE=1` + `PYTHONFAULTHANDLER=1` baked. Distroless convention: `docker run <image> script.py` just works; `docker run <image> pip install ...` needs `--entrypoint=pip`. FG-031 adds `/hc` so consumer apps can wire a docker HEALTHCHECK against their own listener without a sidecar. FG-033 adds C.UTF-8 + en_US.UTF-8 locales so `locale.setlocale(locale.LC_ALL, ...)` with either argument succeeds (previously raised `locale.Error` despite the baked `ENV LANG=C.UTF-8`).
 
 - **Delivered by**: FG-009
-- **Extended by**: FG-031 (`/hc` present; consumer configures HEALTHCHECK)
-- **Covered by**: `tests/acceptance/test_FG_009_python-scratch-hardening.sh`, `tests/acceptance/test_FG_031_hc-in-service-images.sh`, `images/python-scratch-trixie/tests/smoke_user_nonroot.sh`, `images/python-scratch-trixie/tests/smoke_tls_https_real.sh`, `images/python-scratch-trixie/tests/smoke_entrypoint.sh`, `images/python-scratch-trixie/tests/smoke_hc_present.sh`
+- **Extended by**: FG-031 (`/hc` present; consumer configures HEALTHCHECK), FG-033 (compiled C.UTF-8 + en_US.UTF-8 locales)
+- **Covered by**: `tests/acceptance/test_FG_009_python-scratch-hardening.sh`, `tests/acceptance/test_FG_031_hc-in-service-images.sh`, `tests/acceptance/test_FG_033_locale-utf8.sh`, `images/python-scratch-trixie/tests/smoke_user_nonroot.sh`, `images/python-scratch-trixie/tests/smoke_tls_https_real.sh`, `images/python-scratch-trixie/tests/smoke_entrypoint.sh`, `images/python-scratch-trixie/tests/smoke_hc_present.sh`, `images/python-scratch-trixie/tests/smoke_locale_utf8.sh`
 
 ### contracts.promises
 

@@ -46,6 +46,24 @@ RUN set -eux; \
     apt-get -y --purge --auto-remove remove gnupg wget; \
     rm -rf /var/lib/apt/lists/*
 
+# FG-033: compile the two UTF-8 locales we promise in PROMISES. Using
+# localedef (not locale-gen) so we get EXACTLY these two locales —
+# a bare `locale-gen` with a full /etc/locale.gen would bloat the
+# archive by ~55 MB. `--no-archive` writes each locale to its own
+# /usr/lib/locale/<name>.utf8/ dir (and keeps the archive alongside)
+# so the overlay COPY can grab deterministic per-locale directories.
+# DL4006 ignore: the set -eux + exit-chaining is enough for our failure
+# semantics — bringing in a bash SHELL directive just for pipefail here
+# would affect every subsequent RUN layer.
+# hadolint ignore=DL4006
+RUN set -eux; \
+    localedef --no-archive -c -i C     -f UTF-8 C.UTF-8; \
+    localedef --no-archive -c -i en_US -f UTF-8 en_US.UTF-8; \
+    test -f /usr/lib/locale/C.utf8/LC_CTYPE; \
+    test -f /usr/lib/locale/en_US.utf8/LC_CTYPE; \
+    locale -a | grep -qx C.utf8; \
+    locale -a | grep -qx en_US.utf8
+
 # FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
 # forge-builder-trixie (FG-025). Scan AFTER apt-get install.
 RUN set -eux; \
@@ -67,7 +85,12 @@ RUN set -eux; \
     install -d /out/etc /out/lib/x86_64-linux-gnu \
                /out/usr/lib/postgresql/18/bin /out/usr/lib/postgresql/18/lib \
                /out/usr/share/postgresql \
+               /out/usr/lib/locale \
                /out/var/lib/postgresql /out/var/run/postgresql; \
+    # FG-033: ship both compiled UTF-8 locales + the locale archive.
+    cp -r /usr/lib/locale/C.utf8     /out/usr/lib/locale/C.utf8; \
+    cp -r /usr/lib/locale/en_US.utf8 /out/usr/lib/locale/en_US.utf8; \
+    cp /usr/lib/locale/locale-archive /out/usr/lib/locale/locale-archive 2>/dev/null || true; \
     # Binary subset (no Debian wrappers; they need perl + multi-cluster
     # config we deliberately don't ship).
     for b in postgres initdb pg_ctl pg_isready psql pg_dump \
