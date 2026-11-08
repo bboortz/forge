@@ -1,7 +1,7 @@
 # FG-031 — Plan: Embed `hc` in service scratch images
 
 **Story**: [`docs/stories/FG-031-hc-in-service-images.md`](../stories/FG-031-hc-in-service-images.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-031-hc-in-service-images`
 
 ## Design delta
