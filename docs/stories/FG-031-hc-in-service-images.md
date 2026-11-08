@@ -1,7 +1,7 @@
 ---
 id: FG-031
 slug: hc-in-service-images
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-08
 ---
