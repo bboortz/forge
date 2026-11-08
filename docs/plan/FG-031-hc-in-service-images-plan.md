@@ -52,7 +52,9 @@
 
   This is the only observable behavior change in FG-031. New `/hc` binary is additive.
 
-- **Image size bumps** (both ≤ 1 MB): nginx ~15 MB → ~15.4 MB; python ~44 MB → ~44.4 MB. Both well within existing budgets.
+- **Image size bumps** (both ≤ 1 MB): nginx ~15 MB → ~15.4 MB; python ~44 MB → ~44.4 MB (confirmed locally: 17.8 MB + 47.5 MB after full `make check-strict` rebuild). Both well within existing budgets.
+
+- **Downstream propagation to beaconry-scout size budget.** `beaconry-scout` is built FROM `python-scratch-trixie`, so FG-031's ~400 KB `/hc` addition pushes scout from ~149.7 MB to ~150.04 MB. The existing 150 MB scout ceiling was tight enough that this 36 KB overshoot tripped the smoke. Ceiling bumped to 160 MB in `images/beaconry-scout/tests/smoke_size.sh` as part of this PR — gives ~2.5 MB headroom for future upstream drift without immediately re-tripping. `beaconry-hub` (also python-scratch-based, 328.8 MB / 350 MB ceiling) and `beaconry-telegram-mock` (142.8 MB, own python:3.12-slim base) remained in budget.
 
 - No change to the public verify command, tag naming, GHCR repo structure, or attestation format.
 
