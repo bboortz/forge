@@ -32,11 +32,22 @@ RUN set -eux; \
 
 # Install syft so every scratch derivative's builder stage can emit an
 # embedded SBOM (FG-020) without re-downloading the tool per build.
+# Retry wrapper: GitHub's releases/download/* CDN flaps 504 periodically
+# (observed 2026-11-08). 5 attempts with exponential-ish backoff.
 ARG SYFT_VERSION=v1.57.0
 # hadolint ignore=DL4006
 RUN set -eux; \
-    curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
-      | sh -s -- -b /usr/local/bin "${SYFT_VERSION}"; \
+    for attempt in 1 2 3 4 5; do \
+      if curl -sSfL "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
+         | sh -s -- -b /usr/local/bin "${SYFT_VERSION}" \
+         && [ -x /usr/local/bin/syft ]; then \
+        break; \
+      fi; \
+      if [ "${attempt}" = "5" ]; then \
+        echo "syft install failed after 5 attempts" >&2; exit 1; \
+      fi; \
+      sleep $((attempt * 5)); \
+    done; \
     apt-get -y --purge --auto-remove remove curl; \
     syft version
 

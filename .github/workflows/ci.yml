@@ -137,9 +137,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq python3-yaml
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b "$HOME/.local/bin"
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b "$HOME/.local/bin"
-          curl -sSfL -o "$HOME/.local/bin/cosign" https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
+          # Retry wrapper: GitHub's release-asset CDN flaps 504 periodically.
+          bash scripts/install-anchore-tool.sh syft  "$HOME/.local/bin"
+          bash scripts/install-anchore-tool.sh grype "$HOME/.local/bin"
+          curl -sSfL --retry 5 --retry-delay 5 --retry-connrefused \
+            -o "$HOME/.local/bin/cosign" \
+            https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
