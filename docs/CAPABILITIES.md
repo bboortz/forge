@@ -139,10 +139,11 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 ### image.nginx-serves-http
 
-`nginx-scratch-trixie` answers `curl http://localhost/` with HTTP 200 and the default welcome page out of the box. Minimal self-contained config shipped at `/etc/nginx/nginx.conf`.
+`nginx-scratch-trixie` answers `curl http://localhost/` with HTTP 200 and the default welcome page out of the box. Minimal self-contained config shipped at `/etc/nginx/nginx.conf`. FG-031 adds a dedicated `location = /healthz { return 200; }` handler plus a baked `HEALTHCHECK` using the embedded `/hc` binary — the image is self-healthchecking without a sidecar.
 
 - **Delivered by**: FG-006
-- **Covered by**: `tests/acceptance/test_FG_006_nginx-scratch-trixie.sh`, `images/nginx-scratch-trixie/tests/smoke_serves_200.sh`
+- **Extended by**: FG-031 (`/healthz` endpoint + baked HEALTHCHECK)
+- **Covered by**: `tests/acceptance/test_FG_006_nginx-scratch-trixie.sh`, `tests/acceptance/test_FG_031_hc-in-service-images.sh`, `images/nginx-scratch-trixie/tests/smoke_serves_200.sh`, `images/nginx-scratch-trixie/tests/smoke_hc_healthcheck.sh`
 
 ### test.smoke-server-helper
 
@@ -164,6 +165,13 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 - **Delivered by**: FG-030
 - **Covered by**: `tests/acceptance/test_FG_030_healthy-scratch-v2.sh`, `images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh`
+
+### image.hc-embedded
+
+The service scratch images that need an HTTP/TCP healthcheck probe carry `/hc` (static Zig binary, ~400 KB, from `ghcr.io/bboortz/hc`) so docker-native `HEALTHCHECK` works in-container — no FG-030 sidecar companion needed. `nginx-scratch-trixie` additionally bakes a `HEALTHCHECK` pointing at a `/healthz` location shipped in its default config. `python-scratch-trixie` carries `/hc` but does NOT bake a HEALTHCHECK (consumer apps vary too much in port + path). The DB/broker trio (redis / postgres / mosquitto) deliberately does not embed `hc` — they ship native CLI tools (`redis-cli PING`, `pg_isready`, `mosquitto_sub -C 1`) that are better-suited. `healthy-scratch-trixie:2` remains published for consumers who prefer the sidecar-netns pattern.
+
+- **Delivered by**: FG-031
+- **Covered by**: `tests/acceptance/test_FG_031_hc-in-service-images.sh`, `images/nginx-scratch-trixie/tests/smoke_hc_healthcheck.sh`, `images/python-scratch-trixie/tests/smoke_hc_present.sh`
 
 ### image.mosquitto-serves-mqtt
 
@@ -225,10 +233,11 @@ Every Forge scratch derivative re-declares `ENV SSL_CERT_FILE=/etc/ssl/certs/ca-
 
 ### image.python-scratch-nonroot
 
-`python-scratch-trixie` defaults to `USER 65532:65532`, `WORKDIR /nonroot`, `ENTRYPOINT ["/usr/local/bin/python3"]`, `CMD []`, with `PYTHONDONTWRITEBYTECODE=1` + `PYTHONFAULTHANDLER=1` baked. Distroless convention: `docker run <image> script.py` just works; `docker run <image> pip install ...` needs `--entrypoint=pip`.
+`python-scratch-trixie` defaults to `USER 65532:65532`, `WORKDIR /nonroot`, `ENTRYPOINT ["/usr/local/bin/python3"]`, `CMD []`, with `PYTHONDONTWRITEBYTECODE=1` + `PYTHONFAULTHANDLER=1` baked. Distroless convention: `docker run <image> script.py` just works; `docker run <image> pip install ...` needs `--entrypoint=pip`. FG-031 adds `/hc` so consumer apps can wire a docker HEALTHCHECK against their own listener without a sidecar.
 
 - **Delivered by**: FG-009
-- **Covered by**: `tests/acceptance/test_FG_009_python-scratch-hardening.sh`, `images/python-scratch-trixie/tests/smoke_user_nonroot.sh`, `images/python-scratch-trixie/tests/smoke_tls_https_real.sh`, `images/python-scratch-trixie/tests/smoke_entrypoint.sh`
+- **Extended by**: FG-031 (`/hc` present; consumer configures HEALTHCHECK)
+- **Covered by**: `tests/acceptance/test_FG_009_python-scratch-hardening.sh`, `tests/acceptance/test_FG_031_hc-in-service-images.sh`, `images/python-scratch-trixie/tests/smoke_user_nonroot.sh`, `images/python-scratch-trixie/tests/smoke_tls_https_real.sh`, `images/python-scratch-trixie/tests/smoke_entrypoint.sh`, `images/python-scratch-trixie/tests/smoke_hc_present.sh`
 
 ### contracts.promises
 

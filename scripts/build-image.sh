@@ -109,6 +109,15 @@ if ! docker image inspect "${FORGE_BUILDER_REF}" >/dev/null 2>&1; then
   FORGE_BUILDER_REF="ghcr.io/bboortz/forge-builder-trixie:${_BUILDER_TAG}"
 fi
 
+# FG-031: resolve HC_REF the same way for images whose Dockerfile declares
+# ARG HC_REF (healthy-scratch-trixie + any image embedding /hc per FG-031).
+# Prefer forge-local/hc:0.1.0 if present (set up for local dev); else fall
+# back to the upstream published image ghcr.io/bboortz/hc:0.1.0.
+HC_REF="${REGISTRY}/hc:0.1.0"
+if ! docker image inspect "${HC_REF}" >/dev/null 2>&1; then
+  HC_REF="ghcr.io/bboortz/hc:0.1.0"
+fi
+
 PULL_FLAG="--pull"
 # Drop --pull if either referenced base is a daemon-only forge-local tag —
 # docker build --pull tries to resolve it from a registry and aborts with
@@ -121,6 +130,10 @@ fi
 # FG-025: same guard for FORGE_BUILDER_REF. When it's forge-local/... we must
 # drop --pull regardless of SCRATCH_BASE_REF.
 if [[ "${FORGE_BUILDER_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-031: same guard for HC_REF — forge-local/hc:0.1.0 isn't a real registry.
+if [[ "${HC_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 
@@ -221,6 +234,12 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_REF}" == forge-local/* ]] \
    && grep -q "FORGE_BUILDER_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-031: same check for HC_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "HC_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 
 BUILD_CMD=(docker build)
 CACHE_ARGS=()
@@ -240,6 +259,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
   --build-arg FORGE_BUILDER_REF="${FORGE_BUILDER_REF}" \
+  --build-arg HC_REF="${HC_REF}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \
   --file "${BUILD_DOCKERFILE}" \

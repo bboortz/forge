@@ -5,7 +5,7 @@
 
 spec_version: 1
 image: nginx-scratch-trixie
-version: "0.2"
+version: "0.3"
 
 promises:
   - id: runtime.nginx-binary
@@ -32,6 +32,18 @@ promises:
     tests:
       - images/nginx-scratch-trixie/tests/smoke_modules_present.sh
       - images/nginx-scratch-trixie/tests/smoke_stream_config_validates.sh
+
+  - id: runtime.hc-binary
+    description: "/hc is present and executable (static Zig binary from ghcr.io/bboortz/hc). Enables docker-native HEALTHCHECK in-container, replacing the FG-030 sidecar companion pattern."
+    caps: [image.hc-embedded]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: runtime.healthz-endpoint
+    description: "GET /healthz on the default-config listener returns HTTP 200 with body 'ok\\n'. Backs the baked HEALTHCHECK which calls /hc against /healthz. Consumers who mount their own nginx.conf wholesale must preserve a /healthz handler or override HEALTHCHECK in a derived Dockerfile."
+    caps: [image.nginx-serves-http, image.hc-embedded]
+    tests:
+      - images/nginx-scratch-trixie/tests/smoke_hc_healthcheck.sh
 
   - id: absence.shell
     description: No /bin/sh, /bin/bash, or any shell binary.
