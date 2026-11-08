@@ -1,7 +1,7 @@
 # FG-033 — Plan: C.UTF-8 + en_US.UTF-8 in postgres-scratch + python-scratch
 
 **Story**: [`docs/stories/FG-033-locale-utf8.md`](../stories/FG-033-locale-utf8.md)
-**Status**: in-progress
+**Status**: shipped
 **Branch**: `feat/FG-033-locale-utf8`
 
 ## Design delta

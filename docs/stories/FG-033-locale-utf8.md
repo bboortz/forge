@@ -1,7 +1,7 @@
 ---
 id: FG-033
 slug: locale-utf8
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-08
 ---
