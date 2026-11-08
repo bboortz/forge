@@ -18,7 +18,7 @@ pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 # -----------------------------------------------------------------------------
 say "1. images/healthy-scratch-trixie/ has required v2 layout"
 for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json \
-         tests/smoke_binary_runs.sh tests/smoke_cmd_sleeps.sh \
+         tests/smoke_binary_runs.sh tests/smoke_cmd_idle.sh \
          tests/smoke_sidecar_healthcheck.sh tests/smoke_contents.sh \
          tests/smoke_no_shell.sh tests/smoke_size.sh; do
   test -e "images/healthy-scratch-trixie/${f}" \
@@ -53,7 +53,7 @@ pass "forge-local/healthy-scratch-trixie:2 built"
 # -----------------------------------------------------------------------------
 say "3. per-image smoke suite"
 IMAGE_TAG=2 bash images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
-IMAGE_TAG=2 bash images/healthy-scratch-trixie/tests/smoke_cmd_sleeps.sh
+IMAGE_TAG=2 bash images/healthy-scratch-trixie/tests/smoke_cmd_idle.sh
 IMAGE_TAG=2 bash images/healthy-scratch-trixie/tests/smoke_contents.sh
 IMAGE_TAG=2 bash images/healthy-scratch-trixie/tests/smoke_no_shell.sh
 IMAGE_TAG=2 bash images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh

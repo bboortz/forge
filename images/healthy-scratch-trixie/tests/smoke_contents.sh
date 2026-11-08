@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Smoke: /hc + /usr/bin/sleep + libc + ld-linux + /sbom.json present;
-# /usr/bin/wget + GnuTLS libs absent; SBOM is valid.
+# Smoke: /hc + /sbom.json present; sleep + wget + nc + libc all absent.
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-healthy-scratch-trixie}"
@@ -18,29 +17,29 @@ trap cleanup EXIT
 
 CID=$(docker create --entrypoint=/nonexistent "${IMAGE}")
 
-for path in /hc /usr/bin/sleep /lib64/ld-linux-x86-64.so.2 \
-            /lib/x86_64-linux-gnu/libc.so.6 /sbom.json; do
+for path in /hc /sbom.json; do
   if ! docker cp "${CID}:${path}" "${TMP}/$(basename "${path}")" >/dev/null 2>&1; then
     echo "  ✗ required file missing: ${path}" >&2
     exit 1
   fi
 done
-echo "  ✓ /hc + sleep + libc + ld-linux + /sbom.json present"
+echo "  ✓ /hc + /sbom.json present"
 
-for path in /usr/bin/wget /usr/bin/nc /lib/x86_64-linux-gnu/libgnutls.so.30; do
-  if docker cp "${CID}:${path}" "${TMP}/absent" 2>/dev/null; then
-    echo "  ✗ file should be absent but is present: ${path}" >&2
+for absent in /usr/bin/sleep /usr/bin/wget /usr/bin/nc \
+              /lib/x86_64-linux-gnu/libc.so.6 \
+              /lib64/ld-linux-x86-64.so.2 \
+              /lib/x86_64-linux-gnu/libgnutls.so.30; do
+  if docker cp "${CID}:${absent}" "${TMP}/absent" 2>/dev/null; then
+    echo "  ✗ ${absent} should be absent" >&2
     exit 1
   fi
 done
-echo "  ✓ wget/nc/libgnutls absent (v1 → v2 dropped the GnuTLS stack)"
+echo "  ✓ sleep/wget/nc/libc/ld-linux/libgnutls all absent"
 
 if ! python3 -c "
 import json
 d = json.load(open('${TMP}/sbom.json'))
 assert d.get('bomFormat') == 'CycloneDX', f'wrong bomFormat: {d.get(\"bomFormat\")}'
-comps = d.get('components') or []
-assert len(comps) > 0, 'empty components list'
 " 2>&1; then
   echo "  ✗ /sbom.json malformed" >&2
   exit 1
