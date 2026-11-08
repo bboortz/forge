@@ -16,7 +16,7 @@ set -euo pipefail
 
 IMAGE_DIR="python-slim-trixie"
 IMAGE_REPO="python-slim-trixie"          # FG-004: repo name == dir name
-IMAGE_TAG="3.13"                         # FG-004: version only
+IMAGE_TAG="3.14"                         # FG-004: version only
 TESTS_DIR="images/${IMAGE_DIR}/tests"
 
 cd "$(git rev-parse --show-toplevel)"

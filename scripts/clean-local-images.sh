@@ -4,7 +4,7 @@
 # forge-local/ namespace. Fast (nothing to rebuild if nothing was cached).
 #
 # Catches the failure mode from PR #7 CI: a stale IMAGE_REPO value in a
-# test was referencing forge-local/python:3.13-slim-trixie, which no longer
+# test was referencing forge-local/python:3.14-slim-trixie, which no longer
 # matches any image recipe in the repo. The workstation had the old image
 # cached from a pre-FG-004 build, so `docker run` found it and the test
 # passed locally; the clean CI runner failed. Clearing forge-local/* forces

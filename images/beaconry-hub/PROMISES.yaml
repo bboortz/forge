@@ -1,5 +1,5 @@
 # Authoritative contract for beaconry-hub. Externally sourced (FG-012) from
-# bboortz/beaconry/poc/hub/Dockerfile. Composes on python-scratch-trixie:3.13
+# bboortz/beaconry/poc/hub/Dockerfile. Composes on python-scratch-trixie:3.14
 # and bundles three CLIs for hub's cve-waterfall + fix-execution paths.
 
 spec_version: 1

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Two-stage. Builder is python:3.13-slim-trixie (matches baseline glibc).
+# Two-stage. Builder is python:3.14-slim-trixie (matches baseline glibc).
 # Runtime FROM scratch, composed of:
 #   1. scratch-base-trixie (glibc + TLS + DNS + zoneinfo + /etc)
 #   2. postgres-specific overlay (binaries + ICU + krb5 + ldap + xml + pam

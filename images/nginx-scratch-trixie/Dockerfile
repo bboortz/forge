@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Two-stage. Builder is python:3.13-slim-trixie (matches the baseline's
+# Two-stage. Builder is python:3.14-slim-trixie (matches the baseline's
 # glibc/libssl versions). Runtime is FROM scratch, composed by overlaying:
 #   1. scratch-base-trixie (shared glibc + TLS + DNS + zoneinfo + /etc)
 #   2. nginx-specific overlay (binary + libpcre2 + config + www-data user)

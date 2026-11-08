@@ -1,6 +1,6 @@
 # What beaconry-hub requires from its dependencies. Pinned to
 # python-scratch-trixie@>=0.2 — hub's Dockerfile FROMs
-# ghcr.io/bboortz/python-scratch-trixie:3.13 AS runtime.
+# ghcr.io/bboortz/python-scratch-trixie:3.14 AS runtime.
 #
 # Hub inherits every FG-009 guarantee (SSL cert env, ENTRYPOINT=python3,
 # USER 65532, WORKDIR /nonroot, PYTHONDONTWRITEBYTECODE, PYTHONFAULTHANDLER).
