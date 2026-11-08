@@ -1,7 +1,7 @@
 ---
 id: FG-029
 slug: healthy-scratch-trixie
-status: draft
+status: in-progress
 owner: bboortz
 created: 2026-11-08
 ---

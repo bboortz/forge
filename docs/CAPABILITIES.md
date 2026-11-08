@@ -158,6 +158,13 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 - **Delivered by**: FG-007 (bumped to postgres 18 in FG-026)
 - **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`
 
+### image.healthy-sidecar
+
+`healthy-scratch-trixie:1` is a minimal scratch sidecar carrying `wget`, `nc` (openbsd), and `sleep` on top of scratch-base-trixie. Intended for `network_mode: "service:<name>"` or `--network=container:<name>` deployments where a scratch service doesn't bundle its own healthcheck client (nginx-scratch-trixie is the primary target). Default CMD is `["/usr/bin/sleep", "infinity"]` so the sidecar stays up and docker's healthcheck feature can invoke wget / nc via the shared loopback. No shell, no curl (deliberately — curl's closure drags ~15 MB of GSSAPI/LDAP/brotli/GnuTLS; wget + GnuTLS is already heavy enough). Runs as uid 65532 (baseline nonroot).
+
+- **Delivered by**: FG-029
+- **Covered by**: `tests/acceptance/test_FG_029_healthy-scratch-trixie.sh`, `images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh`
+
 ### image.mosquitto-serves-mqtt
 
 `mosquitto-scratch-trixie:2` starts on `/usr/sbin/mosquitto` (ENTRYPOINT direct, no shell), accepts PUBLISH / SUBSCRIBE via a sidecar container sharing its network namespace, and honors password-file authentication (`allow_anonymous false`). Mosquitto user pinned to uid 1883 (Eclipse convention) — persistent data dirs from existing `eclipse-mosquitto:2` deployments remain mutually readable. Default-permissive config baked at `/mosquitto/config/mosquitto.conf` so config-less `docker run` works for dev; production consumers mount their own at the same path. SIGHUP reloads the config without restarting the broker. Image ≤ 30 MB. Zero OS CVEs.

@@ -1,0 +1,43 @@
+# What healthy-scratch-trixie requires from its dependencies.
+
+spec_version: 1
+image: healthy-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: wget + nc + sleep interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: wget + nc + sleep all link libc. nc also links libresolv for DNS.
+        preflight:
+          - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.tls-stack
+        reason: wget's HTTPS resolution reads /etc/ssl/certs/ca-certificates.crt. baseline provides it; this image doesn't bring its own.
+        preflight:
+          - images/healthy-scratch-trixie/tests/smoke_contents.sh
+
+      - promise: files.compression
+        reason: "libz is baseline-provided; wget uses it for Content-Encoding (gzip) response bodies."
+        preflight:
+          - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.network-data
+        reason: nc + wget honor /etc/hosts + /etc/services for name + port resolution. Baseline provides a localhost entry; consumers who name-resolve specific hosts need their own /etc/hosts overrides.
+        preflight:
+          - images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh
+
+      - promise: identity.nonroot
+        reason: Image USER = 65532 uses the baseline's `nonroot` entry in /etc/passwd. Without that entry wget would still work (uid-only invocations), but having the name entry keeps logs readable.
+        preflight:
+          - images/healthy-scratch-trixie/tests/smoke_cmd_sleeps.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract. Docker's healthcheck feature uses the exec form ['CMD', 'wget', ...] which doesn't need /bin/sh.
+        preflight:
+          - images/healthy-scratch-trixie/tests/smoke_no_shell.sh

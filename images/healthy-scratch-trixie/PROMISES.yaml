@@ -1,0 +1,67 @@
+# Authoritative contract for healthy-scratch-trixie (FG-029).
+#
+# Scratch sidecar. Not a long-running service — the container's purpose
+# is to stay up (sleep infinity) so docker's healthcheck feature can
+# exec wget / nc through its shared network namespace.
+
+spec_version: 1
+image: healthy-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.wget-binary
+    description: "/usr/bin/wget present + runnable; `wget --version` prints 'GNU Wget 1.x'. Supports -q, -O-, -T <sec>, ca-certificates verify out of the box."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+      - images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh
+
+  - id: runtime.nc-binary
+    description: "/usr/bin/nc present + runnable; OpenBSD netcat with -z (TCP port scan) support. Suitable for docker healthchecks that probe a listening port without needing HTTP semantics."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+      - images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh
+
+  - id: runtime.sleep-binary
+    description: "/usr/bin/sleep present + runnable (GNU coreutils). Default CMD = ['/usr/bin/sleep', 'infinity'] so the sidecar stays up without a shell wrapper."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_binary_runs.sh
+      - images/healthy-scratch-trixie/tests/smoke_cmd_sleeps.sh
+
+  - id: runtime.sidecar-netns-compatible
+    description: "With `network_mode: service:<name>` or `--network=container:<name>`, wget and nc reach the target service via the shared loopback. End-to-end validated against a redis-scratch-trixie target."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_sidecar_healthcheck.sh
+
+  - id: runtime.user-nonroot
+    description: "Container runs as uid 65532 (baseline nonroot convention). No privileged capabilities needed — wget / nc / sleep all work as non-root."
+    caps: [image.healthy-sidecar]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_cmd_sleeps.sh
+
+  - id: image.no-shell
+    description: "No /bin/sh, /bin/bash, /bin/busybox, /usr/bin/sh in the image. Docker healthchecks use the exec form ['CMD', 'wget', ...] which doesn't need a shell."
+    caps: [image.no-shell]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_no_shell.sh
+
+  - id: files.sbom-embed
+    description: "/sbom.json present in the runtime image (FG-020). SBOM contains components for wget + netcat-openbsd + coreutils (dpkg-cataloger only, no go-modules noise from syft itself)."
+    caps: [scan.sbom-embed]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_contents.sh
+
+  - id: files.tls-stack
+    description: "/etc/ssl/certs/ca-certificates.crt present (inherited from scratch-base). wget --https:// against publicly-rooted CAs works without extra config."
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_contents.sh
+
+  - id: shape.size-budget
+    description: "Image size ≤ 30 MB absolute ceiling. wget + GnuTLS + crypto deps are the bulk; wget-less alternatives would require building wget from source against OpenSSL."
+    caps: [test.size-budget]
+    tests:
+      - images/healthy-scratch-trixie/tests/smoke_size.sh

@@ -1,0 +1,8 @@
+# FG-029: Minimal scratch sidecar carrying wget + nc + sleep for
+# network_mode="service:<name>" healthcheck-companion deployments.
+# Drop-in replacement for busybox:latest in scratch-service stacks.
+tag: "1"
+platforms:
+  - linux/amd64
+depends_on:
+  - scratch-base-trixie
