@@ -2,7 +2,7 @@
 # (FG-012 source: block in image.yaml); the Dockerfile lives at
 # bboortz/beaconry@665370e7.../poc/scout/Dockerfile.
 #
-# Shape inherited from python-scratch-trixie:3.13 (USER 65532, no shell,
+# Shape inherited from python-scratch-trixie:3.14 (USER 65532, no shell,
 # ENTRYPOINT /usr/local/bin/python3, SSL_CERT_FILE); scout-specific
 # additions are the readyz server + bundled syft + published port 8001.
 

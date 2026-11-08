@@ -10,7 +10,7 @@
 # Not a runtime image — not FROM scratch. Intended as a builder base
 # only: `FROM ghcr.io/bboortz/forge-builder-trixie:<tag> AS builder`.
 
-ARG DEBIAN_BASE=python:3.13-slim-trixie
+ARG DEBIAN_BASE=python:3.14-slim-trixie
 # syft is pulled from Docker Hub rather than GitHub release CDN
 # (observed 2026-11-08: GitHub's releases/download/* flapped 504s for
 # ~6 min at a time; Docker Hub is a separate CDN and stayed up).

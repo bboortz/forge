@@ -1,6 +1,6 @@
 # What beaconry-scout requires from its dependencies. Pinned to
 # python-scratch-trixie@>=3.13 — scout's Dockerfile literally
-# FROM ghcr.io/bboortz/python-scratch-trixie:3.13 AS runtime.
+# FROM ghcr.io/bboortz/python-scratch-trixie:3.14 AS runtime.
 #
 # Every FG-009 guarantee (SSL cert env, ENTRYPOINT=python3, USER 65532,
 # WORKDIR /nonroot, PYTHONDONTWRITEBYTECODE, PYTHONFAULTHANDLER) is

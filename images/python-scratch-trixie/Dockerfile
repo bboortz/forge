@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Two-stage build. Builder on python:3.13-slim-trixie (same base as the
+# Two-stage build. Builder on python:3.14-slim-trixie (same base as the
 # scratch baseline so glibc versions line up). Runtime FROM scratch, with
 # the shared foundation (glibc + TLS + DNS + zoneinfo + /etc) coming from
 # scratch-base-trixie and Python-specific closure COPY'd from the builder.
@@ -18,6 +18,14 @@ ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
 # a sidecar. We do NOT bake HEALTHCHECK here — consumer apps vary too much
 # in port + path for a safe default. Same pin as FG-030.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
+# FG-032: Python major version hoisted to a single ARG so future bumps
+# (3.14 → 3.15 → …) are a one-line change. Called PY_VERSION (not
+# PYTHON_VERSION) because Docker Hub's python base image sets
+# `ENV PYTHON_VERSION=3.14.10`, and ENV wins over ARG in RUN shell
+# expansion — our ARG would be clobbered.
+# forge-builder-trixie independently tracks `python:3.14-slim-trixie`
+# as its DEBIAN_BASE; the two must move together.
+ARG PY_VERSION=3.14
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -28,6 +36,9 @@ FROM ${HC_REF} AS hc
 # --- Stage 1: builder ---------------------------------------------------------
 FROM ${FORGE_BUILDER_REF} AS builder
 
+# Re-declare ARG inside the stage so the RUN steps below can expand it
+# (Docker ARG scoping: pre-FROM ARGs are only visible in FROM lines).
+ARG PY_VERSION
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
@@ -50,10 +61,10 @@ RUN set -eux; \
     install -d /out/usr/local/bin /out/usr/local/lib \
                /out/lib/x86_64-linux-gnu; \
     # Interpreter + stdlib + libpython + python3/python symlinks.
-    cp -a /usr/local/bin/python3.13  /out/usr/local/bin/python3.13; \
-    cp -a /usr/local/bin/python3     /out/usr/local/bin/python3     2>/dev/null || ln -s python3.13 /out/usr/local/bin/python3; \
+    cp -a "/usr/local/bin/python${PY_VERSION}"  "/out/usr/local/bin/python${PY_VERSION}"; \
+    cp -a /usr/local/bin/python3     /out/usr/local/bin/python3     2>/dev/null || ln -s "python${PY_VERSION}" /out/usr/local/bin/python3; \
     cp -a /usr/local/bin/python      /out/usr/local/bin/python      2>/dev/null || ln -s python3   /out/usr/local/bin/python; \
-    cp -r /usr/local/lib/python3.13  /out/usr/local/lib/python3.13; \
+    cp -r "/usr/local/lib/python${PY_VERSION}"  "/out/usr/local/lib/python${PY_VERSION}"; \
     cp -a /usr/local/lib/libpython3*.so* /out/usr/local/lib/; \
     # Python-specific stdlib C-extension dyn deps (baseline supplies the core
     # but NOT libutil; the pty/openpty stdlib module needs it).
@@ -73,9 +84,9 @@ RUN set -eux; \
     # pip binary + symlinks.
     cp -a /usr/local/bin/pip* /out/usr/local/bin/ 2>/dev/null || true; \
     # Strip bytecode caches + unused stdlib trees.
-    find /out/usr/local/lib/python3.13 -type d -name __pycache__ -exec rm -rf {} + || true; \
-    find /out/usr/local/lib/python3.13 -name '*.pyc' -delete || true; \
-    rm -rf /out/usr/local/lib/python3.13/test /out/usr/local/lib/python3.13/idlelib || true
+    find "/out/usr/local/lib/python${PY_VERSION}" -type d -name __pycache__ -exec rm -rf {} + || true; \
+    find "/out/usr/local/lib/python${PY_VERSION}" -name '*.pyc' -delete || true; \
+    rm -rf "/out/usr/local/lib/python${PY_VERSION}/test" "/out/usr/local/lib/python${PY_VERSION}/idlelib" || true
 
 # --- Stage 2: runtime (scratch) -----------------------------------------------
 FROM scratch AS runtime
@@ -85,7 +96,7 @@ ARG BUILD_TIMESTAMP=unknown
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Minimal, continuously patched Python 3.13 base image (FROM scratch runtime, derives from scratch-base-trixie)"
+LABEL org.opencontainers.image.description="Minimal, continuously patched Python 3.14 base image (FROM scratch runtime, derives from scratch-base-trixie)"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 

@@ -16,7 +16,7 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-011]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-IMAGE="forge-local/python-scratch-trixie:3.13"
+IMAGE="forge-local/python-scratch-trixie:3.14"
 
 # -----------------------------------------------------------------------------
 # Section 1 — build python-scratch-trixie with the librt addition
@@ -81,10 +81,10 @@ pass "semver gate: ok on this exact 0.1 → 0.2 add"
 if [[ "${PUBLISHED:-0}" == "1" ]]; then
   say "6. published digest ships the stub"
   docker run --rm --entrypoint=/usr/local/bin/python3 \
-    ghcr.io/bboortz/python-scratch-trixie:3.13 \
+    ghcr.io/bboortz/python-scratch-trixie:3.14 \
     -c "import ctypes; ctypes.CDLL('librt.so.1'); print('ok')" \
     | grep -qx ok
-  pass "ghcr.io/bboortz/python-scratch-trixie:3.13 dlopens librt.so.1"
+  pass "ghcr.io/bboortz/python-scratch-trixie:3.14 dlopens librt.so.1"
 else
   say "6. published-digest check skipped (set PUBLISHED=1 to run)"
 fi

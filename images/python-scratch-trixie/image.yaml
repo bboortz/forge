@@ -2,7 +2,7 @@
 # `repo` is derived from the directory name (per FG-004) — do not add it back.
 # Scratch runtime: interpreter + stdlib + libs + CA bundle + zoneinfo + pip.
 # No shell, no apt, no dpkg db.
-tag: "3.13"
+tag: "3.14"
 platforms:
   - linux/amd64
 # FG-005: this image derives from scratch-base-trixie via COPY --from=.

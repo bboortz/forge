@@ -22,8 +22,8 @@ say() { printf '\n\033[1;36m[FG-004]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
 VARIANTS=("python-slim-trixie" "python-scratch-trixie")
-TAG="3.13"
-ARCH_TAG="3.13-amd64"
+TAG="3.14"
+ARCH_TAG="3.14-amd64"
 LATEST="latest"
 LATEST_ARCH="latest-amd64"
 

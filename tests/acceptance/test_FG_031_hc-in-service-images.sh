@@ -58,7 +58,7 @@ for d in nginx-scratch-trixie python-scratch-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
 done
 docker image inspect forge-local/nginx-scratch-trixie:1.26 >/dev/null
-docker image inspect forge-local/python-scratch-trixie:3.13 >/dev/null
+docker image inspect forge-local/python-scratch-trixie:3.14 >/dev/null
 pass "both images built"
 
 # -----------------------------------------------------------------------------
@@ -81,14 +81,14 @@ pass "smoke_hc_healthcheck.sh"
 # -----------------------------------------------------------------------------
 say "4. python: /hc present, no HEALTHCHECK"
 py_hc="$(docker inspect --format '{{json .Config.Healthcheck}}' \
-           forge-local/python-scratch-trixie:3.13)"
+           forge-local/python-scratch-trixie:3.14)"
 # docker returns "null" for an unset Healthcheck.
 case "${py_hc}" in
   null) pass "python-scratch-trixie has no baked HEALTHCHECK" ;;
   *) fail "python-scratch-trixie should have no HEALTHCHECK, got: ${py_hc}" ;;
 esac
 
-IMAGE_NAME=python-scratch-trixie IMAGE_TAG=3.13 \
+IMAGE_NAME=python-scratch-trixie IMAGE_TAG=3.14 \
   bash images/python-scratch-trixie/tests/smoke_hc_present.sh
 pass "smoke_hc_present.sh"
 
@@ -97,7 +97,7 @@ pass "smoke_hc_present.sh"
 # -----------------------------------------------------------------------------
 say "5. existing size smokes stay green with hc embedded"
 IMAGE_TAG=1.26 bash images/nginx-scratch-trixie/tests/smoke_size.sh
-IMAGE_NAME=python-scratch-trixie IMAGE_TAG=3.13 \
+IMAGE_NAME=python-scratch-trixie IMAGE_TAG=3.14 \
   bash images/python-scratch-trixie/tests/smoke_size.sh
 pass "both size budgets respected"
 

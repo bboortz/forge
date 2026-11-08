@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.13-slim-trixie
+FROM python:3.14-slim-trixie
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Minimal, continuously patched Python 3.13 base image (slim-trixie)"
+LABEL org.opencontainers.image.description="Minimal, continuously patched Python 3.14 base image (slim-trixie)"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 

@@ -70,7 +70,7 @@ _from_digest() {
   local from_ref
   from_ref=$(awk '/^FROM[[:space:]]/{
     ref=$2
-    # Strip ARG default like ${BASE:-python:3.13-slim-trixie}
+    # Strip ARG default like ${BASE:-python:3.14-slim-trixie}
     sub(/^\$\{[^:}]*:-/, "", ref)
     sub(/\}$/, "", ref)
     # Skip prior-stage references
