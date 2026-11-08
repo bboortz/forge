@@ -58,8 +58,10 @@ jobs:
             grype-db-${{ runner.os }}-
       - name: Install syft + grype + cosign (v2.4.3 pinned — review by 2026-11-17)
         run: |
-          bash scripts/install-anchore-tool.sh syft  "$HOME/.local/bin"
-          bash scripts/install-anchore-tool.sh grype "$HOME/.local/bin"
+          # syft + grype via Docker Hub (GitHub release CDN flaps 504s; Docker Hub is separate).
+          mkdir -p "$HOME/.local/bin"
+          bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
+          bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
           curl -sSfL --retry 10 --retry-delay 6 --retry-connrefused --max-time 60 \
             -o "$HOME/.local/bin/cosign" \
             https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
@@ -151,8 +153,10 @@ jobs:
             grype-db-${{ runner.os }}-
       - name: Install syft + grype + cosign (v2.4.3 pinned — review by 2026-11-17)
         run: |
-          bash scripts/install-anchore-tool.sh syft  "$HOME/.local/bin"
-          bash scripts/install-anchore-tool.sh grype "$HOME/.local/bin"
+          # syft + grype via Docker Hub (GitHub release CDN flaps 504s; Docker Hub is separate).
+          mkdir -p "$HOME/.local/bin"
+          bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
+          bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
           curl -sSfL --retry 10 --retry-delay 6 --retry-connrefused --max-time 60 \
             -o "$HOME/.local/bin/cosign" \
             https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
@@ -244,8 +248,10 @@ jobs:
             grype-db-${{ runner.os }}-
       - name: Install syft + grype + cosign (v2.4.3 pinned — review by 2026-11-17)
         run: |
-          bash scripts/install-anchore-tool.sh syft  "$HOME/.local/bin"
-          bash scripts/install-anchore-tool.sh grype "$HOME/.local/bin"
+          # syft + grype via Docker Hub (GitHub release CDN flaps 504s; Docker Hub is separate).
+          mkdir -p "$HOME/.local/bin"
+          bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
+          bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
           curl -sSfL --retry 10 --retry-delay 6 --retry-connrefused --max-time 60 \
             -o "$HOME/.local/bin/cosign" \
             https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64

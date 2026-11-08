@@ -11,7 +11,15 @@
 # only: `FROM ghcr.io/bboortz/forge-builder-trixie:<tag> AS builder`.
 
 ARG DEBIAN_BASE=python:3.13-slim-trixie
+# syft is pulled from Docker Hub rather than GitHub release CDN
+# (observed 2026-11-08: GitHub's releases/download/* flapped 504s for
+# ~6 min at a time; Docker Hub is a separate CDN and stayed up).
+ARG SYFT_SRC=docker.io/anchore/syft:latest
 
+# --- Stage 0: syft source (Docker Hub) ---------------------------------------
+FROM ${SYFT_SRC} AS syft-src
+
+# --- Stage 1: builder base (Debian) ------------------------------------------
 FROM ${DEBIAN_BASE}
 
 ARG GIT_SHA=unknown
@@ -27,31 +35,12 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install ca-certificates curl; \
+    apt-get -y --no-install-recommends install ca-certificates; \
     rm -rf /var/lib/apt/lists/*
 
-# Install syft so every scratch derivative's builder stage can emit an
-# embedded SBOM (FG-020) without re-downloading the tool per build.
-# Retry wrapper: GitHub's releases/download/* CDN flaps 504 periodically
-# (observed 2026-11-08). 10 attempts, capped at 60s backoff each.
-ARG SYFT_VERSION=v1.57.0
-# hadolint ignore=DL4006
-RUN set -eux; \
-    for attempt in 1 2 3 4 5 6 7 8 9 10; do \
-      if curl -sSfL --max-time 60 "https://raw.githubusercontent.com/anchore/syft/main/install.sh" \
-         | sh -s -- -b /usr/local/bin "${SYFT_VERSION}" \
-         && [ -x /usr/local/bin/syft ]; then \
-        break; \
-      fi; \
-      if [ "${attempt}" = "10" ]; then \
-        echo "syft install failed after 10 attempts" >&2; exit 1; \
-      fi; \
-      delay=$((attempt * 6)); [ "${delay}" -gt 60 ] && delay=60; \
-      echo "syft install attempt ${attempt}/10 failed; retrying in ${delay}s" >&2; \
-      sleep "${delay}"; \
-    done; \
-    apt-get -y --purge --auto-remove remove curl; \
-    syft version
+# syft from the Docker Hub image — static Go binary at /syft in the image.
+COPY --from=syft-src /syft /usr/local/bin/syft
+RUN syft version
 
 # Explicit WORKDIR to keep subsequent derivatives from inheriting a
 # surprising cwd.

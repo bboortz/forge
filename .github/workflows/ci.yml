@@ -44,8 +44,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq
-          curl -sSfL --retry 10 --retry-delay 6 --retry-connrefused --max-time 60 -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-          chmod +x /tmp/hadolint && sudo mv /tmp/hadolint /usr/local/bin/hadolint
+          # hadolint via Docker Hub (different CDN than GitHub releases; GH flapped 504s on 2026-11-08).
+          sudo bash scripts/install-tool-from-docker.sh hadolint/hadolint:latest-debian /bin/hadolint /usr/local/bin/hadolint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
@@ -68,8 +68,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq python3-yaml
-          curl -sSfL --retry 10 --retry-delay 6 --retry-connrefused --max-time 60 -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-          chmod +x /tmp/hadolint && sudo mv /tmp/hadolint /usr/local/bin/hadolint
+          # hadolint via Docker Hub (different CDN than GitHub releases; GH flapped 504s on 2026-11-08).
+          sudo bash scripts/install-tool-from-docker.sh hadolint/hadolint:latest-debian /bin/hadolint /usr/local/bin/hadolint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
@@ -137,9 +137,11 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck yamllint jq python3-yaml
-          # Retry wrapper: GitHub's release-asset CDN flaps 504 periodically.
-          bash scripts/install-anchore-tool.sh syft  "$HOME/.local/bin"
-          bash scripts/install-anchore-tool.sh grype "$HOME/.local/bin"
+          # syft + grype via Docker Hub (GitHub release CDN flaps 504s; Docker Hub is separate).
+          mkdir -p "$HOME/.local/bin"
+          bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
+          bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
+          # cosign still via curl (no pinned Docker Hub tag at v2.4.3 — short retry).
           curl -sSfL --retry 10 --retry-delay 6 --retry-connrefused --max-time 60 \
             -o "$HOME/.local/bin/cosign" \
             https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64
