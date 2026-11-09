@@ -6,7 +6,7 @@
 
 spec_version: 1
 image: prometheus-scratch-trixie
-version: "0.2"
+version: "0.3"
 
 promises:
   - id: runtime.prometheus-binary
@@ -40,7 +40,7 @@ promises:
       - images/prometheus-scratch-trixie/tests/smoke_ssl_cert_env.sh
 
   - id: runtime.web-ui-serves
-    description: "GET / returns the React UI (HTTP 200 + HTML body — go:embed since 2.21); GET /classic/graph returns the classic UI (HTTP 200 + HTML body, template-engine rendered from /usr/share/prometheus/web/templates/_base.html). No 'error reading base template' in container logs. FG-039 shipped /usr/share/prometheus/web/ (templates + static assets, 332 KB) in the runtime overlay — the Debian-build-compile-time path the binary looks at."
+    description: "GET / returns the React UI (HTTP 200 + HTML body — go:embed since 2.21); GET /classic/graph returns the classic UI (HTTP 200 + HTML body) AND every `href`/`src` asset it references returns HTTP 200 (FG-040 added the asset matrix). FG-039 shipped /usr/share/prometheus/web/; FG-040 switched to `cp -rL` to dereference Debian's libjs-* symlinks into /usr/share/javascript/ so Bootstrap/jQuery/D3/etc assets are present as real files, not dangling symlinks."
     caps: [image.prometheus-serves-metrics]
     tests:
       - images/prometheus-scratch-trixie/tests/smoke_web_ui.sh

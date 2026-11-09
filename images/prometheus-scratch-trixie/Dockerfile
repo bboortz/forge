@@ -57,7 +57,14 @@ RUN set -eux; \
     cp /usr/bin/promtool   /out/usr/bin/promtool; \
     cp -r /etc/prometheus/consoles         /out/etc/prometheus/consoles; \
     cp -r /etc/prometheus/console_libraries /out/etc/prometheus/console_libraries; \
-    cp -r /usr/share/prometheus/web /out/usr/share/prometheus/web; \
+    # FG-040: -rL (not -r) dereferences symlinks. web/static/{bootstrap4,
+    # d3, jquery, popper.js, rickshaw, moment, moment-timezone, mustache,
+    # eonasdan-bootstrap-datetimepicker, jquery-hotkeys} are symlinks into
+    # /usr/share/javascript/ — Debian's libjs-* packaging convention. With
+    # -r those symlinks dangle in the overlay → classic UI returns 404 on
+    # every bootstrap/jquery/etc asset (25 of 34 observed). -L follows
+    # the links and inlines ~10 MB of real files.
+    cp -rL /usr/share/prometheus/web /out/usr/share/prometheus/web; \
     # chown TSDB to nobody (65534) — matches upstream prom/prometheus
     # so pre-existing volumes are mutually readable on migration.
     chown -R 65534:65534 /out/prometheus /out/etc/prometheus
