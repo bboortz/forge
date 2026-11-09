@@ -1,7 +1,7 @@
 # FG-041 — Plan: cosign v2.4.3 → v2.6.5 pin bump
 
 **Story**: [`docs/stories/FG-041-cosign-v2.6.5-pin.md`](../stories/FG-041-cosign-v2.6.5-pin.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-041-cosign-v2.6.5-pin`
 
 ## Design delta
