@@ -6,7 +6,7 @@
 
 spec_version: 1
 image: prometheus-scratch-trixie
-version: "0.1"
+version: "0.2"
 
 promises:
   - id: runtime.prometheus-binary
@@ -38,6 +38,12 @@ promises:
     caps: [image.ssl-cert-env, image.prometheus-serves-metrics]
     tests:
       - images/prometheus-scratch-trixie/tests/smoke_ssl_cert_env.sh
+
+  - id: runtime.web-ui-serves
+    description: "GET / returns the React UI (HTTP 200 + HTML body — go:embed since 2.21); GET /classic/graph returns the classic UI (HTTP 200 + HTML body, template-engine rendered from /usr/share/prometheus/web/templates/_base.html). No 'error reading base template' in container logs. FG-039 shipped /usr/share/prometheus/web/ (templates + static assets, 332 KB) in the runtime overlay — the Debian-build-compile-time path the binary looks at."
+    caps: [image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
 
   - id: runtime.hc-binary
     description: "/hc is present and executable; baked HEALTHCHECK polls /-/healthy so `docker ps` reflects container health."
