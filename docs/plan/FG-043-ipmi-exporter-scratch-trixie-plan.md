@@ -1,7 +1,7 @@
 # FG-043 — Plan: ipmi-exporter-scratch-trixie
 
 **Story**: [`docs/stories/FG-043-ipmi-exporter-scratch-trixie.md`](../stories/FG-043-ipmi-exporter-scratch-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-043-ipmi-exporter-scratch`
 
 ## Design delta

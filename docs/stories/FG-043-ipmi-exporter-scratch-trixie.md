@@ -1,7 +1,7 @@
 ---
 id: FG-043
 slug: ipmi-exporter-scratch-trixie
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-09
 ---
