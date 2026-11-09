@@ -18,6 +18,10 @@ permissions:
 jobs:
   check-strict:
     runs-on: ubuntu-latest
+    # FG-038: 50-min cap. Typical 20-25 min (full cold rebuild of every
+    # image + full acceptance sweep). 2× worst-case typical. If this
+    # exceeds 50 min, something is genuinely hung.
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,6 +35,10 @@ jobs:
 
       - name: Cache grype DB
         uses: actions/cache@v4
+        # FG-038: 3-min cap + continue-on-error — cache action hangs on
+        # GHA service slowness should fail fast; grype re-downloads DB.
+        timeout-minutes: 3
+        continue-on-error: true
         with:
           path: ~/.cache/grype
           key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
