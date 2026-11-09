@@ -1,7 +1,7 @@
 ---
 id: FG-041
 slug: cosign-v2.6.5-pin
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-09
 ---
