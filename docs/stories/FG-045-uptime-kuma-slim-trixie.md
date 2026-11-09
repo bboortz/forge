@@ -1,7 +1,7 @@
 ---
 id: FG-045
 slug: uptime-kuma-slim-trixie
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-09
 ---
