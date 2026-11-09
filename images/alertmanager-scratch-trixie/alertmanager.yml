@@ -1,0 +1,9 @@
+# Minimal self-contained alertmanager config shipped as default.
+# Null receiver so `docker run <image>` succeeds with zero operator
+# config. Production consumers mount their own at this path.
+
+route:
+  receiver: default
+
+receivers:
+  - name: default

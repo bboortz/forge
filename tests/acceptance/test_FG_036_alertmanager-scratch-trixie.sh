@@ -17,7 +17,7 @@ for f in Dockerfile image.yaml PROMISES.yaml EXPECTATIONS.yaml scan-baseline.jso
          alertmanager.yml \
          tests/smoke_binary_runs.sh tests/smoke_healthy_endpoint.sh \
          tests/smoke_ready_endpoint.sh tests/smoke_amtool_validates.sh \
-         tests/smoke_sighup_reload.sh tests/smoke_outbound_tls.sh \
+         tests/smoke_ssl_cert_env.sh tests/smoke_hc_healthcheck.sh \
          tests/smoke_no_shell.sh tests/smoke_user_nonroot.sh \
          tests/smoke_size.sh tests/smoke_zero_os_cves.sh; do
   test -e "images/alertmanager-scratch-trixie/${f}" \

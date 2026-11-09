@@ -1,0 +1,12 @@
+# Minimal self-scrape config shipped in prometheus-scratch-trixie.
+# Lets `docker run <image>` succeed with zero operator config.
+# Production consumers mount their own at /etc/prometheus/prometheus.yml.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

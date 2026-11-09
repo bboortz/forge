@@ -1,0 +1,7 @@
+# Per FG-004: repo = dir name, tag = version. Publishes 4-tag family:
+# :2.53, :2.53-amd64, :latest, :latest-amd64.
+tag: "2.53"
+platforms:
+  - linux/amd64
+depends_on:
+  - scratch-base-trixie

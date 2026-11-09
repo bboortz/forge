@@ -1,0 +1,68 @@
+# Authoritative contract for alertmanager-scratch-trixie.
+
+spec_version: 1
+image: alertmanager-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.alertmanager-binary
+    description: /usr/bin/prometheus-alertmanager is present, executes, `--version` prints `alertmanager, version 0.28.1`.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.healthy-endpoint
+    description: Container responds to GET /-/healthy on :9093 with HTTP 200 once startup completes.
+    caps: [image.alertmanager-routes-alerts, test.smoke-server-helper]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_healthy_endpoint.sh
+
+  - id: runtime.ready-endpoint
+    description: Container responds to GET /-/ready on :9093 with HTTP 200.
+    caps: [image.alertmanager-routes-alerts]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_ready_endpoint.sh
+
+  - id: runtime.amtool-available
+    description: /usr/bin/amtool is bundled; `docker exec <container> /usr/bin/amtool check-config /etc/alertmanager/alertmanager.yml` exits 0.
+    caps: [image.alertmanager-routes-alerts]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_amtool_validates.sh
+
+  - id: runtime.ssl-cert-env
+    description: ENV SSL_CERT_FILE + SSL_CERT_DIR re-declared (FG-009) + CA bundle present at /etc/ssl/certs/ca-certificates.crt so outbound HTTPS for Telegram / Mattermost / email webhooks resolves.
+    caps: [image.ssl-cert-env, image.alertmanager-routes-alerts]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_ssl_cert_env.sh
+
+  - id: runtime.hc-binary
+    description: /hc is present and executable; baked HEALTHCHECK polls /-/healthy.
+    caps: [image.hc-embedded, image.alertmanager-routes-alerts]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: runtime.user-nonroot
+    description: Runs as uid 65534:65534 (upstream prom/alertmanager parity).
+    caps: [image.alertmanager-routes-alerts]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_user_nonroot.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary.
+    caps: [image.no-shell]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype finds zero Debian-source matches (scratch, no dpkg DB).
+    caps: [image.zero-os-cves]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 100 MB hard ceiling.
+    caps: [test.size-budget]
+    tests:
+      - images/alertmanager-scratch-trixie/tests/smoke_size.sh

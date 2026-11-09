@@ -15,7 +15,7 @@ say "1. images/ipmi-exporter-slim-trixie/ has required layout"
 for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json \
          ipmi-exporter.yml \
          tests/smoke_binary_runs.sh tests/smoke_metrics_endpoint.sh \
-         tests/smoke_freeipmi_tools.sh tests/smoke_config_valid.sh \
+         tests/smoke_freeipmi_tools.sh tests/smoke_hc_healthcheck.sh \
          tests/smoke_has_shell.sh tests/smoke_size.sh; do
   test -e "images/ipmi-exporter-slim-trixie/${f}" \
     || fail "images/ipmi-exporter-slim-trixie/${f} missing"

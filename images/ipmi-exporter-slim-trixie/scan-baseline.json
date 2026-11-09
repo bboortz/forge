@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "critical_cves": [
+    "CVE-2026-85504",
+    "CVE-2026-85506",
+    "CVE-2026-85507",
+    "CVE-2026-85508",
+    "CVE-2026-85509",
+    "GO-2026-4337",
+    "GO-2026-6612"
+  ],
+  "generated_at": "2026-11-09T10:14:19Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
+}

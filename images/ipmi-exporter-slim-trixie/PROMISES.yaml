@@ -1,0 +1,53 @@
+# Authoritative contract for ipmi-exporter-slim-trixie.
+#
+# Slim runtime: Debian trixie + prometheus-ipmi-exporter + freeipmi-tools.
+# Shell + apt kept (image.has-shell contract). Runs as root for /dev/ipmi0
+# access. Nonzero CRITICAL CVEs expected in the slim closure; scan-regression
+# gate fires only on NEW CRITICALs beyond scan-baseline.
+
+spec_version: 1
+image: ipmi-exporter-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.ipmi-exporter-binary
+    description: /usr/bin/prometheus-ipmi-exporter is present, executes, `--version` prints `ipmi_exporter, version 1.10.0`.
+    caps: [build.pr-ci, build.daily-publish]
+    tests:
+      - images/ipmi-exporter-slim-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.metrics-endpoint
+    description: Container responds to GET /metrics on :9290 with Prometheus text format even without /dev/ipmi0 (self-metrics only; IPMI probes fail cleanly). Includes `ipmi_scrape_duration_seconds`.
+    caps: [image.ipmi-exporter-serves-metrics, test.smoke-server-helper]
+    tests:
+      - images/ipmi-exporter-slim-trixie/tests/smoke_metrics_endpoint.sh
+
+  - id: runtime.freeipmi-tools-bundled
+    description: freeipmi-tools binaries (ipmimonitoring, ipmi-sel, ipmi-dcmi, ipmi-chassis) are installed under /usr/sbin and callable via docker exec.
+    caps: [image.ipmi-exporter-serves-metrics]
+    tests:
+      - images/ipmi-exporter-slim-trixie/tests/smoke_freeipmi_tools.sh
+
+  - id: runtime.hc-binary
+    description: /hc is present and executable; baked HEALTHCHECK polls /metrics.
+    caps: [image.hc-embedded, image.ipmi-exporter-serves-metrics]
+    tests:
+      - images/ipmi-exporter-slim-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: presence.shell
+    description: /bin/sh + apt + coreutils are KEPT in the runtime for operator ergonomics (slim contract; counterpart to image.no-shell).
+    caps: [image.has-shell]
+    tests:
+      - images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ 200 MB hard ceiling (Debian slim + freeipmi + exporter).
+    caps: [test.size-budget]
+    tests:
+      - images/ipmi-exporter-slim-trixie/tests/smoke_size.sh
+
+  - id: scan.nonzero-accepted
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim images inherit the full dpkg closure; scan-regression gate fires only on NEW CRITICALs beyond baseline (precedent: forge-builder-trixie)."
+    caps: [scan.regression-gate]
+    tests:
+      - images/ipmi-exporter-slim-trixie/tests/smoke_size.sh

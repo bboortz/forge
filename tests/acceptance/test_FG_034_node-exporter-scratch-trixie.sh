@@ -21,6 +21,7 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 say "1. images/node-exporter-scratch-trixie/ has required layout"
 for f in Dockerfile image.yaml PROMISES.yaml EXPECTATIONS.yaml scan-baseline.json \
          tests/smoke_binary_runs.sh tests/smoke_metrics_endpoint.sh \
+         tests/smoke_hc_healthcheck.sh \
          tests/smoke_no_shell.sh tests/smoke_user_nonroot.sh \
          tests/smoke_size.sh tests/smoke_zero_os_cves.sh; do
   test -e "images/node-exporter-scratch-trixie/${f}" \
@@ -42,11 +43,12 @@ pass "forge-local/node-exporter-scratch-trixie:1.9 built"
 say "3. per-image smoke suite"
 IMAGE_TAG=1.9 bash images/node-exporter-scratch-trixie/tests/smoke_binary_runs.sh
 IMAGE_TAG=1.9 bash images/node-exporter-scratch-trixie/tests/smoke_metrics_endpoint.sh
+IMAGE_TAG=1.9 bash images/node-exporter-scratch-trixie/tests/smoke_hc_healthcheck.sh
 IMAGE_TAG=1.9 bash images/node-exporter-scratch-trixie/tests/smoke_no_shell.sh
 IMAGE_TAG=1.9 bash images/node-exporter-scratch-trixie/tests/smoke_user_nonroot.sh
 IMAGE_TAG=1.9 bash images/node-exporter-scratch-trixie/tests/smoke_size.sh
 IMAGE_TAG=1.9 bash images/node-exporter-scratch-trixie/tests/smoke_zero_os_cves.sh
-pass "all 6 smoke tests green"
+pass "all 7 smoke tests green"
 
 # -----------------------------------------------------------------------------
 # Section 4 — image.yaml invariants

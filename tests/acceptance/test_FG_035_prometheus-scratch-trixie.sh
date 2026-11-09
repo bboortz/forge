@@ -24,7 +24,7 @@ for f in Dockerfile image.yaml PROMISES.yaml EXPECTATIONS.yaml scan-baseline.jso
          prometheus.yml \
          tests/smoke_binary_runs.sh tests/smoke_healthy_endpoint.sh \
          tests/smoke_ready_endpoint.sh tests/smoke_promtool_validates.sh \
-         tests/smoke_sighup_reload.sh tests/smoke_outbound_tls.sh \
+         tests/smoke_ssl_cert_env.sh tests/smoke_hc_healthcheck.sh \
          tests/smoke_no_shell.sh tests/smoke_user_nonroot.sh \
          tests/smoke_size.sh tests/smoke_zero_os_cves.sh; do
   test -e "images/prometheus-scratch-trixie/${f}" \
@@ -44,17 +44,10 @@ pass "forge-local/prometheus-scratch-trixie:2.53 built"
 # Section 3 — per-image smoke suite
 # -----------------------------------------------------------------------------
 say "3. per-image smoke suite"
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_binary_runs.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_healthy_endpoint.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_ready_endpoint.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_promtool_validates.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_sighup_reload.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_outbound_tls.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_no_shell.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_user_nonroot.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_size.sh
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_zero_os_cves.sh
-pass "all 10 smoke tests green"
+for s in images/prometheus-scratch-trixie/tests/smoke_*.sh; do
+  IMAGE_TAG=2.53 bash "${s}"
+done
+pass "all smoke tests green"
 
 # -----------------------------------------------------------------------------
 # Section 4 — image.yaml invariants
