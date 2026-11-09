@@ -43,15 +43,21 @@ RUN set -eux; \
 # - Debian ships /etc/prometheus/{consoles,console_libraries}/ as mostly-
 #   empty placeholder dirs so the baked CMD's --web.console.* flags
 #   resolve without error.
+# - /usr/share/prometheus/web/ — FG-039: the Debian-build-compile-time
+#   path for UI chrome templates (_base.html + the per-page HTML). The
+#   binary hard-codes this path; GET / redirects to /classic/graph
+#   which 500s with `error reading base template` without it. 332 KB.
 # - /etc/prometheus/prometheus.yml ships as default (we overwrite it
 #   with a minimal self-scrape config below).
 # - /prometheus/ is the TSDB dir, owned 65534.
 RUN set -eux; \
-    install -d /out/usr/bin /out/etc/prometheus /out/prometheus; \
+    install -d /out/usr/bin /out/etc/prometheus /out/prometheus \
+               /out/usr/share/prometheus; \
     cp /usr/bin/prometheus /out/usr/bin/prometheus; \
     cp /usr/bin/promtool   /out/usr/bin/promtool; \
     cp -r /etc/prometheus/consoles         /out/etc/prometheus/consoles; \
     cp -r /etc/prometheus/console_libraries /out/etc/prometheus/console_libraries; \
+    cp -r /usr/share/prometheus/web /out/usr/share/prometheus/web; \
     # chown TSDB to nobody (65534) — matches upstream prom/prometheus
     # so pre-existing volumes are mutually readable on migration.
     chown -R 65534:65534 /out/prometheus /out/etc/prometheus
