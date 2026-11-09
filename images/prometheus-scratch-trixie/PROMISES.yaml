@@ -1,0 +1,72 @@
+# Authoritative contract for prometheus-scratch-trixie.
+#
+# Scratch runtime: prometheus 2.53 FROM scratch. Outbound TLS for
+# remote_write + alertmanager delivery. uid 65534 (nobody) — matches
+# upstream prom/prometheus for TSDB volume mutual-readability.
+
+spec_version: 1
+image: prometheus-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.prometheus-binary
+    description: /usr/bin/prometheus is present, executes, and `--version` prints `prometheus, version 2.53.3`.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.healthy-endpoint
+    description: Container responds to GET /-/healthy on :9090 with HTTP 200 + body "Prometheus Server is Healthy." once startup completes.
+    caps: [image.prometheus-serves-metrics, test.smoke-server-helper]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_healthy_endpoint.sh
+
+  - id: runtime.ready-endpoint
+    description: Container responds to GET /-/ready on :9090 with HTTP 200 once the initial scrape loop is primed.
+    caps: [image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_ready_endpoint.sh
+
+  - id: runtime.promtool-available
+    description: /usr/bin/promtool is bundled; `docker exec <container> /usr/bin/promtool check config /etc/prometheus/prometheus.yml` exits 0.
+    caps: [image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_promtool_validates.sh
+
+  - id: runtime.ssl-cert-env
+    description: ENV SSL_CERT_FILE + SSL_CERT_DIR re-declared in the runtime stage (FG-009 pattern) so outbound TLS for remote_write + alertmanager delivery resolves against the baseline CA bundle.
+    caps: [image.ssl-cert-env, image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_ssl_cert_env.sh
+
+  - id: runtime.hc-binary
+    description: "/hc is present and executable; baked HEALTHCHECK polls /-/healthy so `docker ps` reflects container health."
+    caps: [image.hc-embedded, image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: runtime.user-nonroot
+    description: Runs as uid 65534:65534 (nobody) — matches upstream prom/prometheus for TSDB volume compatibility.
+    caps: [image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_user_nonroot.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary.
+    caps: [image.no-shell]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype finds zero Debian-source matches (scratch, no dpkg DB).
+    caps: [image.zero-os-cves]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 300 MB hard ceiling (prometheus binary ~250 MB + baseline overhead).
+    caps: [test.size-budget]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_size.sh

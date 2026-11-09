@@ -33,9 +33,14 @@ BASE_SIZE=$(docker image inspect --format='{{.Size}}' "${BASE}")
 OUR_SIZE=$(docker image inspect --format='{{.Size}}' "${IMAGE}")
 BUDGET=$(( BASE_SIZE * 11 / 10 ))
 
-if [[ "${OUR_SIZE}" -gt "${BUDGET}" ]]; then
-  echo "  ✗ size ${OUR_SIZE} exceeds budget ${BUDGET} (base ${BASE_SIZE} × 1.1)" >&2
-  exit 1
+# base × 1.1 check only applies when no absolute ceiling is set. Scratch
+# derivatives that COPY large overlays (prometheus 175 MB binary, etc.)
+# blow past the builder-base size; they rely on SIZE_CEILING instead.
+if [[ -z "${SIZE_CEILING:-}" ]]; then
+  if [[ "${OUR_SIZE}" -gt "${BUDGET}" ]]; then
+    echo "  ✗ size ${OUR_SIZE} exceeds budget ${BUDGET} (base ${BASE_SIZE} × 1.1)" >&2
+    exit 1
+  fi
 fi
 
 # Scratch variants (or any image that passes SIZE_CEILING) also enforce a

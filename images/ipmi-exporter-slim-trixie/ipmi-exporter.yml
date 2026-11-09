@@ -1,0 +1,16 @@
+# Default ipmi-exporter config shipped with ipmi-exporter-slim-trixie.
+# Local-BMC mode: assumes /dev/ipmi0 is available (via `--device` at
+# docker run time). Consumers scraping remote BMCs mount their own
+# config at this path with modules carrying `user:`, `pass:`, `driver:`,
+# `privilege:`, `session_timeout:` per freeipmi's config schema.
+#
+# Modeled after Debian's /etc/prometheus/ipmi_local.yml default.
+
+modules:
+  default:
+    collectors:
+      - bmc
+      - ipmi
+      - chassis
+      - dcmi
+      - sel

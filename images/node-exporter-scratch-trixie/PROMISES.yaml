@@ -1,0 +1,53 @@
+# Authoritative contract for node-exporter-scratch-trixie.
+#
+# Scratch runtime: prometheus-node-exporter 1.9 FROM scratch.
+# No outbound TLS (scrape-only). uid 65532 nonroot (baseline default).
+
+spec_version: 1
+image: node-exporter-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.node-exporter-binary
+    description: /usr/bin/prometheus-node-exporter is present, executes, and `--version` prints `node_exporter, version 1.9.0`.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/node-exporter-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.metrics-endpoint
+    description: Container responds to GET /metrics on :9100 with Prometheus text format — at least one `# TYPE node_` line and at least one `node_.*_seconds_total` metric present even without host /proc + /sys mounts.
+    caps: [image.node-exporter-serves-metrics, test.smoke-server-helper]
+    tests:
+      - images/node-exporter-scratch-trixie/tests/smoke_metrics_endpoint.sh
+
+  - id: runtime.hc-binary
+    description: "/hc is present and executable; baked HEALTHCHECK polls /metrics so `docker ps` shows the container as healthy once it's up."
+    caps: [image.hc-embedded, image.node-exporter-serves-metrics]
+    tests:
+      - images/node-exporter-scratch-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: runtime.user-nonroot
+    description: Runs as uid 65532:65532 (baseline nonroot).
+    caps: [image.node-exporter-serves-metrics]
+    tests:
+      - images/node-exporter-scratch-trixie/tests/smoke_user_nonroot.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary.
+    caps: [image.no-shell]
+    tests:
+      - images/node-exporter-scratch-trixie/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype finds zero Debian-source matches (no dpkg DB in runtime).
+    caps: [image.zero-os-cves]
+    tests:
+      - images/node-exporter-scratch-trixie/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 35 MB hard ceiling (baseline ~13 MB + node_exporter overlay 22 MB + /hc 0.4 MB — measured 31 MB in practice).
+    caps: [test.size-budget]
+    tests:
+      - images/node-exporter-scratch-trixie/tests/smoke_size.sh

@@ -1,0 +1,28 @@
+# What node-exporter-scratch-trixie requires from its dependencies.
+
+spec_version: 1
+image: node-exporter-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: prometheus-node-exporter's interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/node-exporter-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: node_exporter links against libc / libpthread / libdl.
+        preflight:
+          - images/node-exporter-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: identity.nobody
+        reason: baseline-nonroot uid 65532 used as the runtime USER (no service user needed).
+        preflight:
+          - images/node-exporter-scratch-trixie/tests/smoke_user_nonroot.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract.
+        preflight:
+          - images/node-exporter-scratch-trixie/tests/smoke_no_shell.sh

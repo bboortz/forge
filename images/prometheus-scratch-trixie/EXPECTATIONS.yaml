@@ -1,0 +1,38 @@
+# What prometheus-scratch-trixie requires from its dependencies.
+
+spec_version: 1
+image: prometheus-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: prometheus binary's interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/prometheus-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: prometheus links against libc only (confirmed via ldd); baseline supplies it.
+        preflight:
+          - images/prometheus-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.tls-stack
+        reason: outbound TLS for remote_write + alertmanager delivery links against libssl + libcrypto; the baseline CA bundle is what re-declared SSL_CERT_FILE resolves.
+        preflight:
+          - images/prometheus-scratch-trixie/tests/smoke_ssl_cert_env.sh
+
+      - promise: identity.nobody
+        reason: baseline's /etc/passwd ships nobody at uid 65534 — the TSDB volume ownership + runtime USER both rely on this.
+        preflight:
+          - images/prometheus-scratch-trixie/tests/smoke_user_nonroot.sh
+
+      - promise: writable-dirs.tmp
+        reason: prometheus writes wal + snapshot temporaries under /tmp during flushes.
+        preflight:
+          - images/prometheus-scratch-trixie/tests/smoke_healthy_endpoint.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract.
+        preflight:
+          - images/prometheus-scratch-trixie/tests/smoke_no_shell.sh
