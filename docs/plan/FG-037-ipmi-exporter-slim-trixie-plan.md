@@ -1,7 +1,7 @@
 # FG-037 — Plan: ipmi-exporter-slim-trixie
 
 **Story**: [`docs/stories/FG-037-ipmi-exporter-slim-trixie.md`](../stories/FG-037-ipmi-exporter-slim-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-037-ipmi-exporter-slim-trixie`
 
 ## Design delta

@@ -1,7 +1,7 @@
 # FG-035 — Plan: prometheus-scratch-trixie
 
 **Story**: [`docs/stories/FG-035-prometheus-scratch-trixie.md`](../stories/FG-035-prometheus-scratch-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-035-prometheus-scratch-trixie`
 
 ## Design delta

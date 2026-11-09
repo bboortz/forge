@@ -1,7 +1,7 @@
 # FG-034 — Plan: node-exporter-scratch-trixie
 
 **Story**: [`docs/stories/FG-034-node-exporter-scratch-trixie.md`](../stories/FG-034-node-exporter-scratch-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-034-node-exporter-scratch-trixie`
 
 ## Design delta
