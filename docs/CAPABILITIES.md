@@ -187,6 +187,41 @@ The service scratch images that need an HTTP/TCP healthcheck probe carry `/hc` (
 - **Delivered by**: FG-028
 - **Covered by**: `tests/acceptance/test_FG_028_mosquitto-scratch-trixie.sh`, `images/mosquitto-scratch-trixie/tests/smoke_server_accepts.sh`, `images/mosquitto-scratch-trixie/tests/smoke_password_auth.sh`
 
+### image.node-exporter-serves-metrics
+
+`node-exporter-scratch-trixie` runs Prometheus `node_exporter` (Debian `prometheus-node-exporter` package), responds to `GET /metrics` on `:9100` with Prometheus text format. No outbound TLS (scrape-only — the exporter is scraped by prometheus, it doesn't initiate connections). Runs as nonroot uid 65532. Zero OS CVEs (scratch runtime).
+
+- **Delivered by**: FG-034 (draft)
+- **Covered by**: `tests/acceptance/test_FG_034_node-exporter-scratch-trixie.sh`, `images/node-exporter-scratch-trixie/tests/smoke_metrics_endpoint.sh`
+
+### image.prometheus-serves-metrics
+
+`prometheus-scratch-trixie` runs the Prometheus server (Debian `prometheus` package), responds to `/-/healthy` + `/-/ready` + `/api/v1/*` on `:9090`. Serves console_libraries + console_templates for the `/consoles` UI path. Initiates outbound TLS for `remote_write` and alertmanager delivery — the baseline CA bundle resolves via re-declared `ENV SSL_CERT_FILE` (FG-009). Honors SIGHUP for config + rules reload. `promtool` bundled for `docker exec`-based config validation. Runs as nonroot uid 65534 (mutual readability with upstream `prom/prometheus` TSDB volumes). Zero OS CVEs.
+
+- **Delivered by**: FG-035 (draft)
+- **Covered by**: `tests/acceptance/test_FG_035_prometheus-scratch-trixie.sh`, `images/prometheus-scratch-trixie/tests/smoke_healthy_endpoint.sh`
+
+### image.alertmanager-routes-alerts
+
+`alertmanager-scratch-trixie` runs Prometheus Alertmanager (Debian `prometheus-alertmanager` package), responds to `/-/healthy` + `/-/ready` + `/api/v2/alerts` on `:9093`. Initiates outbound HTTPS for every webhook receiver (Telegram, Mattermost, email over SMTPS, generic `webhook_configs`) — the baseline CA bundle resolves via re-declared `ENV SSL_CERT_FILE` (FG-009). Honors SIGHUP for config reload. `amtool` bundled for `docker exec`-based config validation. Runs as nonroot uid 65534. Zero OS CVEs.
+
+- **Delivered by**: FG-036 (draft)
+- **Covered by**: `tests/acceptance/test_FG_036_alertmanager-scratch-trixie.sh`, `images/alertmanager-scratch-trixie/tests/smoke_healthy_endpoint.sh`
+
+### image.ipmi-exporter-serves-metrics
+
+`ipmi-exporter-slim-trixie` runs the Prometheus IPMI exporter (Debian `prometheus-ipmi-exporter` package) + bundled `freeipmi-tools` (ipmimonitoring, ipmi-sel, ipmi-dcmi). Responds to `GET /metrics` on `:9290` even without `/dev/ipmi0` access (self-metrics only). With `--device /dev/ipmi0` or a `config.yml` carrying remote BMC credentials, scrapes fan speeds, voltages, temperatures, power-draw via IPMI. Runs as root (upstream + local-BMC device-permission compatibility). **Slim** runtime — not scratch — because `freeipmi-tools`' dynamic C closure makes scratch overlay impractical.
+
+- **Delivered by**: FG-037 (draft)
+- **Covered by**: `tests/acceptance/test_FG_037_ipmi-exporter-slim-trixie.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_metrics_endpoint.sh`
+
+### image.has-shell
+
+Positive-form contract that a Forge image **keeps** a shell at runtime (counterpart to `image.no-shell`). Applies to `-slim` variants: `python-slim-trixie`, `postgres-slim-trixie`, `ipmi-exporter-slim-trixie`. Guarantees `/bin/sh` + `apt` + coreutils are present for operator ergonomics (`docker exec -it <container> sh`, interactive debugging, in-container package management). The attack-surface trade-off is explicit — slim images accept nonzero CVE counts in their `scan-baseline.json`.
+
+- **Delivered by**: FG-001 (python-slim-trixie first established the pattern); FG-026 extended to postgres-slim-trixie; FG-037 (draft) extends to ipmi-exporter-slim-trixie
+- **Covered by**: `images/python-slim-trixie/tests/smoke_entrypoint.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh`
+
 ### image.redis-serves-cache
 
 `redis-scratch-trixie:8` starts on `redis-server` (ENTRYPOINT direct, no shell entrypoint script), accepts PING / SET / GET end-to-end via a sidecar container sharing its network namespace (standard pattern for protected-mode). Redis user pinned to uid 999 (Docker Hub convention). Image ≤ 50 MB. Zero OS CVEs (no dpkg database in the runtime). Enables homelab/nextcloud cache deployment with a 1-line adoption diff.
