@@ -1,0 +1,61 @@
+# Authoritative contract for uptime-kuma-slim-trixie.
+#
+# Slim runtime: node:22-trixie-slim + Uptime Kuma (resolved to upstream's
+# latest GitHub release at build time; daily cron re-resolves). Chromium /
+# browser-based monitors deliberately excluded (~200 MB saved; HTTP/TCP/
+# Push/DNS/Ping probes still work). Shell + apt kept.
+# Runs as nonroot uid 1000 (upstream `node` user).
+
+spec_version: 1
+image: uptime-kuma-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.uptime-kuma-app
+    description: Container boots dumb-init → node /app/server/server.js and listens on :3001. HTTP GET / returns 200 with Uptime Kuma's single-page HTML.
+    caps: [image.uptime-kuma-serves-monitoring, test.smoke-server-helper]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_serves_200.sh
+
+  - id: runtime.node-runtime
+    description: /usr/local/bin/node is Node.js v22.x (matches upstream Dockerfile's declared engine range >= 20.4.0).
+    caps: [image.uptime-kuma-serves-monitoring]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_node_version.sh
+
+  - id: runtime.hc-binary
+    description: /hc is present and executable; baked HEALTHCHECK polls :3001.
+    caps: [image.hc-embedded, image.uptime-kuma-serves-monitoring]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: presence.shell
+    description: /bin/sh + apt + coreutils are KEPT in the runtime for operator ergonomics (slim contract; counterpart to image.no-shell).
+    caps: [image.has-shell]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_has_shell.sh
+
+  - id: absence.chromium
+    description: Chromium and Playwright browser binaries are deliberately NOT bundled (saves ~200 MB; browser-based synthetic monitors unsupported — documented). /usr/bin/chromium does not exist.
+    caps: [image.uptime-kuma-no-chromium]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_no_chromium.sh
+    inverse: true
+
+  - id: runtime.nonroot-node
+    description: Container runs as uid 1000 (upstream `node` user). docker inspect Config.User is "node".
+    caps: [image.uptime-kuma-nonroot]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_user_node.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ 700 MB hard ceiling (node:22-trixie-slim ~200 MB + 267 MB app tree with node_modules + overhead).
+    caps: [test.size-budget]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_size.sh
+
+  - id: scan.nonzero-accepted
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim images inherit the full dpkg + npm closure; scan-regression gate fires only on NEW CRITICALs beyond baseline."
+    caps: [scan.regression-gate]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_size.sh

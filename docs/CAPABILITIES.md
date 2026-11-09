@@ -231,6 +231,27 @@ The service scratch images that need an HTTP/TCP healthcheck probe carry `/hc` (
 - **Delivered by**: FG-044
 - **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_metrics_endpoint.sh`
 
+### image.uptime-kuma-serves-monitoring
+
+`uptime-kuma-slim-trixie` runs Uptime Kuma (built from Node source on `node:22-trixie-slim`; upstream only ships a 1664 MB Alpine/Chromium-bundled image). Tracks upstream's latest GitHub release at build time (FG-013 ref:latest pattern). Serves the Vue SPA + REST API on `:3001`; first-run boot lands on a `/setup-database` wizard then transitions to the full dashboard. Supports HTTP/TCP/DNS/Push/Ping monitors (browser-based Playwright monitors deliberately excluded — see `image.uptime-kuma-no-chromium`). SQLite state persists under `/app/data` (named volume expected). HEALTHCHECK polls `/api/entry-page` which stays 200 whether setup is complete or pending. Runs as uid 1000 (`node` user, upstream convention). Shell + apt kept at runtime.
+
+- **Delivered by**: FG-045
+- **Covered by**: `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`, `images/uptime-kuma-slim-trixie/tests/smoke_serves_200.sh`
+
+### image.uptime-kuma-no-chromium
+
+`uptime-kuma-slim-trixie` deliberately does NOT bundle Chromium or Playwright browsers (saves ~200 MB vs upstream). Browser-based synthetic monitors are out of scope for this slim variant — operators who need them run upstream's `louislam/uptime-kuma` OR a future `uptime-kuma-browser-slim-trixie` sibling image. Smoke tests assert `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/usr/bin/chrome`, `/opt/google/chrome/chrome`, `/ms-playwright`, and `~/.cache/ms-playwright` are all absent — prevents a future apt install accidentally re-introducing them.
+
+- **Delivered by**: FG-045
+- **Covered by**: `images/uptime-kuma-slim-trixie/tests/smoke_no_chromium.sh`
+
+### image.uptime-kuma-nonroot
+
+`uptime-kuma-slim-trixie` runs as uid 1000 (upstream's `node` user). Docker Config.User == `node`. No root required — Uptime Kuma is a userspace Node.js app with no special privileges. Named volume on `/app/data` must be chown-able by 1000.
+
+- **Delivered by**: FG-045
+- **Covered by**: `images/uptime-kuma-slim-trixie/tests/smoke_user_node.sh`
+
 ### image.ipmi-exporter-serves-metrics
 
 `ipmi-exporter-slim-trixie` (FG-037) + `ipmi-exporter-scratch-trixie` (FG-043) — both variants run the Prometheus IPMI exporter (Debian `prometheus-ipmi-exporter`). Scratch variant bundles 5 ELF freeipmi tools (bmc-info, ipmi-sensors, ipmi-chassis, ipmi-dcmi, ipmi-sel) at 36.9 MB; slim bundles the full freeipmi-tools package + shell + apt at 107 MB. Both respond to `GET /metrics` on `:9290` even without `/dev/ipmi0` access (self-metrics only). With `--device /dev/ipmi0` or a `config.yml` carrying remote BMC credentials, scrapes fan speeds, voltages, temperatures, power-draw via IPMI. Both run as root — `/dev/ipmi0` requires it. FG-037's framing that scratch was impractical turned out wrong on deep inspection (the exporter exec's only ELF binaries; the shell-script `ipmimonitoring` is a wrapper it doesn't call).
@@ -248,10 +269,10 @@ Documented exception to the scratch-image-runs-nonroot default (every other scra
 
 ### image.has-shell
 
-Positive-form contract that a Forge image **keeps** a shell at runtime (counterpart to `image.no-shell`). Applies to `-slim` variants: `python-slim-trixie`, `postgres-slim-trixie`, `ipmi-exporter-slim-trixie`, `cadvisor-slim-trixie`. Guarantees `/bin/sh` + `apt` + coreutils are present for operator ergonomics (`docker exec -it <container> sh`, interactive debugging, in-container package management). The attack-surface trade-off is explicit — slim images accept nonzero CVE counts in their `scan-baseline.json`.
+Positive-form contract that a Forge image **keeps** a shell at runtime (counterpart to `image.no-shell`). Applies to `-slim` variants: `python-slim-trixie`, `postgres-slim-trixie`, `ipmi-exporter-slim-trixie`, `cadvisor-slim-trixie`, `uptime-kuma-slim-trixie`. Guarantees `/bin/sh` + `apt` + coreutils are present for operator ergonomics (`docker exec -it <container> sh`, interactive debugging, in-container package management). The attack-surface trade-off is explicit — slim images accept nonzero CVE counts in their `scan-baseline.json`.
 
-- **Delivered by**: FG-001 (python-slim-trixie first established the pattern); FG-026 extended to postgres-slim-trixie; FG-037 extends to ipmi-exporter-slim-trixie; FG-044 extends to cadvisor-slim-trixie
-- **Covered by**: `images/python-slim-trixie/tests/smoke_entrypoint.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh`, `images/cadvisor-slim-trixie/tests/smoke_has_shell.sh`
+- **Delivered by**: FG-001 (python-slim-trixie first established the pattern); FG-026 extended to postgres-slim-trixie; FG-037 extends to ipmi-exporter-slim-trixie; FG-044 extends to cadvisor-slim-trixie; FG-045 extends to uptime-kuma-slim-trixie
+- **Covered by**: `images/python-slim-trixie/tests/smoke_entrypoint.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh`, `images/cadvisor-slim-trixie/tests/smoke_has_shell.sh`, `images/uptime-kuma-slim-trixie/tests/smoke_has_shell.sh`
 
 ### image.redis-serves-cache
 
@@ -459,6 +480,13 @@ Build pattern for Forge images whose upstream binary isn't in Debian trixie (so 
 
 - **Delivered by**: FG-044
 - **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_static_binary.sh`
+
+### build.from-node-source
+
+Node.js analog of `build.from-go-source`: multi-stage pattern for Node apps not packaged in Debian. Shape: `FROM node:X-trixie-slim AS builder` → resolve upstream GitHub latest release tag at build time (FG-013 pattern) → `git clone --depth 1 --branch <tag>` → `npm ci` (full deps incl. dev) → `npm run build` (SPA compile, e.g. vite) → `npm prune --omit=dev` → syft SBOM against source tree. Runtime stage is the same `node:X-trixie-slim` + `apt-upgrade` + `ca-certificates` + `dumb-init` + `COPY --from=builder /out/app /app`, running as the upstream `node` user (uid 1000). First consumer: `uptime-kuma-slim-trixie`. Doesn't introduce a `forge-builder-node-trixie` yet — single consumer; promotion trigger same as Go: 2nd Node-source image lands.
+
+- **Delivered by**: FG-045
+- **Covered by**: `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`, `images/uptime-kuma-slim-trixie/tests/smoke_node_version.sh`
 
 ### tooling.ci-parallel-tests
 
