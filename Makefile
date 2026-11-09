@@ -74,7 +74,7 @@ tools:
 	@mkdir -p $$HOME/.local/bin
 	@command -v syft   >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh  | sh -s -- -b $$HOME/.local/bin
 	@command -v grype  >/dev/null || curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b $$HOME/.local/bin
-	@command -v cosign >/dev/null || { curl -sSfL -o $$HOME/.local/bin/cosign https://github.com/sigstore/cosign/releases/download/v2.4.3/cosign-linux-amd64 && chmod +x $$HOME/.local/bin/cosign; }
+	@command -v cosign >/dev/null || { curl -sSfL -o $$HOME/.local/bin/cosign https://github.com/sigstore/cosign/releases/download/v2.6.5/cosign-linux-amd64 && chmod +x $$HOME/.local/bin/cosign; }
 	@command -v pre-commit >/dev/null || { echo "  pre-commit missing — install with: pipx install pre-commit"; false; }
 	@for t in hadolint shellcheck yamllint actionlint jq; do \
 	  command -v $$t >/dev/null || echo "  $$t missing (install via your package manager)"; \

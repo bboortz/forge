@@ -163,8 +163,8 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
           bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
-          # cosign from the Sigstore project's gcr.io image (v2.4.3 pinned).
-          bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.4.3 /ko-app/cosign "$HOME/.local/bin/cosign"
+          # cosign from the Sigstore project's gcr.io image (v2.6.5 pinned).
+          bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.6.5 /ko-app/cosign "$HOME/.local/bin/cosign"
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 

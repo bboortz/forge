@@ -57,8 +57,8 @@ jobs:
           command -v grype >/dev/null || sudo bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype /usr/local/bin/grype
           command -v syft  >/dev/null || sudo bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  /usr/local/bin/syft
           # cosign (needed by check-strict's sign-local / verify targets).
-          # Pinned to v2.4.3 as in ci.yml's acceptance-matrix job.
-          sudo bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.4.3 /ko-app/cosign /usr/local/bin/cosign
+          # Pinned to v2.6.5 as in ci.yml's acceptance-matrix job.
+          sudo bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.6.5 /ko-app/cosign /usr/local/bin/cosign
           sudo chmod +x /usr/local/bin/cosign
           # actionlint via `go install` (ci.yml pattern).
           go install github.com/rhysd/actionlint/cmd/actionlint@latest

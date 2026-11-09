@@ -47,17 +47,26 @@ grype scans every built image. The JSON result is attached to the digest as an O
 
 ### sign.cosign-keyless-oidc
 
-In GitHub Actions, cosign signs the digest keylessly, using the workflow's OIDC token.
+In GitHub Actions, cosign signs the digest keylessly, using the workflow's OIDC token. FG-041 bumped the pinned cosign binary to v2.6.5 (patches GHSA-fx35-mq7g-6g98, a HIGH verification-bypass CVE).
 
 - **Delivered by**: FG-001
-- **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`
+- **Extended by**: FG-041 (cosign pin v2.4.3 → v2.6.5)
+- **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`, `tests/acceptance/test_FG_041_cosign-v2.6.5-pin.sh`
 
 ### sign.cosign-local-dev
 
 For out-of-CI development, `make sign-local` uses a local cosign key pair under `.cosign/` (gitignored). Locally signed digests are never pushed to `ghcr.io/bboortz/`.
 
 - **Delivered by**: FG-001
-- **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`
+- **Extended by**: FG-041 (cosign pin v2.4.3 → v2.6.5; `--tlog-upload=false` behavior preserved in v2.6.x)
+- **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`, `tests/acceptance/test_FG_041_cosign-v2.6.5-pin.sh`
+
+### ci.cosign-pin-drift-gate
+
+`tests/acceptance/test_FG_041_cosign-v2.6.5-pin.sh` enforces three invariants on the cosign pin: (1) every workflow + `Makefile` + `scripts/` reference to a cosign version cites the same version (`v2.6.5`); (2) the review date in `memory/supply-chain.md` is strictly in the future; (3) **fails the build 7 days before the review date** so the operator ships a renew/upgrade/migrate decision before silent drift. Testable via `FG_041_TODAY=YYYY-MM-DD` env override. Replaces the "operator remembers to re-check the cosign pin" pattern with a CI gate.
+
+- **Delivered by**: FG-041
+- **Covered by**: `tests/acceptance/test_FG_041_cosign-v2.6.5-pin.sh`
 
 ### verify.consumer-cmd
 
