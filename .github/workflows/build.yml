@@ -20,6 +20,8 @@ jobs:
   discover:
     name: Discover image dirs
     runs-on: ubuntu-latest
+    # FG-038: 5-min cap (typical 10s — discover-images.sh over images/).
+    timeout-minutes: 5
     outputs:
       builders: ${{ steps.disc.outputs.builders }}
       base: ${{ steps.disc.outputs.base }}
@@ -38,6 +40,9 @@ jobs:
     name: Publish ${{ matrix.image_dir }}
     needs: discover
     runs-on: ubuntu-latest
+    # FG-038: 10-min cap per builder image. Typical 3-5 min (apt-upgrade
+    # + syft install + push). ~2× worst-case typical.
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.builders) }}
@@ -51,6 +56,10 @@ jobs:
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
         uses: actions/cache@v4
+        # FG-038: 3-min cap + continue-on-error — cache action hangs on
+        # GHA service slowness should fail fast; grype re-downloads DB.
+        timeout-minutes: 3
+        continue-on-error: true
         with:
           path: ~/.cache/grype
           key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
@@ -130,6 +139,8 @@ jobs:
     name: Publish ${{ matrix.image_dir }}
     needs: [discover, publish-builders]
     runs-on: ubuntu-latest
+    # FG-038: 10-min cap per scratch-base image (same cadence as builders).
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.base) }}
@@ -145,6 +156,10 @@ jobs:
       # FG-022: cache grype CVE DB.
       - name: Cache grype DB
         uses: actions/cache@v4
+        # FG-038: 3-min cap + continue-on-error — cache action hangs on
+        # GHA service slowness should fail fast; grype re-downloads DB.
+        timeout-minutes: 3
+        continue-on-error: true
         with:
           path: ~/.cache/grype
           key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
@@ -225,6 +240,10 @@ jobs:
     name: Publish ${{ matrix.image_dir }}
     needs: [discover, publish-base]
     runs-on: ubuntu-latest
+    # FG-038: 16-min cap per derivative image. Typical 5-8 min (apt
+    # install + syft + overlay + cosign sign + push + attestations).
+    # Externally-sourced images (beaconry-*) add clone time. ~2× worst.
+    timeout-minutes: 16
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.discover.outputs.derivatives) }}
@@ -239,6 +258,10 @@ jobs:
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
         uses: actions/cache@v4
+        # FG-038: 3-min cap + continue-on-error — cache action hangs on
+        # GHA service slowness should fail fast; grype re-downloads DB.
+        timeout-minutes: 3
+        continue-on-error: true
         with:
           path: ~/.cache/grype
           key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}

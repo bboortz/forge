@@ -159,6 +159,13 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 - **Delivered by**: FG-007 (bumped to postgres 18 in FG-026; UTF-8 locales added in FG-033)
 - **Covered by**: `tests/acceptance/test_FG_007_postgres-scratch-trixie.sh`, `tests/acceptance/test_FG_033_locale-utf8.sh`, `images/postgres-scratch-trixie/tests/smoke_server_accepts.sh`, `images/postgres-scratch-trixie/tests/smoke_locale_utf8.sh`
 
+### ci.timeout-hardened
+
+Every job in every GHA workflow (`ci.yml`, `build.yml`, `release.yml`, `nightly.yml`) carries an explicit `timeout-minutes` ceiling sized at ~2-3× typical runtime (ci.yml:acceptance-matrix = 10; build.yml:publish-derivatives = 20; nightly.yml:check-strict = 45). Known-flaky steps (`Cache grype DB` via `actions/cache@v4`; `Install supply-chain tools` via Docker Hub pulls) additionally carry step-level `timeout-minutes` + `continue-on-error: true` on the cache step — a stuck cache no longer blocks the job. Replaces GHA's silent 6-hour default. Trigger: 2026-11-09 observed hang on FG-011 matrix cell (Cache grype DB) blocking acceptance-aggregate gate for 20+ min.
+
+- **Delivered by**: FG-038
+- **Covered by**: `tests/acceptance/test_FG_038_ci-timeout-hardening.sh`
+
 ### image.healthy-sidecar
 
 `healthy-scratch-trixie:2` is the most minimal possible scratch sidecar: raw `FROM scratch` + `/hc` (static Zig healthcheck binary from `bboortz/healthy`) + `/sbom.json`. No libc, no coreutils, no sleep, no wget, no shell, no OS packages at all. Uses `hc idle` (HC-006) as the container PID 1 — a single static binary that blocks on SIGTERM/SIGINT with ~0 CPU. Docker's healthcheck invokes `/hc <url>` via a shared network namespace (`network_mode: service:<name>`). Runs as uid 65532 (distroless nonroot; no /etc/passwd needed since hc doesn't do uid lookups). Image ≤ 1 MB (~400 KB actual) — **10× smaller than `busybox:latest`** (4.2 MB).
