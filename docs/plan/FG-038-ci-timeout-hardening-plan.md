@@ -1,7 +1,7 @@
 # FG-038 — Plan: CI timeout hardening
 
 **Story**: [`docs/stories/FG-038-ci-timeout-hardening.md`](../stories/FG-038-ci-timeout-hardening.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-038-ci-timeout-hardening`
 
 ## Design delta
