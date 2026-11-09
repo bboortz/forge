@@ -1,7 +1,7 @@
 ---
 id: FG-037
 slug: ipmi-exporter-slim-trixie
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-08
 ---

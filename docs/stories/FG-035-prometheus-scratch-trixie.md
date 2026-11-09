@@ -1,7 +1,7 @@
 ---
 id: FG-035
 slug: prometheus-scratch-trixie
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-08
 ---

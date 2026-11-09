@@ -1,7 +1,7 @@
 # FG-036 — Plan: alertmanager-scratch-trixie
 
 **Story**: [`docs/stories/FG-036-alertmanager-scratch-trixie.md`](../stories/FG-036-alertmanager-scratch-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-036-alertmanager-scratch-trixie`
 
 ## Design delta
