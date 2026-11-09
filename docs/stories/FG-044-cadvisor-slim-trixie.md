@@ -1,7 +1,7 @@
 ---
 id: FG-044
 slug: cadvisor-slim-trixie
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-09
 ---
