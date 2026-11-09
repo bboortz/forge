@@ -1,7 +1,7 @@
 ---
 id: FG-038
 slug: ci-timeout-hardening
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-09
 ---
