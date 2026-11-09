@@ -1,0 +1,13 @@
+# Per FG-004: repo = dir name, tag = version. With `tag: "latest"`, the
+# 4-tag family collapses to `:latest` + `:latest-amd64` (2 effective tags).
+# Daily cron re-resolves upstream's latest GitHub release at build time
+# and clones that tag — same pattern as FG-013 scout-ref-latest. Operators
+# who need reproducibility should pin to a digest (@sha256:…), not a tag.
+#
+# Slim variant — NO `depends_on` (doesn't derive from scratch-base-trixie).
+# Built from source because uptime-kuma isn't in Debian trixie (upstream
+# only ships the 1.6 GB Chromium-bundled image). FG-044's build.from-go-source
+# CAP's sibling: build.from-node-source.
+tag: "latest"
+platforms:
+  - linux/amd64

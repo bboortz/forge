@@ -1,7 +1,7 @@
 # FG-044 — Plan: cadvisor-slim-trixie
 
 **Story**: [`docs/stories/FG-044-cadvisor-slim-trixie.md`](../stories/FG-044-cadvisor-slim-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-044-cadvisor-slim-trixie`
 
 ## Design delta
