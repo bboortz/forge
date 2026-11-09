@@ -224,6 +224,13 @@ The service scratch images that need an HTTP/TCP healthcheck probe carry `/hc` (
 - **Delivered by**: FG-036
 - **Covered by**: `tests/acceptance/test_FG_036_alertmanager-scratch-trixie.sh`, `images/alertmanager-scratch-trixie/tests/smoke_healthy_endpoint.sh`
 
+### image.cadvisor-serves-metrics
+
+`cadvisor-slim-trixie` runs Google cAdvisor (built from Go source at tag `v0.60.6` — upstream doesn't ship the binary via Debian, and their official image is Alpine/musl which doesn't fit Forge's glibc ecosystem). Static Go binary (`CGO_ENABLED=0 -tags netgo`; libpfm deliberately absent — no perf events). Responds to `/healthz` + `/metrics` + `/api/v2/*` on `:8080`. With `-v /sys:/sys:ro -v /:/rootfs:ro -v /var/lib/docker/:/var/lib/docker:ro -v /var/run:/var/run:ro`, exposes per-container CPU / RAM / network / disk metrics alongside the `cadvisor_version_info` identity metric. Runs as root (cgroup read + docker-socket metadata; upstream convention). Shell + apt kept at runtime (slim contract).
+
+- **Delivered by**: FG-044
+- **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_metrics_endpoint.sh`
+
 ### image.ipmi-exporter-serves-metrics
 
 `ipmi-exporter-slim-trixie` (FG-037) + `ipmi-exporter-scratch-trixie` (FG-043) — both variants run the Prometheus IPMI exporter (Debian `prometheus-ipmi-exporter`). Scratch variant bundles 5 ELF freeipmi tools (bmc-info, ipmi-sensors, ipmi-chassis, ipmi-dcmi, ipmi-sel) at 36.9 MB; slim bundles the full freeipmi-tools package + shell + apt at 107 MB. Both respond to `GET /metrics` on `:9290` even without `/dev/ipmi0` access (self-metrics only). With `--device /dev/ipmi0` or a `config.yml` carrying remote BMC credentials, scrapes fan speeds, voltages, temperatures, power-draw via IPMI. Both run as root — `/dev/ipmi0` requires it. FG-037's framing that scratch was impractical turned out wrong on deep inspection (the exporter exec's only ELF binaries; the shell-script `ipmimonitoring` is a wrapper it doesn't call).
@@ -241,10 +248,10 @@ Documented exception to the scratch-image-runs-nonroot default (every other scra
 
 ### image.has-shell
 
-Positive-form contract that a Forge image **keeps** a shell at runtime (counterpart to `image.no-shell`). Applies to `-slim` variants: `python-slim-trixie`, `postgres-slim-trixie`, `ipmi-exporter-slim-trixie`. Guarantees `/bin/sh` + `apt` + coreutils are present for operator ergonomics (`docker exec -it <container> sh`, interactive debugging, in-container package management). The attack-surface trade-off is explicit — slim images accept nonzero CVE counts in their `scan-baseline.json`.
+Positive-form contract that a Forge image **keeps** a shell at runtime (counterpart to `image.no-shell`). Applies to `-slim` variants: `python-slim-trixie`, `postgres-slim-trixie`, `ipmi-exporter-slim-trixie`, `cadvisor-slim-trixie`. Guarantees `/bin/sh` + `apt` + coreutils are present for operator ergonomics (`docker exec -it <container> sh`, interactive debugging, in-container package management). The attack-surface trade-off is explicit — slim images accept nonzero CVE counts in their `scan-baseline.json`.
 
-- **Delivered by**: FG-001 (python-slim-trixie first established the pattern); FG-026 extended to postgres-slim-trixie; FG-037 extends to ipmi-exporter-slim-trixie
-- **Covered by**: `images/python-slim-trixie/tests/smoke_entrypoint.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh`
+- **Delivered by**: FG-001 (python-slim-trixie first established the pattern); FG-026 extended to postgres-slim-trixie; FG-037 extends to ipmi-exporter-slim-trixie; FG-044 extends to cadvisor-slim-trixie
+- **Covered by**: `images/python-slim-trixie/tests/smoke_entrypoint.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh`, `images/cadvisor-slim-trixie/tests/smoke_has_shell.sh`
 
 ### image.redis-serves-cache
 
@@ -445,6 +452,13 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 
 - **Delivered by**: FG-025 (Phase 1: scratch-base-trixie migration; Phase 2 TBD for python/nginx/postgres)
 - **Covered by**: `tests/acceptance/test_FG_025_forge-builder-trixie.sh`
+
+### build.from-go-source
+
+Build pattern for Forge images whose upstream binary isn't in Debian trixie (so neither the two-stage scratch nor the one-stage slim-apt pattern applies). Shape: multi-stage Dockerfile with a dedicated `FROM golang:X-trixie AS builder` stage that `git clone`s the upstream tagged commit, builds with `CGO_ENABLED=0 -tags netgo` for a static Go binary with no dyn deps, and emits a `/sbom.json` via syft against the source tree. Runtime stage is `debian:trixie-slim` + `apt-upgrade` + `ca-certificates` + the single `COPY --from=builder` of the binary. First consumer: `cadvisor-slim-trixie` (cadvisor isn't in trixie; upstream ships only Alpine/musl). Pattern deliberately doesn't introduce a `forge-builder-go-trixie` yet — single consumer today, not worth the shared-image complexity. Promotion trigger documented in IDEAS.md: 2nd Go-source image lands.
+
+- **Delivered by**: FG-044
+- **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_static_binary.sh`
 
 ### tooling.ci-parallel-tests
 
