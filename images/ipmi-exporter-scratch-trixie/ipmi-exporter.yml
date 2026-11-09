@@ -1,0 +1,16 @@
+# Default ipmi-exporter config shipped with ipmi-exporter-scratch-trixie.
+#
+# Local-BMC mode: assumes /dev/ipmi0 is available at runtime (mount via
+# `--device /dev/ipmi0`). Only ELF-binary-backed collectors listed;
+# shell-script collectors like ipmimonitoring are not available in the
+# scratch runtime. Operators needing remote-BMC mode mount their own
+# config at /etc/prometheus/ipmi-exporter.yml.
+
+modules:
+  default:
+    collectors:
+      - bmc
+      - ipmi
+      - chassis
+      - dcmi
+      - sel

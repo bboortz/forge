@@ -226,10 +226,18 @@ The service scratch images that need an HTTP/TCP healthcheck probe carry `/hc` (
 
 ### image.ipmi-exporter-serves-metrics
 
-`ipmi-exporter-slim-trixie` runs the Prometheus IPMI exporter (Debian `prometheus-ipmi-exporter` package) + bundled `freeipmi-tools` (ipmimonitoring, ipmi-sel, ipmi-dcmi). Responds to `GET /metrics` on `:9290` even without `/dev/ipmi0` access (self-metrics only). With `--device /dev/ipmi0` or a `config.yml` carrying remote BMC credentials, scrapes fan speeds, voltages, temperatures, power-draw via IPMI. Runs as root (upstream + local-BMC device-permission compatibility). **Slim** runtime — not scratch — because `freeipmi-tools`' dynamic C closure makes scratch overlay impractical.
+`ipmi-exporter-slim-trixie` (FG-037) + `ipmi-exporter-scratch-trixie` (FG-043) — both variants run the Prometheus IPMI exporter (Debian `prometheus-ipmi-exporter`). Scratch variant bundles 5 ELF freeipmi tools (bmc-info, ipmi-sensors, ipmi-chassis, ipmi-dcmi, ipmi-sel) at 36.9 MB; slim bundles the full freeipmi-tools package + shell + apt at 107 MB. Both respond to `GET /metrics` on `:9290` even without `/dev/ipmi0` access (self-metrics only). With `--device /dev/ipmi0` or a `config.yml` carrying remote BMC credentials, scrapes fan speeds, voltages, temperatures, power-draw via IPMI. Both run as root — `/dev/ipmi0` requires it. FG-037's framing that scratch was impractical turned out wrong on deep inspection (the exporter exec's only ELF binaries; the shell-script `ipmimonitoring` is a wrapper it doesn't call).
 
-- **Delivered by**: FG-037
-- **Covered by**: `tests/acceptance/test_FG_037_ipmi-exporter-slim-trixie.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_metrics_endpoint.sh`
+- **Delivered by**: FG-037 (slim)
+- **Extended by**: FG-043 (scratch variant alongside slim)
+- **Covered by**: `tests/acceptance/test_FG_037_ipmi-exporter-slim-trixie.sh`, `tests/acceptance/test_FG_043_ipmi-exporter-scratch-trixie.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_metrics_endpoint.sh`, `images/ipmi-exporter-scratch-trixie/tests/smoke_metrics_endpoint.sh`
+
+### image.ipmi-exporter-scratch-nonroot-exempt
+
+Documented exception to the scratch-image-runs-nonroot default (every other scratch image uses baseline uid 65532). `ipmi-exporter-scratch-trixie` runs as **root** because `/dev/ipmi0` kernel-level device permissions are `root:root` on every Debian host; running non-root would require host-side `chgrp ipmi /dev/ipmi0` + user-group setup that breaks turnkey deployment. Non-root is impossible without host coordination. Explicit documentation prevents future scratch-image audits from mis-flagging this as a regression.
+
+- **Delivered by**: FG-043
+- **Covered by**: `images/ipmi-exporter-scratch-trixie/tests/smoke_user_root.sh`
 
 ### image.has-shell
 

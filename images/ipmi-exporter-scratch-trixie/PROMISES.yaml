@@ -1,0 +1,62 @@
+# Authoritative contract for ipmi-exporter-scratch-trixie.
+#
+# Scratch runtime: Prometheus IPMI Exporter 1.10 + freeipmi-tools ELF
+# binaries (5: bmc-info, ipmi-sensors, ipmi-chassis, ipmi-dcmi, ipmi-sel).
+# Runs as ROOT — documented exception to the scratch-nonroot default
+# because /dev/ipmi0 requires root privileges. See CAP
+# image.ipmi-exporter-scratch-nonroot-exempt.
+
+spec_version: 1
+image: ipmi-exporter-scratch-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.ipmi-exporter-binary
+    description: /usr/bin/prometheus-ipmi-exporter is present, executes, `--version` prints `ipmi_exporter, version 1.10.0`.
+    caps: [build.two-stage-scratch]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.freeipmi-elf-tools-bundled
+    description: Five freeipmi ELF binaries bundled at /usr/sbin/ — bmc-info, ipmi-sensors, ipmi-chassis, ipmi-dcmi, ipmi-sel. Shell-script tools (ipmimonitoring, *-config wrappers) deliberately not shipped — scratch has no /bin/sh to execute them.
+    caps: [image.ipmi-exporter-serves-metrics]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_freeipmi_tools.sh
+
+  - id: runtime.metrics-endpoint
+    description: Container responds to GET /metrics on :9290 with Prometheus text format even without /dev/ipmi0 (self-metrics only; IPMI probes fail cleanly with error metrics). Includes `ipmi_scrape_duration_seconds`.
+    caps: [image.ipmi-exporter-serves-metrics, test.smoke-server-helper]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_metrics_endpoint.sh
+
+  - id: runtime.hc-binary
+    description: /hc is present and executable; baked HEALTHCHECK polls /metrics.
+    caps: [image.hc-embedded, image.ipmi-exporter-serves-metrics]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: runtime.root-documented-exception
+    description: "Container runs as uid 0 (root) — documented exception to scratch-nonroot default. /dev/ipmi0 requires root; non-root would need host-side device-group changes that break turnkey deployment. docker inspect Config.User is empty string (default root)."
+    caps: [image.ipmi-exporter-scratch-nonroot-exempt]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_user_root.sh
+
+  - id: absence.shell
+    description: No /bin/sh, /bin/bash, or any shell binary.
+    caps: [image.no-shell]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_no_shell.sh
+    inverse: true
+
+  - id: absence.os-cves
+    description: grype finds zero Debian-source matches (scratch, no dpkg DB).
+    caps: [image.zero-os-cves]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_zero_os_cves.sh
+    inverse: true
+
+  - id: shape.size-budget
+    description: Image size ≤ 50 MB hard ceiling (projected ~33 MB; baseline 13 MB + binaries 14 MB + libs 5 MB + /hc + SBOM + overhead).
+    caps: [test.size-budget]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_size.sh
