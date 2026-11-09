@@ -1,7 +1,7 @@
 # FG-045 — Plan: uptime-kuma-slim-trixie
 
 **Story**: [`docs/stories/FG-045-uptime-kuma-slim-trixie.md`](../stories/FG-045-uptime-kuma-slim-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-045-uptime-kuma-slim-trixie`
 
 ## Design delta
