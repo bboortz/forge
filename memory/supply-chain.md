@@ -1,6 +1,6 @@
 *Scan, SBOM, sign, verify — the four acts every Forge image must perform before it's considered published.*
 
-**⚠️ Cosign pin — review due 2026-11-17.** Both CI (`build.yml`) and local (`make sign-local` / `make verify`) are pinned to cosign **v2.4.3**. v3.x stores signatures as OCI 1.1 referrers (no `.sig` tag) and dropped `--tlog-upload=false`, which would break both consumer-side verify with v2 clients and the local sign-local round-trip. Review path: upgrade everything to v3 + rewrite sign-local around a tlog-less signing-config, or renew the v2 pin.
+**⚠️ Cosign pin — review due 2027-05-17.** Both CI (`build.yml`) and local (`make sign-local` / `make verify`) are pinned to cosign **v2.6.5** (bumped from v2.4.3 by FG-041 to patch [GHSA-fx35-mq7g-6g98](https://github.com/sigstore/cosign/security/advisories/GHSA-fx35-mq7g-6g98), a HIGH verification-bypass CVE fixed in v2.6.5). v2.x is actively dual-maintained alongside v3.x — pinning to v2.x latest keeps us in-security with no consumer-side CLI change needed. v3 migration deferred to this review cycle: no concrete trigger (no consumer ask, no v3-only feature we need). v3.1.x reads both v2 and v3 signature formats, so any consumer CLI ≥ v2.4 can verify. Re-evaluate on review date OR immediately if: Sigstore announces v2 EOL, a consumer explicitly asks for v3-format sigs, or a HIGH/CRITICAL CVE lands on the pinned v2.x with fix v3-only. FG-041's acceptance test fails CI 7 days before the review date to prevent silent drift (see CAP `ci.cosign-pin-drift-gate`).
 
 ## Flow
 
