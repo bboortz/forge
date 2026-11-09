@@ -1,7 +1,7 @@
 # FG-039 — Plan: fix prometheus-scratch-trixie web UI
 
 **Story**: [`docs/stories/FG-039-prometheus-web-ui.md`](../stories/FG-039-prometheus-web-ui.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-039-prometheus-web-ui`
 
 ## Design delta
