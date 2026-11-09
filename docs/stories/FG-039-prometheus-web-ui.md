@@ -1,7 +1,7 @@
 ---
 id: FG-039
 slug: prometheus-web-ui
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-09
 ---
