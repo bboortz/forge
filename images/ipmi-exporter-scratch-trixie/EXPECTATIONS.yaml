@@ -1,0 +1,31 @@
+spec_version: 1
+image: ipmi-exporter-scratch-trixie
+
+dependencies:
+  - image: scratch-base-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: files.dynamic-linker
+        reason: prometheus-ipmi-exporter + freeipmi ELF binaries interp = /lib64/ld-linux-x86-64.so.2.
+        preflight:
+          - images/ipmi-exporter-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: files.core-glibc
+        reason: libc + libm needed by the Go exporter + freeipmi C binaries.
+        preflight:
+          - images/ipmi-exporter-scratch-trixie/tests/smoke_binary_runs.sh
+
+      - promise: identity.root
+        reason: container runs as root (not the baseline nonroot default) — /dev/ipmi0 requires it. Uses baseline's /etc/passwd root entry.
+        preflight:
+          - images/ipmi-exporter-scratch-trixie/tests/smoke_user_root.sh
+
+      - promise: writable-dirs.tmp
+        reason: freeipmi subprocesses use /tmp for ephemeral files during BMC probing.
+        preflight:
+          - images/ipmi-exporter-scratch-trixie/tests/smoke_metrics_endpoint.sh
+
+      - promise: absence.shell
+        reason: scratch-image contract.
+        preflight:
+          - images/ipmi-exporter-scratch-trixie/tests/smoke_no_shell.sh
