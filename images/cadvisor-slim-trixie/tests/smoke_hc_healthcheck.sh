@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IMAGE_NAME="${IMAGE_NAME:-cadvisor-slim-trixie}"
+IMAGE_TAG="${IMAGE_TAG:-0.60.6}"
+REGISTRY="${REGISTRY:-forge-local}"
+IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+hc_test="$(docker inspect --format '{{json .Config.Healthcheck.Test}}' "${IMAGE}")"
+case "${hc_test}" in
+  *'/hc'*'127.0.0.1:8080/healthz'*) ;;
+  *) echo "  ✗ HEALTHCHECK.Test unexpected: ${hc_test}" >&2; exit 1 ;;
+esac
+echo "  ✓ HEALTHCHECK baked (${hc_test})"
+
+CID="fg044-cadvisor-$$"
+trap 'docker rm -f "${CID}" >/dev/null 2>&1 || true' EXIT
+docker run -d --rm --name "${CID}" -v /sys:/sys:ro "${IMAGE}" >/dev/null
+rc=1
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  set +e
+  docker exec "${CID}" /hc -t 2 http://127.0.0.1:8080/healthz >/dev/null 2>&1
+  rc=$?
+  set -e
+  [[ "${rc}" -eq 0 ]] && break
+  sleep 1
+done
+[[ "${rc}" -eq 0 ]] || { echo "  ✗ /hc never reached /healthz (rc=${rc})" >&2; exit 1; }
+echo "  ✓ /hc http://127.0.0.1:8080/healthz → exit 0"
+
+set +e
+docker exec "${CID}" /hc -t 2 http://127.0.0.1:9999/ >/dev/null 2>&1
+closed_rc=$?
+set -e
+[[ "${closed_rc}" -ne 0 ]] || { echo "  ✗ /hc against closed :9999 should exit non-zero" >&2; exit 1; }
+echo "  ✓ /hc http://127.0.0.1:9999/ → unhealthy (exit ${closed_rc})"

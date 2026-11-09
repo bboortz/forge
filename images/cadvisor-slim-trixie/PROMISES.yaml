@@ -1,0 +1,60 @@
+# Authoritative contract for cadvisor-slim-trixie.
+#
+# Slim runtime: Debian trixie + cadvisor built from Go source (static,
+# CGO off, no libpfm). Shell + apt kept (image.has-shell contract).
+# Runs as root for cgroup / docker-socket / rootfs access. cadvisor
+# only ships with minimal deps (no dpkg CVEs expected beyond trixie-slim
+# baseline — tracked via scan-baseline.json).
+
+spec_version: 1
+image: cadvisor-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.cadvisor-binary
+    description: /usr/bin/cadvisor is present, executes, `--version` prints cadvisor's version banner containing "cAdvisor version v0.60.6".
+    caps: [build.pr-ci, build.daily-publish]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_binary_runs.sh
+
+  - id: runtime.static-binary
+    description: cadvisor is a statically-linked Go binary (CGO_ENABLED=0, netgo tag). `ldd /usr/bin/cadvisor` reports "not a dynamic executable". Decouples the binary from the runtime libc ABI.
+    caps: [image.cadvisor-serves-metrics]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_static_binary.sh
+
+  - id: runtime.healthz-endpoint
+    description: Container responds to GET /healthz on :8080 with body "ok" once the recovery/boot phase completes (within ~15s on host /sys mount).
+    caps: [image.cadvisor-serves-metrics, test.smoke-server-helper]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_healthz.sh
+
+  - id: runtime.metrics-endpoint
+    description: Container responds to GET /metrics on :8080 with Prometheus text format. Body contains `cadvisor_version_info` metric + `container_` metric series when /sys + /var/lib/docker are mounted from host.
+    caps: [image.cadvisor-serves-metrics, test.smoke-server-helper]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_metrics_endpoint.sh
+
+  - id: runtime.hc-binary
+    description: /hc is present and executable; baked HEALTHCHECK polls /healthz.
+    caps: [image.hc-embedded, image.cadvisor-serves-metrics]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_hc_healthcheck.sh
+
+  - id: presence.shell
+    description: /bin/sh + apt + coreutils are KEPT in the runtime for operator ergonomics (slim contract; counterpart to image.no-shell).
+    caps: [image.has-shell]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_has_shell.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ 150 MB hard ceiling (debian:trixie-slim ~75 MB + 27 MB cadvisor static binary + ca-certs + /hc + SBOM).
+    caps: [test.size-budget]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_size.sh
+
+  - id: scan.nonzero-accepted
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim images inherit the full dpkg closure; scan-regression gate fires only on NEW CRITICALs beyond baseline (precedent: ipmi-exporter-slim-trixie)."
+    caps: [scan.regression-gate]
+    tests:
+      - images/cadvisor-slim-trixie/tests/smoke_size.sh
