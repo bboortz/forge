@@ -102,3 +102,33 @@ if docker logs "${CID}" 2>&1 | grep -q 'error reading base template'; then
   exit 1
 fi
 echo "  ✓ no 'error reading base template' in container logs"
+
+# -----------------------------------------------------------------------------
+# 3. FG-040: every classic-UI asset referenced from /classic/graph serves 200
+# -----------------------------------------------------------------------------
+# Pre-FG-040 regression: 25 of 34 assets were 404 (dangling symlinks into
+# /usr/share/javascript/ that FG-039's `cp -r` preserved but didn't follow).
+# This matrix would have caught FG-039's gap on day zero.
+asset_list="${TMP}/assets.txt"
+grep -oE 'href="[^"]+"|src="[^"]+"' "${TMP}/classic.html" \
+  | awk -F\" '{print $2}' \
+  | grep -E '^/classic/static/' \
+  | sed 's|?v=.*||' \
+  | sort -u > "${asset_list}"
+
+asset_count=$(wc -l < "${asset_list}")
+[[ "${asset_count}" -gt 0 ]] \
+  || { echo "  ✗ no /classic/static/ assets found in /classic/graph HTML (parse bug?)" >&2; exit 1; }
+
+failures=0
+while read -r path; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${PORT}${path}")
+  if [[ "${code}" != "200" ]]; then
+    echo "  ✗ HTTP ${code}  ${path}" >&2
+    failures=$((failures + 1))
+  fi
+done < "${asset_list}"
+
+[[ "${failures}" -eq 0 ]] \
+  || { echo "  ✗ ${failures}/${asset_count} classic-UI assets returned non-200" >&2; exit 1; }
+echo "  ✓ all ${asset_count} classic-UI /classic/static/* assets return HTTP 200"

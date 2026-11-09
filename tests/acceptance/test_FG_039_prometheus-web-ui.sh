@@ -20,8 +20,8 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 # -----------------------------------------------------------------------------
 say "1. source files encode the FG-039 contract"
 
-grep -qE 'cp -r /usr/share/prometheus/web ' images/prometheus-scratch-trixie/Dockerfile \
-  || fail "images/prometheus-scratch-trixie/Dockerfile: missing cp -r /usr/share/prometheus/web overlay step"
+grep -qE 'cp -rL? /usr/share/prometheus/web ' images/prometheus-scratch-trixie/Dockerfile \
+  || fail "images/prometheus-scratch-trixie/Dockerfile: missing cp -r[L] /usr/share/prometheus/web overlay step"
 
 grep -q 'runtime.web-ui-serves' images/prometheus-scratch-trixie/PROMISES.yaml \
   || fail "images/prometheus-scratch-trixie/PROMISES.yaml: missing promise runtime.web-ui-serves"
