@@ -1,7 +1,7 @@
 # FG-040 — Plan: fix prometheus classic UI static asset 404s
 
 **Story**: [`docs/stories/FG-040-prometheus-classic-ui-assets.md`](../stories/FG-040-prometheus-classic-ui-assets.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-040-prometheus-classic-ui-assets`
 
 ## Design delta

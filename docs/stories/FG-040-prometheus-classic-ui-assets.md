@@ -1,7 +1,7 @@
 ---
 id: FG-040
 slug: prometheus-classic-ui-assets
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-09
 ---
