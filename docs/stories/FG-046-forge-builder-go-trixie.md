@@ -1,7 +1,7 @@
 ---
 id: FG-046
 slug: forge-builder-go-trixie
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-10
 ---
@@ -141,7 +141,7 @@ Scenario: prometheus-scratch-trixie migration deferred (documented)
 ## References
 
 - Plan: `docs/plan/FG-046-forge-builder-go-trixie-plan.md`
-- Red test: `tests/acceptance/test_FG_046_forge-builder-go-trixie.sh`
+- Red tests (split 2026-11-10 to fit the FG-038 per-cell timeout range [4..10] min — one cell per migration): `tests/acceptance/test_FG_046a_forge-builder-go-trixie.sh` + `test_FG_046b_cadvisor-go-source.sh` + `test_FG_046c_node-exporter-go-source.sh` + `test_FG_046d_alertmanager-go-source.sh` + `test_FG_046e_ipmi-exporter-scratch-go-source.sh` + `test_FG_046f_ipmi-exporter-slim-go-source.sh`
 - Precedents: FG-025 (forge-builder-trixie — Debian + syft), FG-044 (cadvisor from-Go-source, first consumer)
 - Beaconry finding: GO-2026-6604 on bb-82jq, 2026-11-10 (plus GO-2026-4337 + GO-2026-6612 surfaced by grype DB refresh)
 - Upstream versions pinned:

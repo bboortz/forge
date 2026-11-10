@@ -1,7 +1,7 @@
 # FG-046 — Plan: forge-builder-go-trixie + migrate all-but-one Go image
 
 **Story**: [`docs/stories/FG-046-forge-builder-go-trixie.md`](../stories/FG-046-forge-builder-go-trixie.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-046-forge-builder-go-trixie-migrations`
 
 ## Design delta
