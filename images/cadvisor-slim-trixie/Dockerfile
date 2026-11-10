@@ -12,34 +12,22 @@
 # requires either --privileged or specific device/mount perms + caps.
 
 ARG DEBIAN_BASE=debian:trixie-slim
-ARG GO_BASE=golang:1.27-trixie
+# FG-046: shared Go builder base (apt-upgraded, syft + git + jq pre-baked,
+# Go 1.27+ toolchain). Rebuilt before this image in the daily cron so
+# Go stdlib CVE fixes propagate within 24h.
+ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK (no curl/wget in slim runtime).
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-# syft binary via Docker Hub (same precedent as forge-builder-trixie —
-# avoids GHA flap on GitHub releases CDN).
-ARG SYFT_SRC=docker.io/anchore/syft:latest
 # Pin exact upstream release. Daily cron auto-rebuilds against this ref.
 ARG CADVISOR_VERSION=v0.60.6
 
 # --- Stage 0: hc source ------------------------------------------------------
 FROM ${HC_REF} AS hc
 
-# --- Stage 1: syft source ----------------------------------------------------
-FROM ${SYFT_SRC} AS syft-src
-
-# --- Stage 2: Go builder (compile cadvisor + emit SBOM) ---------------------
-FROM ${GO_BASE} AS builder
+# --- Stage 1: Go builder (compile cadvisor + emit SBOM) ---------------------
+FROM ${FORGE_BUILDER_GO_REF} AS builder
 
 ARG CADVISOR_VERSION
-
-# hadolint ignore=DL3008
-RUN set -eux; \
-    apt-get update; \
-    apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install git; \
-    rm -rf /var/lib/apt/lists/*
-
-COPY --from=syft-src /syft /usr/local/bin/syft
 
 WORKDIR /src
 # Shallow clone: we only need the tagged commit, not the full history.

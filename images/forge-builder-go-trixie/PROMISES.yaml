@@ -1,0 +1,47 @@
+# FG-010 contract for forge-builder-go-trixie (FG-046).
+#
+# Not a runtime image — this is a builder-stage base for from-Go-source
+# derivatives. Every `FROM ${FORGE_BUILDER_GO_REF} AS builder` relies on
+# these guarantees.
+
+spec_version: 1
+image: forge-builder-go-trixie
+version: "0.1"
+
+promises:
+  - id: files.go-toolchain
+    description: /usr/local/go/bin/go is present, `go version` reports Go >= 1.27. Downstream builders invoke `go build` without installing Go.
+    caps: [build.shared-go-builder]
+    tests:
+      - images/forge-builder-go-trixie/tests/smoke_has_go.sh
+
+  - id: files.syft-binary
+    description: /usr/local/bin/syft exists and runs (`syft version` exits 0). Downstream builders invoke `syft dir:/src/ ...` for SBOM emission.
+    caps: [build.shared-go-builder]
+    tests:
+      - images/forge-builder-go-trixie/tests/smoke_has_syft.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt is present. Downstream curl / git / go mod download work without re-apt-installing.
+    caps: [build.shared-go-builder]
+    tests:
+      - images/forge-builder-go-trixie/tests/smoke_ca_bundle.sh
+
+  - id: files.release-resolve-tools
+    description: git, curl, jq are all present — enables the FG-013 "resolve upstream latest release tag at build time" pattern.
+    caps: [build.shared-go-builder]
+    tests:
+      - images/forge-builder-go-trixie/tests/smoke_release_tools.sh
+
+  - id: apt.freshly-upgraded
+    description: Image was built with `apt-get upgrade` applied. Any trixie / trixie-security package update released before the image's BUILD_TIMESTAMP is included.
+    caps: [build.shared-go-builder]
+    tests:
+      - images/forge-builder-go-trixie/tests/smoke_release_tools.sh
+
+  - id: apt.no-cache
+    description: /var/lib/apt/lists/ carries no Packages/Release/InRelease files. Downstream builders that `apt-get install` MUST re-run `apt-get update` first.
+    caps: [build.shared-go-builder]
+    tests:
+      - images/forge-builder-go-trixie/tests/smoke_no_apt_cache.sh
+    inverse: true

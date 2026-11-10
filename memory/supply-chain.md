@@ -25,12 +25,16 @@ grype <image>:<tag> -o json --fail-on high > scan.json
 
 ## Go stdlib CVE triage (Debian-packaged Go binaries)
 
-Every compiled Go binary embeds the stdlib it was built against, so grype's Go cataloger reports `stdlib go1.24.x` for Debian-packaged exporters (`prometheus-ipmi-exporter`, `prometheus-alertmanager`, `prometheus`, `prometheus-node-exporter`) even though the scratch image carries no Go toolchain. These findings CANNOT be fixed by us — we don't rebuild the binaries; Debian does. The fix lands when Debian bumps their Go toolchain and rebuilds the exporter packages; our daily `--pull` picks it up automatically.
+Every compiled Go binary embeds the stdlib it was built against, so grype's Go cataloger reports `stdlib go1.XX.YY` for every Go image.
 
-Before adding a waiver for a Go CVE, **check the GOOS scope** at `https://vuln.go.dev/ID/<GO-id>.json` — look at `.affected[].ecosystem_specific.imports[].goos`:
+**FG-046 (shipped 2026-11-10)** eliminated this for Forge-native Go images: `forge-builder-go-trixie` provides a Go-1.27+ toolchain, and cadvisor-slim-trixie + node-exporter-scratch-trixie + alertmanager-scratch-trixie + ipmi-exporter-scratch-trixie + ipmi-exporter-slim-trixie now build from upstream Go source against that base. For these images we control the toolchain — Go stdlib CVE fixes land within 24h of the next forge-builder-go-trixie rebuild (driven by the daily cron re-resolving `golang:1.27-trixie`'s digest). Zero stdlib CRITICALs expected on these images going forward; remaining Go-ecosystem CRITICALs are usually in upstream's vendored deps (`golang.org/x/net`, `golang.org/x/crypto`), fixable by bumping the pinned upstream version.
+
+**prometheus-scratch-trixie remains Debian-packaged** (FG-046 deferral — React UI needs npm build pipeline; see IDEAS.md). Its Go stdlib CVE profile still tracks Debian trixie's toolchain. Fixes land when Debian bumps go1.24.x → next.
+
+Before adding a waiver for a Go CVE on ANY image, **check the GOOS scope** at `https://vuln.go.dev/ID/<GO-id>.json` — look at `.affected[].ecosystem_specific.imports[].goos`:
 
 - Present and includes `"windows"` only (e.g. **GO-2026-6604** affecting `os.Root.Mkdir` Windows junctions) → **FALSE POSITIVE** on our linux/amd64 images. Waive via `PROMISES.yaml`'s `absence.os-cves.waivers` with reason citing the official `goos` declaration.
-- Absent or includes linux (e.g. **GO-2026-4337** TLS session resumption, **GO-2026-6612** HTTP/2 flow control) → **REAL** vulnerability if the code path is reachable. Don't waive; accept in `scan-baseline.json` with an issue tracking the Debian-Go-toolchain bump.
+- Absent or includes linux (e.g. **GO-2026-4337** TLS session resumption, **GO-2026-6612** HTTP/2 flow control) → **REAL** vulnerability if the code path is reachable. For FG-046-migrated images: bump the pinned upstream version (which usually has a newer vendored dep). For prometheus-scratch and any other Debian-packaged Go image: accept in `scan-baseline.json` until Debian's toolchain bumps.
 
 **Waiver template** (shape validated by `scripts/verify-contracts.py`):
 
