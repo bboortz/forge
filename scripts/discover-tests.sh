@@ -21,8 +21,11 @@ first=1
 printf '{"include":['
 for t in "${TESTS[@]}"; do
   base=$(basename "${t}")
-  if [[ "${base}" =~ ^test_FG_([0-9]{3})_ ]]; then
-    fg_id="FG-${BASH_REMATCH[1]}"
+  # FG-046 introduced split tests with letter-suffixes (test_FG_046a_… etc.)
+  # so each sub-test gets its own matrix cell under the 6-min timeout cap.
+  # fg_id for split tests is "FG-NNN<letter>" (e.g. FG-046a); otherwise FG-NNN.
+  if [[ "${base}" =~ ^test_FG_([0-9]{3})([a-z]?)_ ]]; then
+    fg_id="FG-${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
   else
     echo "discover-tests.sh: cannot parse FG id from ${t}" >&2
     exit 1

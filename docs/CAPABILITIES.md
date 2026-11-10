@@ -479,7 +479,7 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 `ghcr.io/bboortz/forge-builder-go-trixie:0.1` is a published builder-base image mirroring FG-025's `forge-builder-trixie` shape but for Go source builds. `FROM golang:1.27-trixie` + `apt-get upgrade` + CA certificates + syft + git + curl + jq. PROMISES: `files.go-toolchain` (Go >= 1.27), `files.syft-binary`, `files.ca-certificates`, `files.release-resolve-tools` (git + curl + jq), `apt.freshly-upgraded`, `apt.no-cache`. Daily cron rebuilds this first so Go stdlib CVE fixes land within 24h of upstream release, propagating to every from-Go-source derivative on the next build. Bumping the Go major version is a single `GO_BASE` ARG update + rebuild — all derivatives inherit the new stdlib without their own Dockerfile change. Enables FG-046's one-swing migration of 5 Forge-native Go images off Debian's lagging go1.24.x toolchain.
 
 - **Delivered by**: FG-046
-- **Covered by**: `tests/acceptance/test_FG_046_forge-builder-go-trixie.sh`, `images/forge-builder-go-trixie/tests/smoke_*.sh`
+- **Covered by**: `tests/acceptance/test_FG_046a_forge-builder-go-trixie.sh`, `images/forge-builder-go-trixie/tests/smoke_*.sh`
 
 ### build.from-go-source
 
@@ -487,7 +487,7 @@ Build pattern for Forge images where we either (a) can't use Debian's packaged b
 
 - **Delivered by**: FG-044 (cadvisor first consumer)
 - **Extended by**: FG-046 (shared base + 4 additional consumers; dual-builder pattern for ipmi-exporter)
-- **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `tests/acceptance/test_FG_046_forge-builder-go-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_static_binary.sh`
+- **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `tests/acceptance/test_FG_046a_forge-builder-go-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_static_binary.sh`
 
 ### build.from-node-source
 

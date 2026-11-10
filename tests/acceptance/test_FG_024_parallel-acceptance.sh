@@ -34,9 +34,11 @@ printf '%s' "${OUT}" | jq -e '.include[] | select(has("test") and has("fg_id"))'
 printf '%s' "${OUT}" | jq -r '.include[].test' | while read -r t; do
   test -x "${t}" || { echo "  ✗ ${t} not executable" >&2; exit 1; }
 done
-# Every fg_id is of form FG-NNN
+# Every fg_id is of form FG-NNN[x] (FG-046 introduced single-letter
+# suffixes for split acceptance tests — e.g. FG-046a, FG-046b — so the
+# matrix can keep each cell under the 6-min timeout cap).
 printf '%s' "${OUT}" | jq -r '.include[].fg_id' | while read -r id; do
-  [[ "${id}" =~ ^FG-[0-9]{3}$ ]] || { echo "  ✗ bad fg_id: ${id}" >&2; exit 1; }
+  [[ "${id}" =~ ^FG-[0-9]{3}[a-z]?$ ]] || { echo "  ✗ bad fg_id: ${id}" >&2; exit 1; }
 done
 pass "discover-tests.sh: ${COUNT} tests, all paths executable, fg_id format valid"
 
