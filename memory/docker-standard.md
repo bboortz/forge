@@ -1,5 +1,26 @@
 *Dockerfile and build-time conventions for Forge images. Every image under `images/<name>/` conforms to this.*
 
+## Chain depth ≤ 5 (FG-042 invariant)
+
+Current deepest trust chain: `debian:trixie-slim` (Docker Hub) → `python:3.14-slim-trixie` (Docker Hub) → `python-slim-trixie` (forge) → `forge-builder-trixie` (forge) → `scratch-base-trixie` (forge) → **5 hops to a scratch runtime like `python-scratch-trixie`**. That's the ceiling.
+
+Every added Forge pre-builder / builder / baseline tier deepens the chain for its downstream. Keep the cap at 5 unless a story explicitly justifies going deeper. Each extra layer is +~1 min of daily-cron time + an extra single-point-of-failure between the operator and the upstream distro.
+
+If you find yourself adding a 6th tier, first ask: can this collapse into an existing tier? E.g. don't introduce `forge-builder-python-trixie` as a sibling of `forge-builder-trixie` — add the Python bits to forge-builder-trixie itself.
+
+## Upstream Docker Hub anchor consumption (FG-042 invariant)
+
+Every Docker Hub upstream used as a `FROM` line must be consumed by **exactly one** Forge image — the forge-rooted pre-builder for that family. Downstream slim / scratch images FROM the forge image, not the upstream directly. Two reasons:
+
+1. **Version drift prevention**: bumping an upstream version is a one-Dockerfile change (in the pre-builder) that propagates atomically; without this rule it's a multi-Dockerfile code-review-discipline task.
+2. **Scanner / auditor surface reduction**: Beaconry + grype track one forge-signed base per family instead of multiple parallel-pulled upstream digests.
+
+Enforced by `scripts/verify-no-upstream-drift.sh` (wired into `make test-fast` + `make check`). Current pre-builders: `debian-slim-trixie`, `python-slim-trixie`. Adding a new one: edit `_UPSTREAM_ANCHORS` in the script + bump `_EXPECTED` to match the new pre-builder count.
+
+Exempt from this rule:
+- **Dedicated-toolchain builder bases** (`forge-builder-go-trixie` FROMs `golang:1.27-trixie`): the upstream image provides a specific version pin we can't easily recreate ourselves (Debian's apt-shipped Go is too old). Keep on upstream; document in the story.
+- **Externally-maintained runtimes** (`postgres-slim-trixie` FROMs `postgres:18`): rebuilding from source is far bigger than the drift risk justifies.
+
 ## Two-stage Dockerfile template (scratch runtime)
 
 ```dockerfile

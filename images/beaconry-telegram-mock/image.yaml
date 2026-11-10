@@ -1,10 +1,15 @@
 # FG-015: externally-sourced test fixture from bboortz/beaconry.
-# Unlike scout/hub, this image is NOT FROM python-scratch — upstream uses
-# python:3.12-slim. Acceptable: this is a test fixture, never production.
-# No depends_on: the image has no Forge dependency (no EXPECTATIONS.yaml).
+# Originally FROMed python:3.12-slim upstream (deliberate base-agnosticism
+# proof of the FG-012 mechanism). As of beaconry BC-100, the upstream
+# Dockerfile was migrated onto the forge-signed chain (python-scratch-trixie
+# runtime + forge-builder-trixie builder) — same shape as scout + hub.
+# This image.yaml now declares the depends_on accordingly so forge's
+# four-tier publish ordering (FG-042) resolves the chain correctly.
 tag: "0.1"
 platforms:
   - linux/amd64
+depends_on:
+  - python-scratch-trixie
 source:
   git: https://github.com/bboortz/beaconry
   # Daily cron tracks beaconry main HEAD; resolved sha baked into revision label (FG-013).
