@@ -1,10 +1,19 @@
 # Default ipmi-exporter config shipped with ipmi-exporter-scratch-trixie.
 #
 # Local-BMC mode: assumes /dev/ipmi0 is available at runtime (mount via
-# `--device /dev/ipmi0`). Only ELF-binary-backed collectors listed;
-# shell-script collectors like ipmimonitoring are not available in the
-# scratch runtime. Operators needing remote-BMC mode mount their own
-# config at /etc/prometheus/ipmi-exporter.yml.
+# `--device /dev/ipmi0` + typically `--privileged` or `--cap-add SYS_RAWIO`).
+#
+# Why collector_cmd + custom_args for `ipmi`:
+# prometheus-ipmi-exporter's `ipmi` collector by default invokes the
+# Debian shell-script wrapper `/usr/sbin/ipmimonitoring` — which cannot
+# run on scratch (no /bin/sh). We override to call `ipmi-sensors`
+# (ELF binary) directly, passing the two flags that `ipmimonitoring`
+# would have added for us:
+#   --output-sensor-state         (what the wrapper always adds)
+#   --ignore-not-available-sensors (what the wrapper adds when -v is absent)
+# This reproduces the wrapper's effective behavior without needing a shell.
+# Caught on homelab verification 2026-11-10; the original FG-043 shipped
+# with no readings because ipmimonitoring was missing.
 
 modules:
   default:
@@ -14,3 +23,9 @@ modules:
       - chassis
       - dcmi
       - sel
+    collector_cmd:
+      ipmi: ipmi-sensors
+    custom_args:
+      ipmi:
+        - --output-sensor-state
+        - --ignore-not-available-sensors

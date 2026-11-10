@@ -60,7 +60,8 @@ RUN set -eux; \
 RUN set -eux; \
     install -d /out/usr/bin /out/usr/sbin /out/lib/x86_64-linux-gnu \
                /out/var/lib/freeipmi /out/var/log/freeipmi \
-               /out/var/log/ipmiconsole /out/etc/prometheus; \
+               /out/var/log/ipmiconsole /out/etc/prometheus \
+               /out/etc/freeipmi; \
     cp /usr/bin/prometheus-ipmi-exporter /out/usr/bin/prometheus-ipmi-exporter; \
     for b in bmc-info ipmi-sensors ipmi-chassis ipmi-dcmi ipmi-sel; do \
       cp "/usr/sbin/${b}" "/out/usr/sbin/${b}"; \
@@ -68,6 +69,16 @@ RUN set -eux; \
     # libs (plain cp dereferences the SONAME symlink into a real file).
     for lib in libfreeipmi.so.17 libgcrypt.so.20 libgpg-error.so.0 libipmidetect.so.0; do \
       cp "/lib/x86_64-linux-gnu/${lib}" "/out/lib/x86_64-linux-gnu/${lib}"; \
+    done; \
+    # freeipmi-common config files: ipmi-sensors reads these to interpret
+    # sensor-event thresholds. WITHOUT them the exporter's `ipmi` collector
+    # silently returns ipmi_up=0 even though stand-alone ipmi-sensors runs
+    # OK on /dev/ipmi0. Caught on homelab server2.home verification
+    # 2026-11-10: FG-037 slim pulls freeipmi-common as a dpkg dep; scratch
+    # overlay needs them explicit. See CAPABILITIES image.ipmi-exporter-serves-metrics.
+    for conf in freeipmi.conf freeipmi_interpret_sel.conf \
+                freeipmi_interpret_sensor.conf libipmiconsole.conf; do \
+      cp "/etc/freeipmi/${conf}" "/out/etc/freeipmi/${conf}"; \
     done
 
 # Default config — same collector set as the slim variant's default
