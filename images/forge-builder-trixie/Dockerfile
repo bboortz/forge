@@ -1,16 +1,27 @@
 # syntax=docker/dockerfile:1.7
 #
-# FG-025: shared builder stage for every Forge-native scratch image.
-# Pre-bakes apt-get upgrade + ca-certificates + syft so each scratch
-# derivative's Dockerfile doesn't re-run this ~30-60s of work.
+# FG-025 + FG-042: shared builder stage for every Forge-native scratch
+# image. Pre-bakes apt-get upgrade + ca-certificates + syft so each
+# scratch derivative's Dockerfile doesn't re-run this ~30-60s of work.
 #
-# Daily cron (build.yml) rebuilds this first so a fresh apt-upgrade
-# propagates to all derivatives within 24h.
+# FG-042: FROMs ghcr.io/bboortz/python-slim-trixie (dogfood) instead of
+# python:3.14-slim-trixie upstream. Benefits: version drift between
+# forge-builder-trixie and python-slim-trixie is now structurally
+# impossible (one bump propagates atomically), fewer Docker Hub digest
+# re-resolves per daily cron, scanner sees a single forge-signed base.
+#
+# Daily cron (build.yml) rebuilds this in the publish-builders tier
+# (after publish-pre-builders has published python-slim-trixie). The
+# apt-upgrade in python-slim-trixie flows through; we don't redo it
+# here (just add syft + ca-certificates on top).
 #
 # Not a runtime image — not FROM scratch. Intended as a builder base
 # only: `FROM ghcr.io/bboortz/forge-builder-trixie:<tag> AS builder`.
 
-ARG DEBIAN_BASE=python:3.14-slim-trixie
+# FG-042: resolve at build time to forge-local during local builds,
+# ghcr.io/bboortz/python-slim-trixie:latest in CI. See
+# scripts/build-image.sh PYTHON_SLIM_REF resolution.
+ARG PYTHON_SLIM_REF=ghcr.io/bboortz/python-slim-trixie:latest
 # syft is pulled from Docker Hub rather than GitHub release CDN
 # (observed 2026-11-08: GitHub's releases/download/* flapped 504s for
 # ~6 min at a time; Docker Hub is a separate CDN and stayed up).
@@ -19,8 +30,8 @@ ARG SYFT_SRC=docker.io/anchore/syft:latest
 # --- Stage 0: syft source (Docker Hub) ---------------------------------------
 FROM ${SYFT_SRC} AS syft-src
 
-# --- Stage 1: builder base (Debian) ------------------------------------------
-FROM ${DEBIAN_BASE}
+# --- Stage 1: builder base (python-slim-trixie dogfood per FG-042) ----------
+FROM ${PYTHON_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

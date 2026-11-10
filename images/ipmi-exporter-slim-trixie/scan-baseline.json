@@ -7,6 +7,6 @@
     "CVE-2026-85508",
     "CVE-2026-85509"
   ],
-  "generated_at": "2026-11-10T05:13:01Z",
+  "generated_at": "2026-11-10T12:15:45Z",
   "note": "regenerate with: make scan-baseline-update IMAGE_DIR=images/ipmi-exporter-slim-trixie"
 }
