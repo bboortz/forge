@@ -1,7 +1,7 @@
 # FG-042 — Plan: forge-rooted slim bases + build.yml pre-builders tier
 
 **Story**: [`docs/stories/FG-042-forge-rooted-slim-bases.md`](../stories/FG-042-forge-rooted-slim-bases.md)
-**Status**: draft
+**Status**: shipped
 **Branch**: `feat/FG-042-forge-rooted-slim-bases`
 
 ## Design delta

@@ -1,7 +1,7 @@
 ---
 id: FG-042
 slug: forge-rooted-slim-bases
-status: draft
+status: shipped
 owner: bboortz
 created: 2026-11-10
 ---
