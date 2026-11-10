@@ -9,6 +9,7 @@ Rendered from the actual Dockerfile `FROM` refs + `image.yaml` `depends_on` + `s
 
 Images are grouped by role:
 - **Upstream** (gray) — external to Forge (Docker Hub, GHCR).
+- **Forge pre-builders** (orange) — forge-rooted slim bases consumed by multiple downstream images (FG-042).
 - **Forge builders** (blue) — never run at runtime; only used as builder-stage FROM refs.
 - **Baseline** (green) — the shared `FROM scratch` + core closure overlay.
 - **Runtime** (white) — what consumers actually `docker run`.
@@ -31,9 +32,15 @@ graph TD
     BEACONRY_SRC["beaconry (source)<br/>github.com/bboortz/beaconry"]:::upstream
 
     %% ======================================================================
+    %% Forge pre-builders (FG-042 — forge-rooted slim bases)
+    %% ======================================================================
+    DEBIAN_SLIM["debian-slim-trixie<br/>FG-042 • apt-upgraded + CA"]:::prebuilder
+    PYSLIM["python-slim-trixie<br/>FG-001 • apt-upgraded + python3.14"]:::prebuilder
+
+    %% ======================================================================
     %% Forge builders (never runtime)
     %% ======================================================================
-    FBT["forge-builder-trixie<br/>FG-025 • Debian+syft"]:::builder
+    FBT["forge-builder-trixie<br/>FG-025 + FG-042 • dogfoods python-slim-trixie"]:::builder
     FBG["forge-builder-go-trixie<br/>FG-046 • Go1.27+syft"]:::builder
 
     %% ======================================================================
@@ -44,10 +51,9 @@ graph TD
     %% ======================================================================
     %% Slim runtimes (keep shell, apt kept)
     %% ======================================================================
-    PYSLIM["python-slim-trixie<br/>FG-001"]:::slim
     POSTGRES_SLIM["postgres-slim-trixie<br/>FG-026"]:::slim
-    IPMI_SLIM["ipmi-exporter-slim-trixie<br/>FG-037 + FG-046"]:::slim
-    CADVISOR["cadvisor-slim-trixie<br/>FG-044 + FG-046"]:::slim
+    IPMI_SLIM["ipmi-exporter-slim-trixie<br/>FG-037 + FG-046 + FG-042"]:::slim
+    CADVISOR["cadvisor-slim-trixie<br/>FG-044 + FG-046 + FG-042"]:::slim
     UK["uptime-kuma-slim-trixie<br/>FG-045"]:::slim
 
     %% ======================================================================
@@ -72,11 +78,28 @@ graph TD
     MOCK["beaconry-telegram-mock<br/>FG-015"]:::external
 
     %% ----------------------------------------------------------------------
-    %% Upstream -> Forge builders
+    %% Upstream -> Forge pre-builders (FG-042 — each upstream consumed by exactly 1 forge image)
     %% ----------------------------------------------------------------------
-    PY_UP --> FBT
+    DEBIAN_UP --> DEBIAN_SLIM
     PY_UP --> PYSLIM
+
+    %% ----------------------------------------------------------------------
+    %% Forge pre-builders -> downstream
+    %% ----------------------------------------------------------------------
+    PYSLIM --> FBT
+    DEBIAN_SLIM --> CADVISOR
+    DEBIAN_SLIM --> IPMI_SLIM
+
+    %% ----------------------------------------------------------------------
+    %% Remaining upstream direct consumers (single-consumer each)
+    %% ----------------------------------------------------------------------
     GO_UP --> FBG
+    NODE_UP --> UK
+    POSTGRES_UP --> POSTGRES_SLIM
+
+    %% ----------------------------------------------------------------------
+    %% syft pulled into builder-stage images
+    %% ----------------------------------------------------------------------
     SYFT_UP --> FBT
     SYFT_UP --> FBG
     SYFT_UP --> UK
@@ -115,14 +138,6 @@ graph TD
     SBT -.-> IPMI_SCR
 
     %% ----------------------------------------------------------------------
-    %% Debian runtime bases for slim images
-    %% ----------------------------------------------------------------------
-    DEBIAN_UP --> CADVISOR
-    DEBIAN_UP --> IPMI_SLIM
-    POSTGRES_UP --> POSTGRES_SLIM
-    NODE_UP --> UK
-
-    %% ----------------------------------------------------------------------
     %% /hc embed (FG-031) — healthcheck binary
     %% ----------------------------------------------------------------------
     HC_UP -.-> PYSCR
@@ -150,23 +165,49 @@ graph TD
     %% ======================================================================
     %% Styling
     %% ======================================================================
-    classDef upstream fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;
-    classDef builder  fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a;
-    classDef baseline fill:#bbf7d0,stroke:#166534,stroke-width:2px,color:#14532d;
-    classDef slim     fill:#ffffff,stroke:#333,stroke-width:1px,color:#111;
-    classDef scratch  fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#78350f;
-    classDef external fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;
+    classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;
+    classDef prebuilder fill:#fed7aa,stroke:#c2410c,stroke-width:2px,color:#7c2d12;
+    classDef builder    fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a;
+    classDef baseline   fill:#bbf7d0,stroke:#166534,stroke-width:2px,color:#14532d;
+    classDef slim       fill:#ffffff,stroke:#333,stroke-width:1px,color:#111;
+    classDef scratch    fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#78350f;
+    classDef external   fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;
 ```
 
 ## Facts behind the graph
 
-### Three layer kinds
+### Trust-anchor consolidation (FG-042, 2026-11-10)
 
-1. **Debian-world builder** — `forge-builder-trixie` (FG-025): `FROM python:3.14-slim-trixie` + apt-upgrade + CA + syft. Used as the builder stage for every Debian-apt-install image. 11 current consumers.
+Before FG-042, 5 Docker Hub upstream images were trust-anchors for the forge fleet, and **two of them were consumed by multiple forge images in parallel** — making version drift a code-review discipline rather than a structural guarantee.
 
-2. **Go-world builder** — `forge-builder-go-trixie` (FG-046, shipped 2026-11-10): `FROM golang:1.27-trixie` + apt-upgrade + CA + syft + git/curl/jq. Used as the builder stage for every from-Go-source image. 5 current consumers (cadvisor, node-exporter, alertmanager, ipmi-exporter scratch + slim). Introduced to eliminate the Debian-Go-toolchain-lag CVE class (Debian ships go1.24.x; forge-builder-go-trixie ships go1.27.x).
+| Upstream | Before FG-042 | After FG-042 |
+|---|---|---|
+| `python:3.14-slim-trixie` | 2 forge consumers (forge-builder-trixie + python-slim-trixie) | 1 forge consumer (python-slim-trixie only); forge-builder-trixie dogfood-FROMs python-slim-trixie |
+| `debian:trixie-slim` | 2 forge consumers (cadvisor-slim + ipmi-exporter-slim) | 1 forge consumer (new `debian-slim-trixie`); both downstream slim images FROM it |
+| `golang:1.27-trixie` | 1 consumer (forge-builder-go-trixie) | unchanged |
+| `node:22-trixie-slim` | 1 consumer (uptime-kuma-slim-trixie) | unchanged (tracked in IDEAS.md for renewal if 2nd Node consumer appears) |
+| `postgres:18` | 1 consumer (postgres-slim-trixie) | unchanged (tracked in IDEAS.md) |
 
-3. **Scratch baseline** — `scratch-base-trixie` (FG-005): the single `FROM scratch` image with glibc + CA + nss closure that every Forge scratch derivative overlays via `COPY --from=scratch_base / /`. Centralizing it lets a baseline fix propagate to every scratch image without per-image Dockerfile edits.
+Grep-invariant checked by `test_FG_042_...sh` §7: `^FROM (debian:trixie-slim\|python:3.14-slim-trixie)` matches exactly 2 Dockerfiles — the two pre-builders. Everyone else goes through forge-signed intermediates.
+
+### Four-tier publish ordering (FG-042)
+
+`.github/workflows/build.yml` publishes in this order:
+
+1. `publish-pre-builders` (NEW — FG-042): `debian-slim-trixie`, `python-slim-trixie` in parallel
+2. `publish-builders`: `forge-builder-trixie` (FROM python-slim-trixie), `forge-builder-go-trixie`
+3. `publish-base`: `scratch-base-trixie` + the remaining single-consumer slim images + externally-sourced leaf images
+4. `publish-derivatives`: everything with `depends_on` (scratch variants + beaconry hub/scout)
+
+Each tier gated on the previous completing via `needs:`.
+
+### Three builder lineages
+
+1. **Debian-world builder** — `forge-builder-trixie` (FG-025, extended by FG-042): now FROMs forge-signed `python-slim-trixie` (was Docker Hub `python:3.14-slim-trixie`). Used as the builder stage for every Debian-apt-install image. 10 current consumers.
+
+2. **Go-world builder** — `forge-builder-go-trixie` (FG-046): `FROM golang:1.27-trixie` + apt-upgrade + CA + syft + git/curl/jq. Used as the builder stage for every from-Go-source image. 5 current consumers (cadvisor, node-exporter, alertmanager, ipmi-exporter scratch + slim). Introduced to eliminate the Debian-Go-toolchain-lag CVE class.
+
+3. **Scratch baseline** — `scratch-base-trixie` (FG-005): the single `FROM scratch` image with glibc + CA + nss closure that every Forge scratch derivative overlays via `COPY --from=scratch_base / /`.
 
 ### Dual-builder pattern (ipmi-exporter-scratch)
 
@@ -178,7 +219,7 @@ graph TD
 
 ### External-sourced (FG-012)
 
-`beaconry-scout`, `beaconry-hub`, `beaconry-telegram-mock` pull their Dockerfiles from `github.com/bboortz/beaconry` at build time. The `source:` block in `image.yaml` names the git ref + dockerfile path. Scout + hub FROM `python-scratch-trixie`; mock FROM upstream `python:3.12-slim` directly (proves the mechanism is base-agnostic).
+`beaconry-scout`, `beaconry-hub`, `beaconry-telegram-mock` pull their Dockerfiles from `github.com/bboortz/beaconry` at build time. The `source:` block in `image.yaml` names the git ref + dockerfile path. Scout + hub FROM `python-scratch-trixie`; mock FROMs upstream `python:3.12-slim` directly (proves the mechanism is base-agnostic).
 
 ### Unmigrated
 
@@ -195,4 +236,10 @@ grep -lE "^depends_on:" images/*/image.yaml | xargs -r awk '/^depends_on:/,/^[^-
 
 # Inspect external-sourced
 grep -lE "^source:" images/*/image.yaml
+
+# Inspect pre-builders / builders / base / derivatives tier classification
+for mode in pre-builders builders base derivatives; do
+  echo "=== ${mode} ==="
+  bash scripts/discover-images.sh "${mode}" | jq -r '.include[].image_dir'
+done
 ```
