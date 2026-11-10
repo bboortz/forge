@@ -1,23 +1,34 @@
 # syntax=docker/dockerfile:1.7
 #
-# FG-043: Prometheus IPMI Exporter 1.10 FROM scratch. Debian trixie's
-# prometheus-ipmi-exporter + freeipmi-tools (ELF binaries only — the
-# shell-script wrappers `ipmimonitoring`, `ipmi-chassis-config`, etc.
-# are deliberately NOT shipped since scratch has no shell).
+# FG-043 + FG-046: Prometheus IPMI Exporter FROM scratch. Hybrid build:
+# - prometheus-ipmi-exporter Go binary built from upstream source via
+#   forge-builder-go-trixie (not Debian's prometheus-ipmi-exporter pkg)
+#   so the Go stdlib matches forge-builder-go-trixie's toolchain
+#   (go1.27.x) instead of Debian's go1.24.x.
+# - freeipmi ELF tools (bmc-info, ipmi-sensors, ipmi-chassis, ipmi-dcmi,
+#   ipmi-sel) + their libs + their /etc/freeipmi/*.conf files are C
+#   binaries from Debian — installed in a separate builder stage via
+#   forge-builder-trixie, then overlayed.
 #
-# Runs as root for /dev/ipmi0 access (homelab hetzner-staging +
-# server2 pattern). Documented exception to the "scratch runs
-# nonroot 65532" default — see smoke_user_root.sh + PROMISES.
+# Runs as root for /dev/ipmi0 access (documented exception to
+# scratch-nonroot default — see smoke_user_root.sh + PROMISES).
 #
-# Default collector set: bmc, ipmi, chassis, dcmi, sel. Matches
-# ipmi-exporter-slim-trixie's default. Operators needing other
-# collectors (bmc-watchdog, sm-lan-mode via ipmi-raw) use the slim
-# variant.
+# Default collector set: bmc, ipmi, chassis, dcmi, sel. The `ipmi`
+# collector's command is overridden to ipmi-sensors + wrapper flags
+# (see ipmi-exporter.yml) because the upstream default
+# `ipmimonitoring` is a Debian shell-script wrapper that can't run on
+# scratch (FG-043 homelab lesson 2026-11-10).
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+# FG-046: Go builder for the exporter binary.
+ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
+# FG-025: Debian builder for the C freeipmi tools.
 ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
+# Pin upstream ipmi_exporter release (matches Debian's 1.10.0 wire-level
+# contract).
+ARG IPMI_EXPORTER_VERSION=v1.10.0
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -25,94 +36,99 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 # --- Stage 0b: hc binary source (FG-031) -------------------------------------
 FROM ${HC_REF} AS hc
 
-# --- Stage 1: builder ---------------------------------------------------------
-FROM ${FORGE_BUILDER_REF} AS builder
+# --- Stage 1: Go builder — compile the exporter ------------------------------
+FROM ${FORGE_BUILDER_GO_REF} AS go-builder
 
-ARG GIT_SHA=unknown
-ARG BUILD_TIMESTAMP=unknown
+ARG IPMI_EXPORTER_VERSION
+
+WORKDIR /src
+# hadolint ignore=DL3003
+RUN set -eux; \
+    git clone --depth 1 --branch "${IPMI_EXPORTER_VERSION}" \
+      https://github.com/prometheus-community/ipmi_exporter.git .; \
+    REV="$(git rev-parse --short HEAD)"; \
+    echo "${REV}" > /tmp/git-revision
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# hadolint ignore=DL3003
+RUN set -eux; \
+    REV="$(cat /tmp/git-revision)"; \
+    BUILD_DATE="$(date -u +%Y%m%d-%H:%M:%S)"; \
+    GO_VERSION="$(go version | awk '{print $3}')"; \
+    PKG="github.com/prometheus/common/version"; \
+    LDFLAGS="-s -w \
+      -X ${PKG}.Version=${IPMI_EXPORTER_VERSION#v} \
+      -X ${PKG}.Revision=${REV} \
+      -X ${PKG}.Branch=HEAD \
+      -X ${PKG}.BuildUser=forge@github-actions \
+      -X ${PKG}.BuildDate=${BUILD_DATE} \
+      -X ${PKG}.GoVersion=${GO_VERSION}"; \
+    mkdir -p /out/usr/bin; \
+    GOFLAGS=-mod=mod CGO_ENABLED=0 \
+      go build -tags netgo -ldflags "${LDFLAGS}" \
+        -o /out/usr/bin/prometheus-ipmi-exporter .
+
+# SBOM — Go module graph.
+RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
+
+# --- Stage 2: C builder — install freeipmi tools -----------------------------
+FROM ${FORGE_BUILDER_REF} AS c-builder
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
 # hadolint ignore=DL3008
 RUN set -eux; \
     apt-get update; \
-    apt-get -y --no-install-recommends install \
-      prometheus-ipmi-exporter freeipmi-tools; \
+    apt-get -y --no-install-recommends install freeipmi-tools; \
     rm -rf /var/lib/apt/lists/*
 
-# FG-020: embedded SBOM (dpkg cataloger).
+# Collect freeipmi overlay: 5 ELF tools + 4 libs + 4 confs.
 RUN set -eux; \
-    syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
-
-# Collect the ipmi-exporter + freeipmi overlay.
-#
-# Binaries: exporter + the 5 ELF tools that match the default-config
-# collectors (bmc, ipmi, chassis, dcmi, sel). ipmi-raw + bmc-watchdog
-# deliberately excluded; see plan § "Alternatives rejected".
-#
-# Libs: 4 .so files not in scratch-base-trixie. libc + libm are in
-# the baseline.
-#
-# Writable dirs: /var/lib/freeipmi (IPC key), /var/log/freeipmi (logs)
-# pre-created mode 0755 owned by root (container runs as root for
-# /dev/ipmi0; non-root is impossible without host-side device-group
-# changes).
-RUN set -eux; \
-    install -d /out/usr/bin /out/usr/sbin /out/lib/x86_64-linux-gnu \
+    install -d /out/usr/sbin /out/lib/x86_64-linux-gnu \
                /out/var/lib/freeipmi /out/var/log/freeipmi \
                /out/var/log/ipmiconsole /out/etc/prometheus \
                /out/etc/freeipmi; \
-    cp /usr/bin/prometheus-ipmi-exporter /out/usr/bin/prometheus-ipmi-exporter; \
     for b in bmc-info ipmi-sensors ipmi-chassis ipmi-dcmi ipmi-sel; do \
       cp "/usr/sbin/${b}" "/out/usr/sbin/${b}"; \
     done; \
-    # libs (plain cp dereferences the SONAME symlink into a real file).
     for lib in libfreeipmi.so.17 libgcrypt.so.20 libgpg-error.so.0 libipmidetect.so.0; do \
       cp "/lib/x86_64-linux-gnu/${lib}" "/out/lib/x86_64-linux-gnu/${lib}"; \
     done; \
-    # freeipmi-common config files: ipmi-sensors reads these to interpret
-    # sensor-event thresholds. WITHOUT them the exporter's `ipmi` collector
-    # silently returns ipmi_up=0 even though stand-alone ipmi-sensors runs
-    # OK on /dev/ipmi0. Caught on homelab server2.home verification
-    # 2026-11-10: FG-037 slim pulls freeipmi-common as a dpkg dep; scratch
-    # overlay needs them explicit. See CAPABILITIES image.ipmi-exporter-serves-metrics.
     for conf in freeipmi.conf freeipmi_interpret_sel.conf \
                 freeipmi_interpret_sensor.conf libipmiconsole.conf; do \
       cp "/etc/freeipmi/${conf}" "/out/etc/freeipmi/${conf}"; \
     done
 
-# Default config — same collector set as the slim variant's default
-# (bmc + ipmi + chassis + dcmi + sel). Consumers mount their own at
-# this path in prod (e.g. for remote-BMC credentials).
+# Default config (collector_cmd + custom_args fix shipped with FG-043).
 COPY ipmi-exporter.yml /out/etc/prometheus/ipmi-exporter.yml
 
-# --- Stage 2: runtime (scratch) -----------------------------------------------
+# --- Stage 3: runtime (scratch) ----------------------------------------------
 FROM scratch AS runtime
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
+ARG IPMI_EXPORTER_VERSION
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Minimal Prometheus IPMI Exporter 1.10 FROM scratch (freeipmi-tools inlined, no shell; 3× smaller than ipmi-exporter-slim-trixie). Runs as root for /dev/ipmi0 access."
+LABEL org.opencontainers.image.description="Minimal Prometheus IPMI Exporter FROM scratch (freeipmi-tools inlined, no shell; built from Go source + Debian freeipmi overlay). Runs as root for /dev/ipmi0 access."
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
+LABEL org.opencontainers.image.version="${IPMI_EXPORTER_VERSION}"
 
-# Baseline first (glibc + libm + TLS + DNS + /etc + /tmp 1777), then overlay.
+# Baseline first, overlay freeipmi tools, overlay Go exporter binary.
 # hadolint ignore=DL3067
-COPY --from=scratch_base / /
-COPY --from=builder /out /
-COPY --from=builder /sbom.json /sbom.json
+COPY --from=scratch_base /  /
+COPY --from=c-builder    /out /
+COPY --from=go-builder   /out /
+COPY --from=go-builder   /sbom.json /sbom.json
 # FG-031: /hc for docker-native HEALTHCHECK.
 COPY --from=hc /hc /hc
 
-# Runs as root (default). Documented exception — /dev/ipmi0 requires it.
-# Non-root is impossible without host-side device-group changes.
+# Runs as root. Documented exception — /dev/ipmi0 requires it.
 WORKDIR /
 EXPOSE 9290
 
-# FG-031: self-healthcheck via /hc on /metrics. Responds even without
-# /dev/ipmi0 (self-metrics are always present; ipmi probes fail cleanly).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD ["/hc", "-t", "3", "http://127.0.0.1:9290/metrics"]
 

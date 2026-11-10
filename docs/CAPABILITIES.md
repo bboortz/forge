@@ -474,12 +474,20 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 - **Delivered by**: FG-025 (Phase 1: scratch-base-trixie migration; Phase 2 TBD for python/nginx/postgres)
 - **Covered by**: `tests/acceptance/test_FG_025_forge-builder-trixie.sh`
 
+### build.shared-go-builder
+
+`ghcr.io/bboortz/forge-builder-go-trixie:0.1` is a published builder-base image mirroring FG-025's `forge-builder-trixie` shape but for Go source builds. `FROM golang:1.27-trixie` + `apt-get upgrade` + CA certificates + syft + git + curl + jq. PROMISES: `files.go-toolchain` (Go >= 1.27), `files.syft-binary`, `files.ca-certificates`, `files.release-resolve-tools` (git + curl + jq), `apt.freshly-upgraded`, `apt.no-cache`. Daily cron rebuilds this first so Go stdlib CVE fixes land within 24h of upstream release, propagating to every from-Go-source derivative on the next build. Bumping the Go major version is a single `GO_BASE` ARG update + rebuild — all derivatives inherit the new stdlib without their own Dockerfile change. Enables FG-046's one-swing migration of 5 Forge-native Go images off Debian's lagging go1.24.x toolchain.
+
+- **Delivered by**: FG-046
+- **Covered by**: `tests/acceptance/test_FG_046_forge-builder-go-trixie.sh`, `images/forge-builder-go-trixie/tests/smoke_*.sh`
+
 ### build.from-go-source
 
-Build pattern for Forge images whose upstream binary isn't in Debian trixie (so neither the two-stage scratch nor the one-stage slim-apt pattern applies). Shape: multi-stage Dockerfile with a dedicated `FROM golang:X-trixie AS builder` stage that `git clone`s the upstream tagged commit, builds with `CGO_ENABLED=0 -tags netgo` for a static Go binary with no dyn deps, and emits a `/sbom.json` via syft against the source tree. Runtime stage is `debian:trixie-slim` + `apt-upgrade` + `ca-certificates` + the single `COPY --from=builder` of the binary. First consumer: `cadvisor-slim-trixie` (cadvisor isn't in trixie; upstream ships only Alpine/musl). Pattern deliberately doesn't introduce a `forge-builder-go-trixie` yet — single consumer today, not worth the shared-image complexity. Promotion trigger documented in IDEAS.md: 2nd Go-source image lands.
+Build pattern for Forge images where we either (a) can't use Debian's packaged binary because it isn't in trixie, or (b) choose not to use it because the Debian-shipped Go stdlib carries CVEs we want to fix faster than Debian backports can land. Shape: multi-stage Dockerfile with a dedicated builder stage that `git clone`s the upstream tagged commit, builds with `CGO_ENABLED=0 -tags netgo` + upstream-mirrored ldflags for a static Go binary, and emits a `/sbom.json` via syft against the source tree. Runtime stage overlays the single `COPY --from=builder` of the binary. FG-044 introduced the pattern (FROM golang:X-trixie direct); FG-046 extracted the shared base `forge-builder-go-trixie` (see `build.shared-go-builder`) and migrated 5 images onto it. Consumers: cadvisor-slim-trixie (FG-044), node-exporter-scratch-trixie, alertmanager-scratch-trixie, ipmi-exporter-scratch-trixie, ipmi-exporter-slim-trixie (FG-046). The last two use a **dual-builder** variant: forge-builder-go-trixie for the Go exporter + forge-builder-trixie for Debian's freeipmi-tools C binaries. Prometheus-scratch-trixie deferred (requires React UI npm build pipeline — see IDEAS.md).
 
-- **Delivered by**: FG-044
-- **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_static_binary.sh`
+- **Delivered by**: FG-044 (cadvisor first consumer)
+- **Extended by**: FG-046 (shared base + 4 additional consumers; dual-builder pattern for ipmi-exporter)
+- **Covered by**: `tests/acceptance/test_FG_044_cadvisor-slim-trixie.sh`, `tests/acceptance/test_FG_046_forge-builder-go-trixie.sh`, `images/cadvisor-slim-trixie/tests/smoke_static_binary.sh`
 
 ### build.from-node-source
 

@@ -1,0 +1,10 @@
+# FG-046: shared Go builder base. `FROM ghcr.io/bboortz/forge-builder-go-trixie:0.1`
+# in any from-Go-source image's builder stage. Sibling of FG-025's
+# forge-builder-trixie (which is Debian + syft but no Go toolchain).
+#
+# Not a runtime image — not published for `docker run` use. Daily cron
+# rebuilds this first so Go stdlib CVE fixes land within 24h of upstream
+# release, propagating to every from-Go-source derivative.
+tag: "0.1"
+platforms:
+  - linux/amd64

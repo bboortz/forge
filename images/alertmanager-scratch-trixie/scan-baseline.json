@@ -1,6 +1,8 @@
 {
   "version": 1,
-  "critical_cves": [],
-  "generated_at": "2026-11-09T10:11:57Z",
-  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
+  "critical_cves": [
+    "GO-2026-6612"
+  ],
+  "generated_at": "2026-11-10T05:12:56Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=images/alertmanager-scratch-trixie"
 }

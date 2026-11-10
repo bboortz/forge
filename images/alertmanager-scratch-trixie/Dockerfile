@@ -1,17 +1,27 @@
 # syntax=docker/dockerfile:1.7
 #
-# FG-036: Prometheus Alertmanager 0.28 FROM scratch. Debian builds the
-# binary dynamically against libc only (confirmed via ldd).
+# FG-036 + FG-046: Prometheus Alertmanager FROM scratch. Built from
+# upstream Go source via forge-builder-go-trixie (not Debian's
+# prometheus-alertmanager package) so the Go stdlib matches the latest
+# toolchain shipped in forge-builder-go-trixie (currently go1.27.x) —
+# eliminates the Debian-Go-toolchain-lag CVE class.
 #
-# Initiates outbound HTTPS for EVERY notification receiver (Telegram,
+# Static Go binary (CGO off), ships two binaries (alertmanager + amtool)
+# + two notification templates (default.tmpl + email.tmpl).
+#
+# Initiates outbound HTTPS for every webhook receiver (Telegram,
 # Mattermost, email over SMTPS, generic webhook_configs). Without
-# ENV SSL_CERT_FILE re-declared (FG-009), every webhook fails with
+# ENV SSL_CERT_FILE re-declared (FG-009), webhooks fail with
 # x509: certificate signed by unknown authority.
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+# FG-046: shared Go builder base.
+ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
+# Pin exact upstream release — matches Debian trixie's
+# prometheus-alertmanager 0.28.x wire-level contract.
+ARG ALERTMANAGER_VERSION=v0.28.1
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -19,57 +29,66 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 # --- Stage 0b: hc binary source (FG-031) -------------------------------------
 FROM ${HC_REF} AS hc
 
-# --- Stage 1: builder ---------------------------------------------------------
-FROM ${FORGE_BUILDER_REF} AS builder
+# --- Stage 1: Go builder -----------------------------------------------------
+FROM ${FORGE_BUILDER_GO_REF} AS builder
 
+ARG ALERTMANAGER_VERSION
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
-COPY sid-pins/ /etc/apt/preferences.d/
-
-# hadolint ignore=DL3008
+WORKDIR /src
+# hadolint ignore=DL3003
 RUN set -eux; \
-    apt-get update; \
-    apt-get -y --no-install-recommends install prometheus-alertmanager; \
-    rm -rf /var/lib/apt/lists/*
+    git clone --depth 1 --branch "${ALERTMANAGER_VERSION}" \
+      https://github.com/prometheus/alertmanager.git .; \
+    REV="$(git rev-parse --short HEAD)"; \
+    echo "${REV}" > /tmp/git-revision
 
-# FG-020: embedded SBOM.
+# Build both binaries (alertmanager + amtool) with upstream's ldflag convention.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# hadolint ignore=DL3003
 RUN set -eux; \
-    syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
-
-# Collect the alertmanager-specific overlay:
-# - /usr/bin/prometheus-alertmanager + /usr/bin/amtool (for docker exec
-#   config validation)
-# - /usr/share/prometheus/alertmanager/default.tmpl — alertmanager
-#   requires this on startup and exits 1 if it's missing
-# - /etc/alertmanager/ (default config we overwrite below)
-# - /alertmanager/ (silences + notification history store, owned 65534)
-RUN set -eux; \
-    install -d /out/usr/bin /out/etc/alertmanager /out/alertmanager \
-               /out/usr/share/prometheus/alertmanager; \
-    cp /usr/bin/prometheus-alertmanager /out/usr/bin/prometheus-alertmanager; \
-    cp /usr/bin/amtool                  /out/usr/bin/amtool; \
-    cp /usr/share/prometheus/alertmanager/default.tmpl \
-       /out/usr/share/prometheus/alertmanager/default.tmpl; \
-    cp /usr/share/prometheus/alertmanager/email.tmpl \
-       /out/usr/share/prometheus/alertmanager/email.tmpl; \
+    REV="$(cat /tmp/git-revision)"; \
+    BUILD_DATE="$(date -u +%Y%m%d-%H:%M:%S)"; \
+    GO_VERSION="$(go version | awk '{print $3}')"; \
+    PKG="github.com/prometheus/common/version"; \
+    LDFLAGS="-s -w \
+      -X ${PKG}.Version=${ALERTMANAGER_VERSION#v} \
+      -X ${PKG}.Revision=${REV} \
+      -X ${PKG}.Branch=HEAD \
+      -X ${PKG}.BuildUser=forge@github-actions \
+      -X ${PKG}.BuildDate=${BUILD_DATE} \
+      -X ${PKG}.GoVersion=${GO_VERSION}"; \
+    mkdir -p /out/usr/bin /out/usr/share/prometheus/alertmanager \
+             /out/etc/alertmanager /out/alertmanager; \
+    GOFLAGS=-mod=mod CGO_ENABLED=0 \
+      go build -tags netgo -ldflags "${LDFLAGS}" \
+        -o /out/usr/bin/prometheus-alertmanager ./cmd/alertmanager; \
+    GOFLAGS=-mod=mod CGO_ENABLED=0 \
+      go build -tags netgo -ldflags "${LDFLAGS}" \
+        -o /out/usr/bin/amtool ./cmd/amtool; \
+    cp template/default.tmpl /out/usr/share/prometheus/alertmanager/default.tmpl; \
+    cp template/email.tmpl   /out/usr/share/prometheus/alertmanager/email.tmpl; \
     chown -R 65534:65534 /out/alertmanager /out/etc/alertmanager
 
-# Minimal self-contained config (null receiver so container boots with
-# no operator config). Consumers mount their own at the same path.
 COPY alertmanager.yml /out/etc/alertmanager/alertmanager.yml
+
+# SBOM — Go module graph from source tree.
+RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 
 # --- Stage 2: runtime (scratch) -----------------------------------------------
 FROM scratch AS runtime
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
+ARG ALERTMANAGER_VERSION
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Minimal, continuously patched Prometheus Alertmanager 0.28 base image (FROM scratch runtime, derives from scratch-base-trixie)"
+LABEL org.opencontainers.image.description="Minimal, continuously patched Prometheus Alertmanager base image (FROM scratch runtime, derives from scratch-base-trixie; built from Go source)"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
+LABEL org.opencontainers.image.version="${ALERTMANAGER_VERSION}"
 
 # hadolint ignore=DL3067
 COPY --from=scratch_base / /

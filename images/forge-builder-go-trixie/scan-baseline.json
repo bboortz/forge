@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "critical_cves": [
+    "CVE-2026-10536",
+    "CVE-2026-11856",
+    "CVE-2026-18924",
+    "CVE-2026-19445",
+    "CVE-2026-19931",
+    "CVE-2026-60002",
+    "CVE-2026-86414",
+    "CVE-2026-8926",
+    "CVE-2026-9079",
+    "CVE-2026-92388"
+  ],
+  "generated_at": "2026-11-10T05:13:19Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=images/forge-builder-go-trixie"
+}

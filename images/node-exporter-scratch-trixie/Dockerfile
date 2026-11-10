@@ -1,17 +1,28 @@
 # syntax=docker/dockerfile:1.7
 #
-# FG-034: Prometheus node_exporter FROM scratch. Pure-Go upstream, but
-# Debian builds it dynamically against glibc — so we need libc + libm +
-# libpthread + libdl (baseline supplies all four). No shell, no apt,
-# no dpkg database in the runtime.
+# FG-034 + FG-046: Prometheus node_exporter FROM scratch. Built from
+# upstream Go source via forge-builder-go-trixie (not Debian's
+# prometheus-node-exporter package) so the Go stdlib matches the latest
+# toolchain shipped in forge-builder-go-trixie (currently go1.27.x) —
+# eliminates the Debian-Go-toolchain-lag CVE class (GO-2026-4337,
+# GO-2026-6612, etc.) that applies to the pre-FG-046 Debian-packaged
+# binary.
 #
-# Does NOT initiate outbound TLS (scrape-only exporter), so no CA
-# bundle gymnastics beyond what the baseline already ships.
+# Pure-Go upstream + CGO_ENABLED=0 → statically linked binary. No shell,
+# no apt, no dpkg database, no glibc dyn deps in the runtime.
+#
+# Does NOT initiate outbound TLS (scrape-only exporter).
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+# FG-046: shared Go builder base (apt-upgraded + Go 1.27 + git + syft).
+ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-031 pattern: embed /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
+# Pin exact upstream release — matches what Debian trixie's
+# prometheus-node-exporter 1.9.0 package shipped; same wire-level
+# metrics contract. Operators who want newer features (textfile dir,
+# collectors introduced post-1.9) can bump this + rebuild.
+ARG NODE_EXPORTER_VERSION=v1.9.0
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -19,42 +30,60 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 # --- Stage 0b: hc binary source (FG-031) -------------------------------------
 FROM ${HC_REF} AS hc
 
-# --- Stage 1: builder ---------------------------------------------------------
-FROM ${FORGE_BUILDER_REF} AS builder
+# --- Stage 1: Go builder -----------------------------------------------------
+FROM ${FORGE_BUILDER_GO_REF} AS builder
 
+ARG NODE_EXPORTER_VERSION
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
-COPY sid-pins/ /etc/apt/preferences.d/
-
-# hadolint ignore=DL3008
+WORKDIR /src
+# Shallow clone at the pinned tag.
+# hadolint ignore=DL3003
 RUN set -eux; \
-    apt-get update; \
-    apt-get -y --no-install-recommends install prometheus-node-exporter; \
-    rm -rf /var/lib/apt/lists/*
+    git clone --depth 1 --branch "${NODE_EXPORTER_VERSION}" \
+      https://github.com/prometheus/node_exporter.git .; \
+    REV="$(git rev-parse --short HEAD)"; \
+    echo "${REV}" > /tmp/git-revision
 
-# FG-020: embedded SBOM from builder-stage dpkg.
+# Build static binary. Upstream's own `promu build` uses these ldflags
+# to populate `node_exporter --version`.
+# pipefail set via SHELL for DL4006 (go version | sed pipe).
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN set -eux; \
-    syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
+    REV="$(cat /tmp/git-revision)"; \
+    BUILD_DATE="$(date -u +%Y%m%d-%H:%M:%S)"; \
+    GO_VERSION="$(go version | awk '{print $3}')"; \
+    PKG="github.com/prometheus/common/version"; \
+    LDFLAGS="-s -w \
+      -X ${PKG}.Version=${NODE_EXPORTER_VERSION#v} \
+      -X ${PKG}.Revision=${REV} \
+      -X ${PKG}.Branch=HEAD \
+      -X ${PKG}.BuildUser=forge@github-actions \
+      -X ${PKG}.BuildDate=${BUILD_DATE} \
+      -X ${PKG}.GoVersion=${GO_VERSION}"; \
+    mkdir -p /out/usr/bin; \
+    GOFLAGS=-mod=mod CGO_ENABLED=0 \
+      go build -tags netgo -ldflags "${LDFLAGS}" \
+        -o /out/usr/bin/prometheus-node-exporter .
 
-# Collect the node_exporter-specific overlay. Baseline supplies the full
-# core glibc + TLS + DNS + zoneinfo closure; node_exporter only needs the
-# binary itself (and baseline-provided libs).
-RUN set -eux; \
-    install -d /out/usr/bin; \
-    cp /usr/bin/prometheus-node-exporter /out/usr/bin/prometheus-node-exporter
+# SBOM — Go module cataloger (binary is built from source; dpkg catalogger
+# captures forge-builder-go-trixie's layer which is just build tooling).
+RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 
 # --- Stage 2: runtime (scratch) -----------------------------------------------
 FROM scratch AS runtime
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
+ARG NODE_EXPORTER_VERSION
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Minimal, continuously patched Prometheus node_exporter 1.9 base image (FROM scratch runtime, derives from scratch-base-trixie)"
+LABEL org.opencontainers.image.description="Minimal, continuously patched Prometheus node_exporter base image (FROM scratch runtime, derives from scratch-base-trixie; built from Go source)"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
+LABEL org.opencontainers.image.version="${NODE_EXPORTER_VERSION}"
 
 # Baseline first, overlay on top.
 # hadolint ignore=DL3067

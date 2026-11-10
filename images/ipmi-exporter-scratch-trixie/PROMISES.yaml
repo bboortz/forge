@@ -54,6 +54,10 @@ promises:
     tests:
       - images/ipmi-exporter-scratch-trixie/tests/smoke_zero_os_cves.sh
     inverse: true
+    waivers:
+      - cve: GO-2026-6604
+        reason: "Windows-only Go stdlib CVE (per official Go advisory DB: goos=[windows]; affected symbols live under internal/syscall/windows). Image is linux/amd64 only — the vulnerable os.Root.Mkdir Windows code path is not compiled into the binary. Grype flags all stdlib go1.24.x binaries regardless of GOOS. Remove when Debian trixie ships a Go toolchain bump that drops the CVE from stdlib's advisory list."
+        until: "2027-05-10"
 
   - id: shape.size-budget
     description: Image size ≤ 50 MB hard ceiling (projected ~33 MB; baseline 13 MB + binaries 14 MB + libs 5 MB + /hc + SBOM + overhead).

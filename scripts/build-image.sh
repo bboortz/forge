@@ -50,7 +50,7 @@ done < <(image_yaml_depends "${SRC}/image.yaml")
 # scratch-image build. Build it on demand if any scratch image is being built.
 _FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-trixie"
 case "${IMAGE_DIR}" in
-  forge-builder-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout)
+  forge-builder-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie)
     _needs_forge_builder=0 ;;
   *)
     _needs_forge_builder=1 ;;
@@ -58,6 +58,17 @@ esac
 if [[ "${_needs_forge_builder}" == "1" && -d "${_FORGE_BUILDER_DIR}" ]]; then
   echo "→ builder-stage dependency: forge-builder-trixie"
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-trixie
+fi
+
+# FG-046: forge-builder-go-trixie is a builder-stage dependency for every
+# from-Go-source image. Same pattern as forge-builder-trixie above.
+# Auto-build on demand when the current image's Dockerfile declares
+# FORGE_BUILDER_GO_REF.
+_FORGE_BUILDER_GO_DIR="${ROOT}/images/forge-builder-go-trixie"
+if [[ -d "${_FORGE_BUILDER_GO_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "FORGE_BUILDER_GO_REF" "${SRC}/Dockerfile"; then
+  echo "→ builder-stage dependency: forge-builder-go-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-go-trixie
 fi
 
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
@@ -109,6 +120,18 @@ if ! docker image inspect "${FORGE_BUILDER_REF}" >/dev/null 2>&1; then
   FORGE_BUILDER_REF="ghcr.io/bboortz/forge-builder-trixie:${_BUILDER_TAG}"
 fi
 
+# FG-046: same for FORGE_BUILDER_GO_REF.
+_BUILDER_GO_YAML="${ROOT}/images/forge-builder-go-trixie/image.yaml"
+if [[ -f "${_BUILDER_GO_YAML}" ]]; then
+  _BUILDER_GO_TAG=$(image_yaml_get "${_BUILDER_GO_YAML}" tag)
+else
+  _BUILDER_GO_TAG="latest"
+fi
+FORGE_BUILDER_GO_REF="${REGISTRY}/forge-builder-go-trixie:${_BUILDER_GO_TAG}"
+if ! docker image inspect "${FORGE_BUILDER_GO_REF}" >/dev/null 2>&1; then
+  FORGE_BUILDER_GO_REF="ghcr.io/bboortz/forge-builder-go-trixie:${_BUILDER_GO_TAG}"
+fi
+
 # FG-031: resolve HC_REF the same way for images whose Dockerfile declares
 # ARG HC_REF (healthy-scratch-trixie + any image embedding /hc per FG-031).
 # Prefer forge-local/hc:0.1.0 if present (set up for local dev); else fall
@@ -130,6 +153,10 @@ fi
 # FG-025: same guard for FORGE_BUILDER_REF. When it's forge-local/... we must
 # drop --pull regardless of SCRATCH_BASE_REF.
 if [[ "${FORGE_BUILDER_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-046: same guard for FORGE_BUILDER_GO_REF.
+if [[ "${FORGE_BUILDER_GO_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-031: same guard for HC_REF — forge-local/hc:0.1.0 isn't a real registry.
@@ -234,6 +261,12 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_REF}" == forge-local/* ]] \
    && grep -q "FORGE_BUILDER_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-046: same for FORGE_BUILDER_GO_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_GO_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "FORGE_BUILDER_GO_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -259,6 +292,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
   --build-arg FORGE_BUILDER_REF="${FORGE_BUILDER_REF}" \
+  --build-arg FORGE_BUILDER_GO_REF="${FORGE_BUILDER_GO_REF}" \
   --build-arg HC_REF="${HC_REF}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \
