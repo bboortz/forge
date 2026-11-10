@@ -101,8 +101,10 @@ pass "ipmimonitoring + /bin/sh preserved in slim"
 say "6. cadvisor-slim-trixie uses the shared Go base"
 grep -q "FORGE_BUILDER_GO_REF" images/cadvisor-slim-trixie/Dockerfile \
   || fail "cadvisor Dockerfile doesn't reference FORGE_BUILDER_GO_REF"
-grep -q "ARG GO_BASE=golang" images/cadvisor-slim-trixie/Dockerfile \
-  && fail "cadvisor Dockerfile still has ARG GO_BASE=golang (should FROM forge-builder-go-trixie)"
+if grep -q "ARG GO_BASE=golang" images/cadvisor-slim-trixie/Dockerfile; then
+  fail "cadvisor Dockerfile still has ARG GO_BASE=golang (should FROM forge-builder-go-trixie)"
+fi
+bash scripts/build-image.sh cadvisor-slim-trixie >/dev/null
 sv=$(image_go_stdlib "forge-local/cadvisor-slim-trixie:0.60.6" /usr/bin/cadvisor)
 case "${sv}" in
   go1.2[7-9]*|go1.[3-9]*) ;;
@@ -116,6 +118,10 @@ for img in forge-local/cadvisor-slim-trixie:0.60.6 \
            forge-local/alertmanager-scratch-trixie:0.28 \
            forge-local/ipmi-exporter-scratch-trixie:1.10 \
            forge-local/ipmi-exporter-slim-trixie:1.10; do
+  # Guard against the image missing — grype with no image returns empty
+  # JSON, which would falsely pass this check. Bail loudly instead.
+  docker image inspect "${img}" >/dev/null 2>&1 \
+    || fail "${img}: image not built locally (prior section should have built it)"
   crit=$(grype "${img}" -o json 2>/dev/null \
     | jq -r '.matches[] | select(.vulnerability.severity == "Critical" and .artifact.name == "stdlib") | .vulnerability.id' | sort -u)
   if [[ -n "${crit}" ]]; then
