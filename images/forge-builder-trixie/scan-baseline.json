@@ -1,8 +1,6 @@
 {
   "version": 1,
-  "critical_cves": [
-    "GO-2026-6888"
-  ],
-  "generated_at": "2026-11-08T15:17:09Z",
-  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
+  "critical_cves": [],
+  "generated_at": "2026-11-10T12:15:50Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=images/forge-builder-trixie"
 }

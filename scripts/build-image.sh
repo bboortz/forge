@@ -71,6 +71,25 @@ if [[ -d "${_FORGE_BUILDER_GO_DIR}" && -f "${SRC}/Dockerfile" ]] \
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-go-trixie
 fi
 
+# FG-042: debian-slim-trixie is a runtime-base dependency for cadvisor-slim
+# + ipmi-exporter-slim. Build it on demand when the Dockerfile declares
+# DEBIAN_SLIM_REF.
+_DEBIAN_SLIM_DIR="${ROOT}/images/debian-slim-trixie"
+if [[ -d "${_DEBIAN_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "DEBIAN_SLIM_REF" "${SRC}/Dockerfile"; then
+  echo "→ pre-builder dependency: debian-slim-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" debian-slim-trixie
+fi
+
+# FG-042: python-slim-trixie is a runtime-base dependency for forge-builder-trixie
+# (dogfood). Build it on demand when the Dockerfile declares PYTHON_SLIM_REF.
+_PYTHON_SLIM_DIR="${ROOT}/images/python-slim-trixie"
+if [[ -d "${_PYTHON_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "PYTHON_SLIM_REF" "${SRC}/Dockerfile"; then
+  echo "→ pre-builder dependency: python-slim-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" python-slim-trixie
+fi
+
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
 TAG=$(image_yaml_get   "${SRC}/image.yaml" tag)
 [[ -n "${TAG}" ]] || { echo "${SRC}/image.yaml missing required 'tag:' field" >&2; exit 1; }
@@ -132,6 +151,32 @@ if ! docker image inspect "${FORGE_BUILDER_GO_REF}" >/dev/null 2>&1; then
   FORGE_BUILDER_GO_REF="ghcr.io/bboortz/forge-builder-go-trixie:${_BUILDER_GO_TAG}"
 fi
 
+# FG-042: DEBIAN_SLIM_REF — forge-rooted Debian slim base for
+# cadvisor-slim + ipmi-exporter-slim runtime stages.
+_DEBIAN_SLIM_YAML="${ROOT}/images/debian-slim-trixie/image.yaml"
+if [[ -f "${_DEBIAN_SLIM_YAML}" ]]; then
+  _DEBIAN_SLIM_TAG=$(image_yaml_get "${_DEBIAN_SLIM_YAML}" tag)
+else
+  _DEBIAN_SLIM_TAG="latest"
+fi
+DEBIAN_SLIM_REF="${REGISTRY}/debian-slim-trixie:${_DEBIAN_SLIM_TAG}"
+if ! docker image inspect "${DEBIAN_SLIM_REF}" >/dev/null 2>&1; then
+  DEBIAN_SLIM_REF="ghcr.io/bboortz/debian-slim-trixie:${_DEBIAN_SLIM_TAG}"
+fi
+
+# FG-042: PYTHON_SLIM_REF — forge-rooted Python slim base that
+# forge-builder-trixie now FROMs (dogfood).
+_PYTHON_SLIM_YAML="${ROOT}/images/python-slim-trixie/image.yaml"
+if [[ -f "${_PYTHON_SLIM_YAML}" ]]; then
+  _PYTHON_SLIM_TAG=$(image_yaml_get "${_PYTHON_SLIM_YAML}" tag)
+else
+  _PYTHON_SLIM_TAG="latest"
+fi
+PYTHON_SLIM_REF="${REGISTRY}/python-slim-trixie:${_PYTHON_SLIM_TAG}"
+if ! docker image inspect "${PYTHON_SLIM_REF}" >/dev/null 2>&1; then
+  PYTHON_SLIM_REF="ghcr.io/bboortz/python-slim-trixie:${_PYTHON_SLIM_TAG}"
+fi
+
 # FG-031: resolve HC_REF the same way for images whose Dockerfile declares
 # ARG HC_REF (healthy-scratch-trixie + any image embedding /hc per FG-031).
 # Prefer forge-local/hc:0.1.0 if present (set up for local dev); else fall
@@ -157,6 +202,13 @@ if [[ "${FORGE_BUILDER_REF}" == forge-local/* ]]; then
 fi
 # FG-046: same guard for FORGE_BUILDER_GO_REF.
 if [[ "${FORGE_BUILDER_GO_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-042: same guards for DEBIAN_SLIM_REF + PYTHON_SLIM_REF.
+if [[ "${DEBIAN_SLIM_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+if [[ "${PYTHON_SLIM_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-031: same guard for HC_REF — forge-local/hc:0.1.0 isn't a real registry.
@@ -267,6 +319,17 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_GO_REF}" == forge-local/* ]
    && grep -q "FORGE_BUILDER_GO_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-042: same for DEBIAN_SLIM_REF + PYTHON_SLIM_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${DEBIAN_SLIM_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "DEBIAN_SLIM_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${PYTHON_SLIM_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "PYTHON_SLIM_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -293,6 +356,8 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
   --build-arg FORGE_BUILDER_REF="${FORGE_BUILDER_REF}" \
   --build-arg FORGE_BUILDER_GO_REF="${FORGE_BUILDER_GO_REF}" \
+  --build-arg DEBIAN_SLIM_REF="${DEBIAN_SLIM_REF}" \
+  --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}" \
   --build-arg HC_REF="${HC_REF}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \

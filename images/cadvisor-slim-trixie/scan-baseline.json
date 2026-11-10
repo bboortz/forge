@@ -3,6 +3,6 @@
   "critical_cves": [
     "GO-2026-6612"
   ],
-  "generated_at": "2026-11-10T05:12:53Z",
+  "generated_at": "2026-11-10T12:15:37Z",
   "note": "regenerate with: make scan-baseline-update IMAGE_DIR=images/cadvisor-slim-trixie"
 }

@@ -1,0 +1,47 @@
+# FG-010 contract for debian-slim-trixie (FG-042).
+#
+# Pre-builder tier image. Published as a runtime-shaped base, not a
+# builder-stage-only image: downstream slim images FROM this and
+# inherit shell + apt + its apt-upgrade state verbatim.
+
+spec_version: 1
+image: debian-slim-trixie
+version: "0.1"
+
+promises:
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt is present. Downstream curl/TLS work without re-apt-installing.
+    caps: [image.forge-rooted-slim-bases]
+    tests:
+      - images/debian-slim-trixie/tests/smoke_ca_bundle.sh
+
+  - id: apt.freshly-upgraded
+    description: Image was built with `apt-get update && apt-get -y --no-install-recommends upgrade`. Any trixie / trixie-security package update released before BUILD_TIMESTAMP is included. Downstream images FROMing this skip their own apt-upgrade step.
+    caps: [image.forge-rooted-slim-bases]
+    tests:
+      - images/debian-slim-trixie/tests/smoke_apt_upgraded.sh
+
+  - id: apt.no-cache
+    description: /var/lib/apt/lists/ carries no Packages/Release/InRelease files. Downstream builders that `apt-get install` MUST re-run `apt-get update` first.
+    caps: [image.forge-rooted-slim-bases]
+    tests:
+      - images/debian-slim-trixie/tests/smoke_no_apt_cache.sh
+    inverse: true
+
+  - id: presence.shell
+    description: /bin/sh + apt + coreutils are KEPT in the runtime (slim contract — counterpart to image.no-shell).
+    caps: [image.has-shell]
+    tests:
+      - images/debian-slim-trixie/tests/smoke_has_shell.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ 110 MB hard ceiling (debian:trixie-slim ~78 MB + apt-upgrade churn + ca-certificates ~5 MB; measured ~85 MB in practice).
+    caps: [test.size-budget]
+    tests:
+      - images/debian-slim-trixie/tests/smoke_size.sh
+
+  - id: scan.nonzero-accepted
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim bases inherit the full dpkg closure of debian:trixie-slim; scan-regression gate fires only on NEW CRITICALs beyond baseline (precedent: forge-builder-trixie)."
+    caps: [scan.regression-gate]
+    tests:
+      - images/debian-slim-trixie/tests/smoke_size.sh

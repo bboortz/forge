@@ -1,0 +1,17 @@
+# FG-042: forge-rooted Debian base. Published pre-builder — every slim
+# image that needs a Debian runtime FROMs this instead of Docker Hub's
+# debian:trixie-slim directly, so apt-upgrade state is uniform across
+# the fleet + version bumps happen in one place.
+#
+# Current consumers (post-FG-042):
+#   - cadvisor-slim-trixie (runtime base)
+#   - ipmi-exporter-slim-trixie (runtime base)
+#
+# python-slim-trixie does NOT FROM this (Python 3.14 isn't in trixie's
+# apt; python-slim-trixie stays FROM python:3.14-slim-trixie upstream).
+# Both are peers in the publish-pre-builders tier.
+#
+# Runtime image — shell + apt kept (image.has-shell contract).
+tag: "0.1"
+platforms:
+  - linux/amd64

@@ -12,17 +12,23 @@ permissions:
 
 jobs:
 
-  # FG-025: three-tier publish. Builders (forge-builder-trixie) publish
-  # first so scratch-base-trixie's builder stage can FROM it. Then bases
-  # (scratch-base-trixie, slim variants, externally-sourced leaf images)
-  # publish in parallel. Finally derivatives (scratch image variants,
-  # beaconry hub/scout) publish against those bases.
+  # FG-025 + FG-042 + FG-046: four-tier publish.
+  # 1. pre-builders (debian-slim-trixie + python-slim-trixie) — forge-rooted
+  #    slim bases that forge-builder-trixie + cadvisor-slim + ipmi-exporter-slim
+  #    FROM. Publish first so downstream has a resolvable forge-signed FROM.
+  # 2. builders (forge-builder-trixie + forge-builder-go-trixie) — shared
+  #    builder-stage images. forge-builder-trixie now FROMs python-slim-trixie
+  #    (dogfood), so it needs pre-builders completed first.
+  # 3. base (scratch-base-trixie, remaining slim variants, externally-sourced
+  #    leaf images) — publish in parallel.
+  # 4. derivatives (scratch image variants, beaconry hub/scout) — FROM bases.
   discover:
     name: Discover image dirs
     runs-on: ubuntu-latest
     # FG-038: 5-min cap (typical 10s — discover-images.sh over images/).
     timeout-minutes: 5
     outputs:
+      pre_builders: ${{ steps.disc.outputs.pre_builders }}
       builders: ${{ steps.disc.outputs.builders }}
       base: ${{ steps.disc.outputs.base }}
       derivatives: ${{ steps.disc.outputs.derivatives }}
@@ -31,14 +37,112 @@ jobs:
       - id: disc
         run: |
           {
+            echo "pre_builders=$(bash scripts/discover-images.sh pre-builders | jq -c .)"
             echo "builders=$(bash scripts/discover-images.sh builders | jq -c .)"
             echo "base=$(bash scripts/discover-images.sh base | jq -c .)"
             echo "derivatives=$(bash scripts/discover-images.sh derivatives | jq -c .)"
           } >> "$GITHUB_OUTPUT"
 
-  publish-builders:
+  # FG-042: pre-builders tier — forge-rooted slim bases (debian-slim-trixie,
+  # python-slim-trixie). Must publish BEFORE publish-builders because
+  # forge-builder-trixie now FROMs python-slim-trixie (dogfood).
+  publish-pre-builders:
     name: Publish ${{ matrix.image_dir }}
     needs: discover
+    runs-on: ubuntu-latest
+    # FG-038: 10-min cap per pre-builder. Typical 2-4 min (apt-upgrade + push).
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.pre_builders) }}
+    env:
+      REGISTRY: ghcr.io/bboortz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Current UTC day (for grype DB cache key)
+        id: dt
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - name: Cache grype DB
+        uses: actions/cache@v4
+        timeout-minutes: 3
+        continue-on-error: true
+        with:
+          path: ~/.cache/grype
+          key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
+          restore-keys: |
+            grype-db-${{ runner.os }}-
+      - name: Install syft + grype + cosign (v2.6.5 pinned — review by 2027-05-17)
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
+          bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
+          bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.6.5 /ko-app/cosign "$HOME/.local/bin/cosign"
+          chmod +x "$HOME/.local/bin/cosign"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        env:
+          IMAGE_DIR: ${{ matrix.image_dir }}
+          FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
+          FORGE_CACHE_PUSH: '1'
+        run: REGISTRY="$REGISTRY" bash scripts/build-image.sh "$IMAGE_DIR"
+      - name: Scan + SBOM
+        env:
+          IMAGE_DIR: ${{ matrix.image_dir }}
+        run: make scan IMAGE_DIR="$IMAGE_DIR" REGISTRY="$REGISTRY"
+      - name: Push image (4 tags per variant — FG-004)
+        id: push
+        env:
+          REPO: ${{ matrix.repo }}
+          TAG: ${{ matrix.tag }}
+          ARCH: amd64
+        run: |
+          IMAGE_REF="${REGISTRY}/${REPO}:${TAG}"
+          docker push "${IMAGE_REF}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE_REF}" | sed 's/.*@//')
+          for extra in "${TAG}-${ARCH}" "latest" "latest-${ARCH}"; do
+            docker tag  "${IMAGE_REF}" "${REGISTRY}/${REPO}:${extra}"
+            docker push "${REGISTRY}/${REPO}:${extra}"
+          done
+          echo "image_digest=${REGISTRY}/${REPO}@${DIGEST}" >> "$GITHUB_OUTPUT"
+      - name: cosign sign (keyless)
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+        run: cosign sign --yes "$IMAGE_DIGEST"
+      - name: cosign attest — CycloneDX SBOM
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+          SBOM: build/${{ matrix.repo }}-${{ matrix.tag }}.sbom.json
+        run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
+      - name: cosign attest — grype vuln scan
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+          GRYPE: build/${{ matrix.repo }}-${{ matrix.tag }}.grype.json
+        run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
+      - name: Publish-time verify
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
+        run: |
+          cosign verify \
+            --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$IMAGE_DIGEST"
+      - name: Upload scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-${{ matrix.repo }}-${{ matrix.tag }}
+          path: build/
+          retention-days: 30
+
+  publish-builders:
+    name: Publish ${{ matrix.image_dir }}
+    needs: [discover, publish-pre-builders]
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per builder image. Typical 3-5 min (apt-upgrade
     # + syft install + push). ~2× worst-case typical.

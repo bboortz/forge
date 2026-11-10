@@ -469,10 +469,25 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 
 ### build.shared-builder
 
-`ghcr.io/bboortz/forge-builder-trixie` is a published builder-base image containing `apt-get upgrade` + CA certificates + syft (`v1.57.0`), on top of `python:3.14-slim-trixie`. Every Forge-native scratch image's builder stage can `FROM ghcr.io/bboortz/forge-builder-trixie:<tag>` instead of repeating the apt + syft install work per-image. Published via a dedicated `publish-builders` tier that runs before `publish-base` in `build.yml`. PROMISES: `files.syft-binary`, `files.ca-certificates`, `apt.freshly-upgraded`, `apt.no-cache`, `apt.no-curl`.
+`ghcr.io/bboortz/forge-builder-trixie` is a published builder-base image containing `apt-get upgrade` + CA certificates + syft (`v1.57.0`), FROM `python-slim-trixie` (dogfood — post-FG-042; was `python:3.14-slim-trixie` upstream before). Every Forge-native scratch image's builder stage can `FROM ghcr.io/bboortz/forge-builder-trixie:<tag>` instead of repeating the apt + syft install work per-image. Published via a dedicated `publish-builders` tier that runs after `publish-pre-builders` (FG-042) and before `publish-base`. PROMISES: `files.syft-binary`, `files.ca-certificates`, `apt.freshly-upgraded`, `apt.no-cache`, `apt.no-curl`.
 
-- **Delivered by**: FG-025 (Phase 1: scratch-base-trixie migration; Phase 2 TBD for python/nginx/postgres)
-- **Covered by**: `tests/acceptance/test_FG_025_forge-builder-trixie.sh`
+- **Delivered by**: FG-025
+- **Extended by**: FG-042 (dogfood: now FROMs forge-rooted python-slim-trixie instead of Docker Hub)
+- **Covered by**: `tests/acceptance/test_FG_025_forge-builder-trixie.sh`, `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`
+
+### build.pre-builder-tier
+
+Four-tier daily-cron publish ordering (FG-042 raised from three): `publish-pre-builders` → `publish-builders` → `publish-base` → `publish-derivatives`. Each tier gated on the previous completing via `needs:`. The new pre-builders tier publishes forge-rooted slim bases (`debian-slim-trixie`, `python-slim-trixie`) before anything FROMs them. Collapses multi-consumer Docker Hub trust anchors to one forge image per family + makes version bumps atomic (bump a pre-builder, every downstream consumer inherits on next cron).
+
+- **Delivered by**: FG-042
+- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `scripts/discover-images.sh` (pre-builders mode)
+
+### image.forge-rooted-slim-bases
+
+Forge owns the Debian + Python slim bases consumed by every other slim / scratch builder image. `debian-slim-trixie` (NEW — FG-042) is FROMed by `cadvisor-slim-trixie` + `ipmi-exporter-slim-trixie`. `python-slim-trixie` (existing — FG-001, reclassified as pre-builder in FG-042) is FROMed by `forge-builder-trixie` (dogfood). Each upstream Docker Hub anchor (`debian:trixie-slim`, `python:3.14-slim-trixie`) is now consumed exactly once per daily cron — by the forge pre-builder — instead of in parallel by multiple downstream images. Version drift between consumers of the same family is structurally impossible: one bump propagates atomically.
+
+- **Delivered by**: FG-042
+- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `images/debian-slim-trixie/tests/smoke_*.sh`
 
 ### build.shared-go-builder
 
