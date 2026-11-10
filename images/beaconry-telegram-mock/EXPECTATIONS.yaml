@@ -1,0 +1,20 @@
+# What beaconry-telegram-mock requires from its dependencies. Mirrors
+# scout + hub — the mock's upstream Dockerfile (beaconry BC-100)
+# FROMs ghcr.io/bboortz/python-scratch-trixie:latest at runtime.
+
+spec_version: 1
+image: beaconry-telegram-mock
+
+dependencies:
+  - image: python-scratch-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: runtime.python3-interp
+        reason: mock_bot.py runs under the base image's /usr/local/bin/python3; without the interpreter the ENTRYPOINT doesn't exec.
+        preflight:
+          - images/beaconry-telegram-mock/tests/smoke_http_mock.sh
+
+      - promise: runtime.entrypoint-python3
+        reason: mock's Dockerfile does CMD ["-u", "-m", "uvicorn", "mock_bot:app", ...] and relies on the base's ENTRYPOINT=["/usr/local/bin/python3"] to make `docker run <mock>` work.
+        preflight:
+          - images/beaconry-telegram-mock/tests/smoke_http_mock.sh

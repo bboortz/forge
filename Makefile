@@ -40,7 +40,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
         test-images test-acceptance test-fast check check-strict \
         check-smart check-smart-strict \
         scan-regression scan-baseline-update \
-        verify-sid-pins verify-traceability verify-contracts verify-image-dirs clean-local-images \
+        verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift clean-local-images \
         _local-registry _local-registry-stop
 
 help:
@@ -52,6 +52,7 @@ help:
 	@echo "  verify-traceability  enforce story ↔ plan ↔ test ↔ CAP links"
 	@echo "  verify-contracts     enforce image PROMISES ↔ EXPECTATIONS graph (FG-010)"
 	@echo "  verify-image-dirs    enforce source + local Dockerfile mutual exclusion (FG-012)"
+	@echo "  verify-no-upstream-drift  (FG-042) catch Dockerfiles bypassing forge pre-builders"
 	@echo "  build                scripts/build-image.sh \$$IMAGE_DIR"
 	@echo "  scan                 syft SBOM + grype scan → $(OUT_DIR)/"
 	@echo "  sign-local           push $(IMAGE) to localhost:$(LOCAL_REGISTRY_PORT) and cosign-sign"
@@ -115,6 +116,13 @@ verify-contracts:
 verify-image-dirs:
 	@bash scripts/verify-image-dirs.sh
 
+# FG-042 follow-up: catch any new Dockerfile that FROMs python:3.14-slim-trixie
+# or debian:trixie-slim directly instead of going through the forge-rooted
+# pre-builders (python-slim-trixie / debian-slim-trixie). Pre-commit guard;
+# ci.yml's acceptance-test §7 is the complementary CI guard.
+verify-no-upstream-drift:
+	@bash scripts/verify-no-upstream-drift.sh
+
 # FG-019: scan-regression gate. Diffs grype CRITICAL findings for IMAGE_DIR
 # vs the committed images/$(IMAGE_DIR)/scan-baseline.json, subtracting any
 # waivers listed in PROMISES.yaml's absence.os-cves entry. Also invoked
@@ -168,7 +176,7 @@ test-acceptance:
 test-images:
 	@bash scripts/test-images.sh
 
-test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs
+test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift
 
 check: test-fast test-acceptance test-images
 
