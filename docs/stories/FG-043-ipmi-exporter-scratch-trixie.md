@@ -16,17 +16,17 @@ FG-037 shipped `ipmi-exporter-slim-trixie:1.10` on debian:trixie-slim and framed
 
 FG-043 ships `ipmi-exporter-scratch-trixie:1.10` alongside the existing slim variant. Operators pick: scratch for zero-OS-CVE alignment with the rest of the exporter fleet (node-exporter, prometheus, alertmanager all scratch), slim for `docker exec -it sh` ergonomics.
 
-Target deployment: homelab hosts `hetzner-staging` + `server2` (both already carry `/dev/ipmi0` per `~/git/homelab/systemd/ipmi/` systemd services).
+Target deployment: homelab `homeserver` host (aliased as `server2.home` / `ci-homelab` in ssh config; Supermicro A2SDi board with a real BMC exposing `/dev/ipmi0`). Per inventory `ansible/inventory/host_vars/homeserver/ipmi.yml: ipmi_enabled: true`. The `hetzner-staging` host is a Hetzner vServer (VM, no BMC, `ipmi_enabled: false`) — explicitly NOT a deployment target despite the earlier draft of this story claiming otherwise (corrected 2026-11-10 after homelab verification).
 
 ## 9 canonical answers
 
-1. **Who** — homelab operator (me) first, deploying on `hetzner-staging` + `server2`. Secondary: any Forge consumer wanting a minimal IPMI exporter aligned with the rest of the scratch exporter fleet.
+1. **Who** — homelab operator (me) first, deploying on `homeserver` (aliases: `server2.home`, `ci-homelab`). Secondary: any Forge consumer wanting a minimal IPMI exporter aligned with the rest of the scratch exporter fleet.
 
 2. **When** — fires at every `docker compose up` on an IPMI-capable host + every prometheus scrape cycle. Pipeline: next 03:00 UTC cron after this lands on `main`.
 
 3. **What success looks like**:
    - `ghcr.io/bboortz/ipmi-exporter-scratch-trixie:1.10` publishes daily with cosign + SBOM + scan attestations.
-   - `docker run --rm -d --device /dev/ipmi0 --privileged -p 9290:9290 <image>` on hetzner-staging or server2 boots → `curl /metrics` returns Prometheus text with `ipmi_*` metrics populated (temperatures, fan speeds, voltages, power).
+   - `docker run --rm -d --device /dev/ipmi0 --privileged -p 9290:9290 <image>` on `homeserver` boots → `curl /metrics` returns Prometheus text with `ipmi_*` metrics populated. **Verified 2026-11-10**: 5 temperature sensors + 2 fans + 15 voltages from a Supermicro A2SDi BMC.
    - `docker run --rm -d -p 9290:9290 <image>` without the device still responds to `/metrics` (self-metrics only; `ipmi_scrape_duration_seconds` always present).
    - Image size ≤ 50 MB (projected ~33 MB; budget allows headroom).
    - grype scan: **zero OS CVEs** (vs slim's 7 accepted CRITICAL).
@@ -37,16 +37,18 @@ Target deployment: homelab hosts `hetzner-staging` + `server2` (both already car
 
 5. **Happy path**:
    1. Forge daily cron publishes `:1.10` + `:latest`.
-   2. Homelab compose on hetzner-staging + server2 updates `image:` reference.
+   2. Homelab compose on `homeserver` (`~/git/homelab/docker/ipmi-exporter/docker-compose.yml`) updates `image:` reference.
    3. `docker compose up -d` — container boots as root (needed for `/dev/ipmi0`), scrapes BMC via freeipmi tools, exposes `:9290/metrics`.
    4. Existing prometheus server picks up the new target metrics without config change.
 
 6. **Edge cases / failure modes**:
-   - **Operator customizes `ipmi-exporter.yml` with `command: ipmimonitoring`** — the shell-script wrapper. Scratch has no shell, so this fails. Document: the default collector set + any `command:` field pointing at a real ELF binary (`ipmi-sensors`, `bmc-info`, `ipmi-chassis`, `ipmi-dcmi`, `ipmi-sel`, `ipmi-raw`) works; `ipmimonitoring` + `ipmi-chassis-config` + `ipmi-pef-config` + `ipmi-sensors-config` (all shell scripts in Debian's freeipmi-tools) do not. Operators needing those keep slim.
+   - **ipmimonitoring shell-wrapper trap** (**critical, caught on homelab 2026-11-10**) — prometheus-ipmi-exporter's `ipmi` collector by DEFAULT invokes `/usr/sbin/ipmimonitoring`, which is a Debian shell-script wrapper (not an ELF binary as the first draft of this story assumed). Scratch has no `/bin/sh` → wrapper can't exec → `ipmi_up{collector="ipmi"}=0` + zero sensor readings on real hardware (looks superficially OK in CI because /metrics still returns 200 for self-metrics). Fix shipped in the default `ipmi-exporter.yml`: `collector_cmd.ipmi: ipmi-sensors` + `custom_args.ipmi: [--output-sensor-state, --ignore-not-available-sensors]` — reproduces ipmimonitoring's effective behavior by calling ipmi-sensors directly. Guarded by `smoke_ipmi_collector_uses_elf.sh`. Operators who override `custom_args` must preserve these two flags or roll them into their own config.
+   - **Operator customizes `ipmi-exporter.yml` with `command: ipmimonitoring`** — scratch has no shell → fails. Same for `ipmi-chassis-config`, `ipmi-pef-config`, `ipmi-sensors-config` (all shell scripts in Debian's freeipmi-tools). Operators needing those keep slim.
+   - **`/etc/freeipmi/*.conf`** — ipmi-sensors reads `freeipmi_interpret_sensor.conf` + `freeipmi.conf` at runtime. Shipped in the scratch overlay (added 2026-11-10 after homelab verification exposed the gap — slim gets these via the freeipmi-common dpkg dep).
    - **`/var/lib/freeipmi/` IPC key** — `ipmi-sensors` writes an IPC key here. Scratch runtime needs this dir writable + owned root. Dockerfile `install -d` with mode 0755 pre-creates it; works because we run as root (required for `/dev/ipmi0`).
    - **Writable /tmp** — baseline (scratch-base-trixie) provides `/tmp` at 1777. freeipmi subprocesses use it for ephemeral files.
    - **No `curl`/`wget` for `docker exec` healthcheck** — handled by `/hc` (FG-031 pattern); baked HEALTHCHECK polls `/metrics`.
-   - **BMC accessibility varies per host** — hetzner-staging is a dedicated Hetzner server (direct BMC access); server2 is similar. Both expose `/dev/ipmi0` to the OS. Smoke tests the IMAGE contract; runtime verification on the hosts is the operator's step (documented).
+   - **BMC accessibility varies per host** — `homeserver` is a Supermicro A2SDi dedicated box with /dev/ipmi0 exposed; `hetzner-staging` is a Hetzner cloud vServer with NO BMC (inventory enforces `ipmi_enabled: false` there). The `dcmi` collector depends on BMC capability — A2SDi does NOT support DCMI power reporting, so `ipmi_up{collector="dcmi"} 0` is expected on homeserver (hardware limitation, not a regression). Same behavior as FG-037 slim on the same host.
 
 7. **Out of scope**:
    - **Deprecating `ipmi-exporter-slim-trixie`**. Kept published; operators who need debug shell OR who rely on shell-script freeipmi tools (`ipmimonitoring`, `*-config` wrappers) stay on slim.
@@ -108,9 +110,9 @@ Scenario: Image size within budget
   Given the built image
   Then image size ≤ 50 MB
 
-Scenario: hetzner-staging / server2 adoption (operator-side, documented)
-  Given hetzner-staging or server2 with /dev/ipmi0 readable
-  When operator runs `docker run --rm -d --device /dev/ipmi0 --privileged ghcr.io/bboortz/ipmi-exporter-scratch-trixie:latest`
+Scenario: homeserver adoption (operator-side, verified 2026-11-10)
+  Given `homeserver` with /dev/ipmi0 readable (Supermicro A2SDi BMC)
+  When operator runs `docker run --rm -d --device /dev/ipmi0 --privileged ghcr.io/bboortz/ipmi-exporter-scratch-trixie:latest` on `homeserver`
    And `curl http://localhost:9290/metrics` is called
   Then the response contains real `ipmi_*` metrics populated from the BMC (temperatures, fan speeds, voltages)
    And the operator reports back by filing a GitHub issue if the metrics are missing or wrong
@@ -126,5 +128,5 @@ Scenario: FG-037 slim variant still works (no regression)
 - Plan: `docs/plan/FG-043-ipmi-exporter-scratch-trixie-plan.md`
 - Red test: `tests/acceptance/test_FG_043_ipmi-exporter-scratch-trixie.sh`
 - Predecessor: FG-037 (slim variant; initial assessment that scratch was impractical — corrected by this story)
-- Homelab deployment targets: `hetzner-staging` + `server2` (both carry /dev/ipmi0 per `~/git/homelab/systemd/ipmi/`)
+- Homelab deployment target: `homeserver` only (per `ansible/inventory/host_vars/homeserver/ipmi.yml: ipmi_enabled: true`). Verified end-to-end 2026-11-10: real sensor readings from a Supermicro A2SDi BMC via `/dev/ipmi0`. **NOT** `hetzner-staging` — that host is a vServer with `ipmi_enabled: false`.
 - Upstream: Debian trixie `prometheus-ipmi-exporter 1.10.0-2+b4` + `freeipmi-tools 1.6.15-1`

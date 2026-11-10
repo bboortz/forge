@@ -51,6 +51,40 @@ Debian's `postgresql-17` package assigned postgres uid dynamically (we saw **100
 
 `/lib64/ld-linux-x86-64.so.2` is a Debian multiarch symlink pointing at `../lib/x86_64-linux-gnu/ld-linux-x86-64.so.2`. `cp -a` preserves the symlink; `cp` dereferences. python-scratch's Dockerfile uses plain `cp`; nginx-scratch originally used `cp -a` — the resulting image shipped a dangling symlink and the binary failed to exec with "No such file or directory" (ENOENT on the interpreter). **Use plain `cp` for dyn-linker + libs so SONAME paths are real files**. Python stdlib / interpreter uses `cp -a` deliberately because it contains valid relative symlinks inside a single tree.
 
+### Upstream tools that LOOK like ELF but are actually shell-script wrappers (FG-043 homelab lesson 2026-11-10)
+
+`file /usr/sbin/<tool>` lies by habit — Debian packages routinely ship 300-500 byte `#!/bin/sh` wrappers that set default flags and `exec` a real ELF binary. Catalogued so far:
+
+- `/usr/sbin/ipmimonitoring` (freeipmi-tools) — wraps `ipmi-sensors` with `--output-sensor-state --ignore-not-available-sensors`
+- `/usr/sbin/ipmi-chassis-config`, `ipmi-pef-config`, `ipmi-sensors-config` (freeipmi-tools)
+- `/usr/sbin/update-ca-certificates` (ca-certificates) — shell
+- Many `*-config` scripts under `/usr/bin/` from `*-dev` packages
+
+**FG-043 hit this**: prometheus-ipmi-exporter's `ipmi` collector defaults to invoking `ipmimonitoring`. I shipped the 5 ELF binaries (`ipmi-sensors` etc.) but NOT `ipmimonitoring` + `/bin/sh`. Container booted fine. CI smokes passed (they only check `--version` + `/metrics` responds). But on real hardware with `/dev/ipmi0`: `ipmi_up{collector="ipmi"}=0` and zero sensor readings because the wrapper exec failed with ENOENT. The sibling slim variant worked on the same host — masking the regression completely from any CI-only testing.
+
+**Fixes that work** (in order of elegance):
+
+1. **If the wrapper's logic is just "add fixed flags"** — use the upstream exporter's own config to call the real ELF binary with those flags. For prometheus-ipmi-exporter: `collector_cmd.<name>: <real-binary>` + `custom_args.<name>: [...wrapper-flags]` in `ipmi-exporter.yml`.
+2. **If the wrapper has conditional logic** — reimplement it as a static Go/Zig binary (same shape as `/hc`) and name it `<wrapper>`. Scratch-safe.
+3. **Last resort** — ship a static `/bin/sh` from busybox + the wrapper. Breaks the no-shell contract; needs explicit documentation.
+
+**Smoke pattern to catch this class of bug** (FG-043's `smoke_ipmi_collector_uses_elf.sh`):
+
+```bash
+# Run container without the device/hardware it needs. Trigger a scrape.
+# Wait for logs to flush. Grep for "<wrapper>: executable file not found"
+# in stderr. If the pattern appears, the upstream tool is calling a
+# missing shell wrapper and the image will silently fail on real hardware.
+```
+
+This is the ONLY smoke shape that would have caught FG-043's regression — every file-presence / `--version` / `/metrics-returns-200` check passed clean.
+
+Signals that a Debian tool is a wrapper (check BEFORE assuming it's shippable in scratch):
+- File size: ELF binaries for IPMI/network tools are typically **>100 KB**. A 300-500 byte "binary" is almost certainly a shell script.
+- `head -1 <path>` → if first two bytes are `#!`, it's a script.
+- `ldd <path>` on a static shell script: `not a dynamic executable` (same as a static ELF — distinguish by file size).
+- `apt-file list <pkg>` → if the package depends on another `-common` package shipping `/etc/<pkg>/*.conf`, those config files are typically needed at runtime too (freeipmi-common's `/etc/freeipmi/*.conf` was the other FG-043 oversight).
+
 ### Scratch has no shell — anything using `system()` won't work in-container
 
 Postgres' `initdb` internally calls `system()` to run `postgres -V` for compatibility checking. `system()` → `/bin/sh -c ...` → ENOENT on `/bin/sh` → initdb reports a cryptic "postgres was not found in the same directory as initdb". **Scratch images cannot run workflows that invoke a shell**, even transitively. Workaround: a **shelled sidecar** for one-time init (postgres:17 or a future slim variant), then the scratch runtime for serving. Documented in FG-007 as the `test.sidecar-init` pattern. Run the server-use-case smoke tests via that pattern; don't try to initdb in-scratch.
