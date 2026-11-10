@@ -23,6 +23,30 @@ grype <image>:<tag> -o json --fail-on high > scan.json
 - `--fail-on high` **does** gate PR builds — a PR that introduces a new HIGH or CRITICAL vs. the previous digest fails the merge check. Baseline: scan of the current `:latest` from GHCR, pulled fresh in CI.
 - grype DB is cached in `~/.cache/grype` on the runner. We let grype auto-update per run.
 
+## Go stdlib CVE triage (Debian-packaged Go binaries)
+
+Every compiled Go binary embeds the stdlib it was built against, so grype's Go cataloger reports `stdlib go1.24.x` for Debian-packaged exporters (`prometheus-ipmi-exporter`, `prometheus-alertmanager`, `prometheus`, `prometheus-node-exporter`) even though the scratch image carries no Go toolchain. These findings CANNOT be fixed by us — we don't rebuild the binaries; Debian does. The fix lands when Debian bumps their Go toolchain and rebuilds the exporter packages; our daily `--pull` picks it up automatically.
+
+Before adding a waiver for a Go CVE, **check the GOOS scope** at `https://vuln.go.dev/ID/<GO-id>.json` — look at `.affected[].ecosystem_specific.imports[].goos`:
+
+- Present and includes `"windows"` only (e.g. **GO-2026-6604** affecting `os.Root.Mkdir` Windows junctions) → **FALSE POSITIVE** on our linux/amd64 images. Waive via `PROMISES.yaml`'s `absence.os-cves.waivers` with reason citing the official `goos` declaration.
+- Absent or includes linux (e.g. **GO-2026-4337** TLS session resumption, **GO-2026-6612** HTTP/2 flow control) → **REAL** vulnerability if the code path is reachable. Don't waive; accept in `scan-baseline.json` with an issue tracking the Debian-Go-toolchain bump.
+
+**Waiver template** (shape validated by `scripts/verify-contracts.py`):
+
+```yaml
+- id: absence.os-cves
+  ...
+  waivers:
+    - cve: GO-YYYY-NNNN
+      reason: "Windows-only Go stdlib CVE (per official Go advisory DB: goos=[windows]; affected symbols live under internal/syscall/windows). Image is linux/amd64 only."
+      until: "YYYY-MM-DD"  # 6-12 months out
+```
+
+For `-slim` variants that use `scan.nonzero-accepted` instead of `absence.os-cves` (e.g. cadvisor-slim-trixie, ipmi-exporter-slim-trixie), these CVEs flow through `scan-baseline.json` and don't need explicit waiver entries.
+
+**Forge's own scan-regression gate currently uses a dpkg-only SBOM** (see `syft dir:/ --override-default-catalogers dpkg-db-cataloger`) so Go stdlib CVEs are invisible to it. External scanners like Beaconry use the full image scan and will flag them. The waiver mechanism serves two purposes: (1) explicit documentation for operator/auditor inspection; (2) future-proofing if we ever extend forge's SBOM to include Go modules.
+
 ## syft SBOM step
 
 ```bash
