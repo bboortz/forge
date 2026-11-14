@@ -103,12 +103,14 @@ jobs:
     name: ${{ matrix.fg_id }}
     runs-on: ubuntu-latest
     needs: discover
-    # FG-038: 6-min cap per matrix cell. Typical 1-3 min; cap at ~2×
-    # worst-case typical. The hang observed on run 42602539732 job
-    # 129110343041 (FG-011 stuck on Cache grype DB for 20+ min) is now
-    # bounded — if a cell hangs it dies at 6 min, acceptance-aggregate
-    # fails fast, operator retries the single cell via GHA re-run UI.
-    timeout-minutes: 6
+    # FG-038: 10-min cap per matrix cell (FG-038's [4-10] range upper
+    # bound). Typical 1-3 min; cap was 6 pre-FG-048 but the from-source
+    # dual-builder tests (FG-048b: Node UI build + Go build + smokes)
+    # legitimately push 5-7 min cold. 10-min cap still catches the
+    # original class of hang (FG-011 run 42602539732 was 20+ min). If
+    # a cell hangs it dies at 10 min, acceptance-aggregate fails fast,
+    # operator retries the single cell via GHA re-run UI.
+    timeout-minutes: 10
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
       (github.event_name == 'pull_request' && github.base_ref == 'dev')
