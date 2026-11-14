@@ -3,7 +3,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-cadvisor-slim-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-0.60.6}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 

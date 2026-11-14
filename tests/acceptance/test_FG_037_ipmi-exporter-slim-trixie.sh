@@ -25,25 +25,25 @@ test ! -e images/ipmi-exporter-slim-trixie/EXPECTATIONS.yaml \
   || fail "images/ipmi-exporter-slim-trixie/EXPECTATIONS.yaml should not exist (slim, not scratch)"
 pass "all required files present (slim contract)"
 
-say "2. ipmi-exporter-slim-trixie:1.10 builds"
+say "2. ipmi-exporter-slim-trixie:latest builds"
 bash scripts/build-image.sh ipmi-exporter-slim-trixie >/dev/null
-docker image inspect forge-local/ipmi-exporter-slim-trixie:1.10 >/dev/null
-pass "forge-local/ipmi-exporter-slim-trixie:1.10 built"
+docker image inspect forge-local/ipmi-exporter-slim-trixie:latest >/dev/null
+pass "forge-local/ipmi-exporter-slim-trixie:latest built"
 
 say "3. per-image smoke suite"
 for s in images/ipmi-exporter-slim-trixie/tests/smoke_*.sh; do
-  IMAGE_TAG=1.10 bash "${s}"
+  IMAGE_TAG=latest bash "${s}"
 done
 pass "all smoke tests green"
 
-say "4. image.yaml: tag=1.10, NO depends_on (slim variant)"
+say "4. image.yaml: tag=latest (FG-050 flipped to :latest), NO depends_on (slim variant)"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' \
         images/ipmi-exporter-slim-trixie/image.yaml)
-[[ "${tag}" == "1.10" ]] || fail "image.yaml tag = '${tag}' (want 1.10)"
+[[ "${tag}" == "latest" ]] || fail "image.yaml tag = '${tag}' (want latest)"
 if grep -qE '^depends_on:' images/ipmi-exporter-slim-trixie/image.yaml; then
   fail "image.yaml should NOT have depends_on (slim variant, not scratch derivative)"
 fi
-pass "image.yaml correct (tag=1.10, no depends_on)"
+pass "image.yaml correct (tag=latest, no depends_on)"
 
 echo
 echo "FG-037 acceptance: all sections passed."

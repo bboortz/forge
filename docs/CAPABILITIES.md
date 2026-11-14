@@ -524,3 +524,10 @@ The acceptance test suite runs as a GitHub Actions matrix (one job per `tests/ac
 
 - **Delivered by**: FG-023
 - **Covered by**: `tests/acceptance/test_FG_023_smart-rebuild-skip.sh`
+
+### build.ref-latest-release
+
+Build-time pattern for Forge images that track an upstream project's latest GitHub Release tag. Dockerfile declares an empty-default version ARG (e.g. `ARG CADVISOR_VERSION=`); the Dockerfile's builder stage resolves the current release tag via `GET https://api.github.com/repos/<upstream>/releases/latest` + `jq -r .tag_name`, writes it to `/tmp/resolved-version`, and the subsequent build step consumes it. The resolved sha + tag get baked into `org.opencontainers.image.revision` + the SBOM. `image.yaml` carries `tag: "latest"` instead of a numeric major.minor; the 4-tag publish family collapses to `:latest` + `:latest-amd64`. Daily cron re-resolves, so the fleet auto-tracks upstream. Applied only to upstreams with stable release discipline + no config-contract churn between minor versions. Precedent: FG-045 uptime-kuma-slim-trixie first shipped this shape inline as a step of `build.from-node-source`; FG-050 formalizes it as a reusable CAP + extends it to cadvisor-slim-trixie + ipmi-exporter-scratch/slim-trixie.
+
+- **Delivered by**: FG-050 (formalized); FG-045 (first consumer, inline)
+- **Covered by**: `tests/acceptance/test_FG_050_freshen-upstream-pins.sh`, `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`

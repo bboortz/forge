@@ -2,7 +2,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-ipmi-exporter-scratch-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-1.10}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
@@ -15,8 +15,11 @@ if [[ $rc -ne 0 ]]; then
   echo "${out}" >&2
   exit 1
 fi
+# FG-050: ipmi-exporter-scratch-trixie now tracks upstream latest release
+# (build.ref-latest-release CAP). Loose match: project name + "version "
+# instead of a hard-coded major.minor.
 case "${out}" in
-  *"ipmi_exporter, version 1.10"*) ;;
+  *"ipmi_exporter, version "*) ;;
   *) echo "  ✗ unexpected --version output: ${out}" >&2; exit 1 ;;
 esac
 echo "  ✓ $(echo "${out}" | head -1)"

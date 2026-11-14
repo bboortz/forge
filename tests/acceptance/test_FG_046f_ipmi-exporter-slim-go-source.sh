@@ -16,11 +16,11 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 say "1. Builds with stdlib go1.27+"
 bash scripts/build-image.sh ipmi-exporter-slim-trixie >/dev/null
-sv=$(assert_image_go_stdlib_27plus "forge-local/ipmi-exporter-slim-trixie:1.10" /usr/bin/prometheus-ipmi-exporter)
+sv=$(assert_image_go_stdlib_27plus "forge-local/ipmi-exporter-slim-trixie:latest" /usr/bin/prometheus-ipmi-exporter)
 pass "ipmi-exporter (slim) stdlib = ${sv}"
 
 say "2. freeipmi-tools + /bin/sh preserved (slim contract)"
-docker run --rm --entrypoint=/bin/sh forge-local/ipmi-exporter-slim-trixie:1.10 \
+docker run --rm --entrypoint=/bin/sh forge-local/ipmi-exporter-slim-trixie:latest \
   -c 'test -x /usr/sbin/ipmimonitoring && echo ok' | grep -q "^ok$" \
   || fail "ipmimonitoring missing or /bin/sh broken"
 pass "ipmimonitoring + /bin/sh present"
@@ -28,7 +28,7 @@ pass "ipmimonitoring + /bin/sh present"
 say "3. Zero Go-stdlib CRITICAL CVEs (freeipmi C-pkg CVEs expected in baseline, not stdlib)"
 # NB: slim variant has freeipmi C-package CRITICALs in scan-baseline.json.
 # assert_no_stdlib_critical scopes strictly to artifact.name == 'stdlib'.
-assert_no_stdlib_critical "forge-local/ipmi-exporter-slim-trixie:1.10"
+assert_no_stdlib_critical "forge-local/ipmi-exporter-slim-trixie:latest"
 pass "no stdlib CRITICAL matches"
 
 echo

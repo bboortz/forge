@@ -23,11 +23,11 @@ pass "Dockerfile FROMs forge-builder-go-trixie"
 
 say "2. Builds with stdlib go1.27+"
 bash scripts/build-image.sh cadvisor-slim-trixie >/dev/null
-sv=$(assert_image_go_stdlib_27plus "forge-local/cadvisor-slim-trixie:0.60.6" /usr/bin/cadvisor)
+sv=$(assert_image_go_stdlib_27plus "forge-local/cadvisor-slim-trixie:latest" /usr/bin/cadvisor)
 pass "cadvisor stdlib = ${sv}"
 
 say "3. Zero Go-stdlib CRITICAL CVEs"
-assert_no_stdlib_critical "forge-local/cadvisor-slim-trixie:0.60.6"
+assert_no_stdlib_critical "forge-local/cadvisor-slim-trixie:latest"
 pass "no stdlib CRITICAL matches"
 
 echo

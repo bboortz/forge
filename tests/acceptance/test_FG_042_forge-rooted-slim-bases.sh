@@ -52,8 +52,8 @@ done
 bash scripts/build-image.sh cadvisor-slim-trixie >/dev/null
 bash scripts/build-image.sh ipmi-exporter-slim-trixie >/dev/null
 # Existing smokes must still pass (behavior preservation).
-IMAGE_TAG=0.60.6 bash images/cadvisor-slim-trixie/tests/smoke_binary_runs.sh >/dev/null
-IMAGE_TAG=1.10   bash images/ipmi-exporter-slim-trixie/tests/smoke_binary_runs.sh >/dev/null
+IMAGE_TAG=latest bash images/cadvisor-slim-trixie/tests/smoke_binary_runs.sh >/dev/null
+IMAGE_TAG=latest   bash images/ipmi-exporter-slim-trixie/tests/smoke_binary_runs.sh >/dev/null
 pass "both FROM debian-slim-trixie + wire-level contract preserved"
 
 say "5. build.yml has 4-tier publish ordering"

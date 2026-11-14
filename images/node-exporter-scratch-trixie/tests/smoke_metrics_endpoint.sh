@@ -4,7 +4,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-node-exporter-scratch-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-1.9}"
+IMAGE_TAG="${IMAGE_TAG:-1.12}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
