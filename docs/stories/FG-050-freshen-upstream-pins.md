@@ -1,7 +1,7 @@
 ---
 id: FG-050
 slug: freshen-upstream-pins
-status: ready
+status: shipped
 owner: bboortz
 created: 2026-11-13
 ---
