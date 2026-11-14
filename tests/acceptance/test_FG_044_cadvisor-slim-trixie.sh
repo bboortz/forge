@@ -26,25 +26,25 @@ test ! -e images/cadvisor-slim-trixie/EXPECTATIONS.yaml \
   || fail "images/cadvisor-slim-trixie/EXPECTATIONS.yaml should not exist (slim, not scratch)"
 pass "all required files present (slim contract)"
 
-say "2. cadvisor-slim-trixie:0.60.6 builds from Go source"
+say "2. cadvisor-slim-trixie:latest builds from Go source"
 bash scripts/build-image.sh cadvisor-slim-trixie >/dev/null
-docker image inspect forge-local/cadvisor-slim-trixie:0.60.6 >/dev/null
-pass "forge-local/cadvisor-slim-trixie:0.60.6 built"
+docker image inspect forge-local/cadvisor-slim-trixie:latest >/dev/null
+pass "forge-local/cadvisor-slim-trixie:latest built"
 
 say "3. per-image smoke suite"
 for s in images/cadvisor-slim-trixie/tests/smoke_*.sh; do
-  IMAGE_TAG=0.60.6 bash "${s}"
+  IMAGE_TAG=latest bash "${s}"
 done
 pass "all smoke tests green"
 
-say "4. image.yaml: tag=0.60.6, NO depends_on (slim variant)"
+say "4. image.yaml: tag=latest (FG-050 flipped to :latest), NO depends_on (slim variant)"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' \
         images/cadvisor-slim-trixie/image.yaml)
-[[ "${tag}" == "0.60.6" ]] || fail "image.yaml tag = '${tag}' (want 0.60.6)"
+[[ "${tag}" == "latest" ]] || fail "image.yaml tag = '${tag}' (want latest)"
 if grep -qE '^depends_on:' images/cadvisor-slim-trixie/image.yaml; then
   fail "image.yaml should NOT have depends_on (slim variant, not scratch derivative)"
 fi
-pass "image.yaml correct (tag=0.60.6, no depends_on)"
+pass "image.yaml correct (tag=latest, no depends_on)"
 
 echo
 echo "FG-044 acceptance: all sections passed."

@@ -16,16 +16,16 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 say "1. Builds with stdlib go1.27+ (dual-builder)"
 bash scripts/build-image.sh ipmi-exporter-scratch-trixie >/dev/null
-sv=$(assert_image_go_stdlib_27plus "forge-local/ipmi-exporter-scratch-trixie:1.10" /usr/bin/prometheus-ipmi-exporter)
+sv=$(assert_image_go_stdlib_27plus "forge-local/ipmi-exporter-scratch-trixie:latest" /usr/bin/prometheus-ipmi-exporter)
 pass "ipmi-exporter (scratch) stdlib = ${sv}"
 
 say "2. FG-043 collector-override regression guard still green"
-IMAGE_TAG=1.10 bash images/ipmi-exporter-scratch-trixie/tests/smoke_ipmi_collector_uses_elf.sh >/dev/null \
+IMAGE_TAG=latest bash images/ipmi-exporter-scratch-trixie/tests/smoke_ipmi_collector_uses_elf.sh >/dev/null \
   || fail "collector-override regression guard failed"
 pass "ipmi-sensors override still configured"
 
 say "3. Zero Go-stdlib CRITICAL CVEs"
-assert_no_stdlib_critical "forge-local/ipmi-exporter-scratch-trixie:1.10"
+assert_no_stdlib_critical "forge-local/ipmi-exporter-scratch-trixie:latest"
 pass "no stdlib CRITICAL matches"
 
 echo
