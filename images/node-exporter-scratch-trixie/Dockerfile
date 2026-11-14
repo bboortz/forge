@@ -18,11 +18,14 @@ ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-031 pattern: embed /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-# Pin exact upstream release — matches what Debian trixie's
-# prometheus-node-exporter 1.9.0 package shipped; same wire-level
-# metrics contract. Operators who want newer features (textfile dir,
-# collectors introduced post-1.9) can bump this + rebuild.
-ARG NODE_EXPORTER_VERSION=v1.9.0
+# FG-050: pinned to upstream v1.12.1 (bumped from v1.9.0). v1.10-v1.12
+# ship no metric renames or label removals — container-contract safe.
+# v1.10.0 moved mdadm metric collection from /proc/mdstat to sysfs
+# (same metric names, slightly more accurate under RAID-degraded); v1.10
+# added `erofs` to default filesystem excludes. node-exporter stays on
+# an explicit pin (not :latest) because historically collector renames
+# between minors have broken downstream dashboards.
+ARG NODE_EXPORTER_VERSION=v1.12.1
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base

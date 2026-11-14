@@ -26,9 +26,12 @@ ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-# Pin upstream ipmi_exporter release (matches Debian's 1.10.0 wire-level
-# contract).
-ARG IPMI_EXPORTER_VERSION=v1.10.0
+# FG-050: track upstream's latest GitHub release. Empty default → build-time
+# resolves via GitHub API (build.ref-latest-release CAP). Override for
+# reproducible local builds via --build-arg IPMI_EXPORTER_VERSION=v1.10.0.
+# ipmi-exporter has a slow release cadence (~1-2/yr), metrics-only, no
+# config contract — safe candidate for the floating pattern.
+ARG IPMI_EXPORTER_VERSION=
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -42,22 +45,34 @@ FROM ${FORGE_BUILDER_GO_REF} AS go-builder
 ARG IPMI_EXPORTER_VERSION
 
 WORKDIR /src
+# FG-050: the resolve step pipes curl into jq; needs pipefail set before
+# the RUN (hadolint DL4006). SHELL directive persists for subsequent RUNs.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# FG-050: resolve IPMI_EXPORTER_VERSION if empty (track upstream latest).
 # hadolint ignore=DL3003
 RUN set -eux; \
-    git clone --depth 1 --branch "${IPMI_EXPORTER_VERSION}" \
+    TARGET_REF="${IPMI_EXPORTER_VERSION}"; \
+    if [ -z "${TARGET_REF}" ]; then \
+      TARGET_REF="$(curl -fsSL \
+        https://api.github.com/repos/prometheus-community/ipmi_exporter/releases/latest \
+        | jq -r '.tag_name // empty')"; \
+      [ -n "${TARGET_REF}" ] || { echo "could not resolve latest ipmi_exporter release" >&2; exit 1; }; \
+    fi; \
+    echo "${TARGET_REF}" > /tmp/resolved-version; \
+    git clone --depth 1 --branch "${TARGET_REF}" \
       https://github.com/prometheus-community/ipmi_exporter.git .; \
     REV="$(git rev-parse --short HEAD)"; \
     echo "${REV}" > /tmp/git-revision
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # hadolint ignore=DL3003
 RUN set -eux; \
+    VERSION="$(cat /tmp/resolved-version)"; \
     REV="$(cat /tmp/git-revision)"; \
     BUILD_DATE="$(date -u +%Y%m%d-%H:%M:%S)"; \
     GO_VERSION="$(go version | awk '{print $3}')"; \
     PKG="github.com/prometheus/common/version"; \
     LDFLAGS="-s -w \
-      -X ${PKG}.Version=${IPMI_EXPORTER_VERSION#v} \
+      -X ${PKG}.Version=${VERSION#v} \
       -X ${PKG}.Revision=${REV} \
       -X ${PKG}.Branch=HEAD \
       -X ${PKG}.BuildUser=forge@github-actions \
@@ -107,14 +122,15 @@ FROM scratch AS runtime
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
-ARG IPMI_EXPORTER_VERSION
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.description="Minimal Prometheus IPMI Exporter FROM scratch (freeipmi-tools inlined, no shell; built from Go source + Debian freeipmi overlay). Runs as root for /dev/ipmi0 access."
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
-LABEL org.opencontainers.image.version="${IPMI_EXPORTER_VERSION}"
+# FG-050: no image.version label — IPMI_EXPORTER_VERSION resolves at build time.
+# Resolved upstream version is baked into the exporter binary (visible via
+# `--version` and the `ipmi_exporter_build_info` metric).
 
 # Baseline first, overlay freeipmi tools, overlay Go exporter binary.
 # hadolint ignore=DL3067

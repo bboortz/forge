@@ -1,6 +1,7 @@
-# Per FG-004: repo = dir name, tag = version. Publishes 4-tag family:
-# :1.10, :1.10-amd64, :latest, :latest-amd64.
-tag: "1.10"
+# Per FG-004: repo = dir name, tag = version. FG-050: tracks upstream's
+# latest GitHub release via the build.ref-latest-release CAP (daily cron
+# re-resolves). Publishes 2-tag family: :latest, :latest-amd64.
+tag: "latest"
 platforms:
   - linux/amd64
 # FG-005: derives from scratch-base-trixie via COPY --from=.

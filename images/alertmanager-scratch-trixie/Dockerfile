@@ -20,7 +20,12 @@ ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # Pin exact upstream release — matches Debian trixie's
-# prometheus-alertmanager 0.28.x wire-level contract.
+# prometheus-alertmanager 0.28.x wire-level contract. FG-050 attempted
+# v0.28.1 → v0.35.0 but hit a build blocker: upstream v0.32.0+ no longer
+# ships compiled UI assets in-tree (ui/web.go `//go:embed app/dist/*`),
+# requiring a Node.js UI build pipeline. Blocked on FG-048's
+# forge-builder-node-trixie extraction (prometheus hits the same wall).
+# See IDEAS.md "alertmanager v0.32+ bump" entry.
 ARG ALERTMANAGER_VERSION=v0.28.1
 
 # --- Stage 0: baseline reference ---------------------------------------------

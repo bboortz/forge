@@ -22,8 +22,10 @@ ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/debian-slim-trixie:latest
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK (no curl/wget in slim runtime).
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-# Pin exact upstream release. Daily cron auto-rebuilds against this ref.
-ARG CADVISOR_VERSION=v0.60.6
+# FG-050: track upstream's latest GitHub release. Empty default → build-time
+# resolves via GitHub API (build.ref-latest-release CAP). Override for
+# reproducible local builds via --build-arg CADVISOR_VERSION=v0.60.6.
+ARG CADVISOR_VERSION=
 
 # --- Stage 0: hc source ------------------------------------------------------
 FROM ${HC_REF} AS hc
@@ -34,10 +36,23 @@ FROM ${FORGE_BUILDER_GO_REF} AS builder
 ARG CADVISOR_VERSION
 
 WORKDIR /src
+# FG-050: the resolve step pipes curl into jq; needs pipefail set before
+# the RUN (hadolint DL4006). SHELL directive persists through the rest
+# of this stage's subsequent RUNs.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# FG-050: resolve CADVISOR_VERSION if empty (track upstream latest release).
 # Shallow clone: we only need the tagged commit, not the full history.
 # hadolint ignore=DL3003
 RUN set -eux; \
-    git clone --depth 1 --branch "${CADVISOR_VERSION}" \
+    TARGET_REF="${CADVISOR_VERSION}"; \
+    if [ -z "${TARGET_REF}" ]; then \
+      TARGET_REF="$(curl -fsSL \
+        https://api.github.com/repos/google/cadvisor/releases/latest \
+        | jq -r '.tag_name // empty')"; \
+      [ -n "${TARGET_REF}" ] || { echo "could not resolve latest cadvisor release" >&2; exit 1; }; \
+    fi; \
+    echo "${TARGET_REF}" > /tmp/resolved-version; \
+    git clone --depth 1 --branch "${TARGET_REF}" \
       https://github.com/google/cadvisor.git .; \
     GIT_REVISION="$(git rev-parse --short HEAD)"; \
     echo "${GIT_REVISION}" > /tmp/git-revision
@@ -48,14 +63,15 @@ RUN set -eux; \
 # netgo tag: pure-Go DNS resolver (upstream's convention).
 # pipefail is set via SHELL so DL4006's pipe-in-RUN rule is satisfied; the
 # cd-in-RUN (DL3003) is intentional — cmd/ is a nested Go module.
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# FG-050: SHELL directive set above the resolve step still in effect here.
 # hadolint ignore=DL3003
 RUN set -eux; \
+    VERSION="$(cat /tmp/resolved-version)"; \
     REVISION="$(cat /tmp/git-revision)"; \
     BUILD_DATE="$(date -u +%Y%m%d-%H:%M:%S)"; \
     GO_VERSION="$(go version | sed -e 's/^[^0-9.]*\([0-9.]*\).*/\1/')"; \
     LDFLAGS="-s -w \
-      -X github.com/google/cadvisor/lib/version.Version=${CADVISOR_VERSION} \
+      -X github.com/google/cadvisor/lib/version.Version=${VERSION} \
       -X github.com/google/cadvisor/lib/version.Revision=${REVISION} \
       -X github.com/google/cadvisor/lib/version.Branch=HEAD \
       -X github.com/google/cadvisor/lib/version.BuildUser=forge@github-actions \
@@ -78,14 +94,15 @@ FROM ${DEBIAN_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
-ARG CADVISOR_VERSION
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.description="Minimal, continuously patched Google cAdvisor built from source (slim-trixie runtime; shell + apt kept)"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
-LABEL org.opencontainers.image.version="${CADVISOR_VERSION}"
+# FG-050: no image.version label — CADVISOR_VERSION resolves at build time.
+# Resolved upstream version is baked into the cadvisor binary (visible via
+# `cadvisor --version` and the `cadvisor_version_info` metric).
 
 COPY sid-pins/ /etc/apt/preferences.d/
 

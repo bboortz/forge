@@ -1,5 +1,8 @@
 # Per FG-004: repo = dir name, tag = version. Publishes 4-tag family:
 # :0.28, :0.28-amd64, :latest, :latest-amd64.
+# FG-050 attempted bump to v0.35 but hit upstream UI-pipeline blocker
+# (v0.32.0+ no longer ships pre-built UI assets in-tree). Bump deferred
+# until FG-048's forge-builder-node-trixie lands.
 tag: "0.28"
 platforms:
   - linux/amd64

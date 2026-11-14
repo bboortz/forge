@@ -1,9 +1,10 @@
-# Per FG-004: repo = dir name, tag = version. Publishes 4-tag family:
-# :0.60.6, :0.60.6-amd64, :latest, :latest-amd64.
+# Per FG-004: repo = dir name, tag = version. FG-050: tracks upstream's
+# latest GitHub release via the build.ref-latest-release CAP (daily cron
+# re-resolves). Publishes 2-tag family: :latest, :latest-amd64.
 #
 # Slim variant — NO `depends_on` (doesn't derive from scratch-base-trixie).
 # Built from Go source (cadvisor isn't in Debian trixie; Option A in
 # FG-044's investigation).
-tag: "0.60.6"
+tag: "latest"
 platforms:
   - linux/amd64

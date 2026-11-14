@@ -5,11 +5,11 @@
 
 spec_version: 1
 image: node-exporter-scratch-trixie
-version: "0.1"
+version: "0.2"
 
 promises:
   - id: runtime.node-exporter-binary
-    description: /usr/bin/prometheus-node-exporter is present, executes, and `--version` prints `node_exporter, version 1.9.0`.
+    description: /usr/bin/prometheus-node-exporter is present, executes, and `--version` prints `node_exporter, version 1.12.1`.
     caps: [build.two-stage-scratch]
     tests:
       - images/node-exporter-scratch-trixie/tests/smoke_binary_runs.sh

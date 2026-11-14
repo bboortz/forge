@@ -1,6 +1,8 @@
 {
   "version": 1,
-  "critical_cves": [],
-  "generated_at": "2026-11-10T05:12:55Z",
-  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=images/node-exporter-scratch-trixie"
+  "critical_cves": [
+    "GO-2026-6612"
+  ],
+  "generated_at": "2026-11-14T08:55:12Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
 }
