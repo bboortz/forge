@@ -1,9 +1,10 @@
 ---
 id: FG-051
 slug: ubuntu-base-and-github-runner
-status: ready
+status: shipped
 owner: bboortz
 created: 2026-11-14
+shipped: 2026-11-14
 ---
 
 # FG-051 — First Ubuntu base (`ubuntu-slim-noble`) + `github-runner-noble` pre-baked CI image
