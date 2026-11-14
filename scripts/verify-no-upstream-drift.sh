@@ -32,24 +32,28 @@ cd "$(git rev-parse --show-toplevel)"
 _UPSTREAM_ANCHORS=(
   'debian:trixie-slim'
   'python:3\.14-slim-trixie'
+  'ubuntu:24\.04'
 )
 # How many Dockerfiles SHOULD FROM each anchor (= how many pre-builders
 # each anchor should feed into).
-_EXPECTED=2
+_EXPECTED=3
 
-hits=$(grep -lE "^FROM (${_UPSTREAM_ANCHORS[0]}|${_UPSTREAM_ANCHORS[1]})" images/*/Dockerfile 2>/dev/null | wc -l)
+# Build a single alternation for grep (|-separated).
+_ANCHOR_RE="$(IFS='|'; echo "${_UPSTREAM_ANCHORS[*]}")"
+
+hits=$(grep -lE "^FROM (${_ANCHOR_RE})" images/*/Dockerfile 2>/dev/null | wc -l)
 
 if [[ "${hits}" -ne "${_EXPECTED}" ]]; then
   printf '✗ verify-no-upstream-drift: expected %d Dockerfiles FROMing ' "${_EXPECTED}" >&2
   printf 'the upstream Docker Hub anchors, got %d:\n' "${hits}" >&2
   echo >&2
-  grep -lE "^FROM (${_UPSTREAM_ANCHORS[0]}|${_UPSTREAM_ANCHORS[1]})" images/*/Dockerfile 2>/dev/null \
+  grep -lE "^FROM (${_ANCHOR_RE})" images/*/Dockerfile 2>/dev/null \
     | sed 's/^/  /' >&2
   echo >&2
   echo "FG-042 invariant: upstream Docker Hub anchors must be consumed" >&2
   echo "by exactly one forge pre-builder (debian-slim-trixie," >&2
-  echo "python-slim-trixie). If you need a new slim image rooted on" >&2
-  echo "debian:trixie-slim or python:3.14-slim-trixie, FROM the forge" >&2
+  echo "python-slim-trixie, ubuntu-slim-noble). If you need a new slim" >&2
+  echo "image rooted on any of those upstreams, FROM the forge" >&2
   echo "pre-builder instead of the upstream Docker Hub tag." >&2
   exit 1
 fi

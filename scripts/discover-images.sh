@@ -18,11 +18,13 @@ set -euo pipefail
 
 MODE="${1:-all}"
 
-# FG-042: pre-builders — forge-rooted slim bases consumed by multiple
-# downstream slim images. Must publish BEFORE forge-builder-trixie
+# FG-042 + FG-051: pre-builders — forge-rooted slim bases consumed by
+# multiple downstream slim images. Must publish BEFORE forge-builder-trixie
 # (which FROMs python-slim-trixie post-FG-042) and BEFORE cadvisor-slim
-# / ipmi-exporter-slim (which FROM debian-slim-trixie).
-_PRE_BUILDERS=(debian-slim-trixie python-slim-trixie)
+# / ipmi-exporter-slim (which FROM debian-slim-trixie). FG-051 adds
+# ubuntu-slim-noble as the first Ubuntu pre-builder (github-runner-noble
+# FROMs it).
+_PRE_BUILDERS=(debian-slim-trixie python-slim-trixie ubuntu-slim-noble)
 _is_pre_builder() {
   local name="$1"
   for b in "${_PRE_BUILDERS[@]}"; do

@@ -1,0 +1,42 @@
+# FG-010 contract for github-runner-noble (FG-051).
+
+spec_version: 1
+image: github-runner-noble
+version: "0.1"
+
+promises:
+  - id: runtime.gha-runner-binary
+    description: "/home/runner/bin/Runner.Listener is present and `Runner.Listener --version` prints a v2.X.Y version string matching the resolved upstream actions/runner GitHub release at build time."
+    caps: [image.github-runner-noble-pre-baked, build.ref-latest-release]
+    tests:
+      - images/github-runner-noble/tests/smoke_runner_version.sh
+
+  - id: runtime.ci-toolset-full-bake
+    description: "Pre-baked CI toolset: hadolint (v2.15.1+), terraform (1.17.2+), shellcheck, make, jq, unzip, python3, pip, git, curl, dumb-init. Every tool responds to --version (or -V where --version isn't supported)."
+    caps: [image.github-runner-noble-pre-baked]
+    tests:
+      - images/github-runner-noble/tests/smoke_tools_present.sh
+
+  - id: runtime.ansible-collections-preinstalled
+    description: "Ansible is pre-installed via pip + the ansible-requirements.yml collections (ansible.posix + community.general) are pre-installed via ansible-galaxy. `ansible --version` + `ansible-galaxy collection list` both succeed and the collections appear."
+    caps: [image.github-runner-noble-pre-baked]
+    tests:
+      - images/github-runner-noble/tests/smoke_ansible_collections.sh
+
+  - id: runtime.entrypoint-registers-first-start
+    description: "ENTRYPOINT /entrypoint.sh reads GITHUB_ORG / GITHUB_RUNNER_PAT / RUNNER_NAME / RUNNER_LABELS env, performs first-start registration against the GitHub org via config.sh --unattended, then execs run.sh. If /home/runner/.runner already exists, skips registration and goes directly to run.sh. If GITHUB_ORG is unset, exits nonzero with a clear error message (does NOT hang)."
+    caps: [image.github-runner-noble-pre-baked]
+    tests:
+      - images/github-runner-noble/tests/smoke_entrypoint_env_validation.sh
+
+  - id: presence.shell
+    description: /bin/bash + /bin/sh are present (slim contract — CI jobs assume shell is available).
+    caps: [image.has-shell]
+    tests:
+      - images/github-runner-noble/tests/smoke_tools_present.sh
+
+  - id: scan.nonzero-accepted
+    description: "Image carries a full apt + pip + ansible-galaxy package graph. grype will report Ubuntu + PyPI + Node (none in this image) ecosystem matches. Scan-baseline.json records the accepted set; PR scan-regression gate (FG-019) fails on new CRITICALs beyond the baseline."
+    caps: [scan.regression-gate]
+    tests:
+      - images/github-runner-noble/tests/smoke_runner_version.sh

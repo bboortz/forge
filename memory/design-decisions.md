@@ -6,6 +6,18 @@ Forge targets workloads that need glibc compatibility: existing `.so` assumption
 
 Consequence: our scanner coverage is NVD + Debian Security Tracker. Not Wolfi advisories, not Alpine SecDB.
 
+### Exception — Ubuntu (FG-051, 2026-11-14)
+
+Debian trixie remains the default. Ubuntu is accepted **case-by-case** for specific images with Ubuntu-specific library requirements that trixie doesn't satisfy. First precedent:
+
+- **`ubuntu-slim-noble` (24.04 "noble", LTS until April 2029)** — Forge pre-builder FROMing `ubuntu:24.04`. Rationale: the GitHub Actions self-hosted runner (`actions/runner`) embeds a .NET 6 runtime whose `installdependencies.sh` only tries `libicu70-72`. Debian trixie ships `libicu76`; Ubuntu 24.04 ships `libicu74`. Picking Ubuntu for the runner image is the lowest-friction path vs patching upstream's installer or chasing a sid pin that would still rename on each libicu bump.
+
+**Policy for future Ubuntu additions**:
+- Default is still Debian trixie. Ubuntu is reached for only when a specific library or runtime pin makes it necessary, with the story documenting the reason.
+- Ubuntu scanner coverage is NVD + Ubuntu CVE tracker (grype's `ubuntu` matcher). Our scan-regression gate already handles both ecosystems.
+- Ubuntu images follow the same chain-depth + single-upstream-consumer invariants (FG-042): a single Forge pre-builder per family (`ubuntu-slim-noble`), downstream Ubuntu-needing images FROM the pre-builder, not `ubuntu:24.04` directly. Enforced by `scripts/verify-no-upstream-drift.sh`.
+- One LTS release at a time. When Ubuntu 26.04 LTS ships (April 2026 cycle — tracked via a future story), we rev the pre-builder; no overlap window unless a consumer explicitly needs it.
+
 ## sid pinning — faster than waiting for backports
 
 When a CVE fix lands in Debian `sid` but has not yet been backported to `trixie`, Forge pulls that specific package from `sid` while the rest of the image stays on `trixie`. Mechanism: `/etc/apt/preferences.d/` pin files committed in `images/<name>/sid-pins/`, enabled during the builder stage.

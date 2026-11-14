@@ -1,0 +1,11 @@
+# FG-051: vendored copy of bb-claw/homelab's ansible/requirements.yml.
+# Sync strategy: chore PR when homelab's drifts. See FG-051 story
+# § dep-sync strategy.
+#
+# Snapshot date: 2026-11-14.
+---
+collections:
+  - name: ansible.posix
+    version: ">=2.1.0"
+  - name: community.general
+    version: ">=9.0.0"
