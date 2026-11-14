@@ -31,6 +31,13 @@ ARG CADVISOR_VERSION=
 # unauthenticated — hits HTTP 403 on shared GHA runner IPs during
 # matrix publish). Local builds leave empty and fall through to
 # unauthenticated. Fix for 2026-11-14 run 43613702946 flake.
+#
+# hadolint DL3064 flags ARG names that look like secrets. Suppressed:
+# the token is ephemeral (not persisted in image layers; ARG values
+# don't carry past the RUN that consumes them unless referenced in
+# ENV, which this isn't) and the forge-local fallback path can't use
+# `--mount=type=secret` because it doesn't go through buildx.
+# hadolint ignore=DL3064
 ARG GITHUB_TOKEN=
 
 # --- Stage 0: hc source ------------------------------------------------------
@@ -40,6 +47,7 @@ FROM ${HC_REF} AS hc
 FROM ${FORGE_BUILDER_GO_REF} AS builder
 
 ARG CADVISOR_VERSION
+# hadolint ignore=DL3064
 ARG GITHUB_TOKEN
 
 WORKDIR /src

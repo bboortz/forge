@@ -32,7 +32,9 @@ ARG IPMI_EXPORTER_VERSION=
 # Optional GitHub API token. CI passes secrets.GITHUB_TOKEN via
 # --build-arg for the authenticated 5000/hr rate limit (vs 60/hr
 # unauthenticated — hits HTTP 403 on shared GHA runner IPs during
-# matrix publish). Fix for 2026-11-14 run 43613702946 flake.
+# matrix publish). Fix for 2026-11-14 run 43613702946 flake. See
+# cadvisor-slim-trixie's Dockerfile for the DL3064 suppression rationale.
+# hadolint ignore=DL3064
 ARG GITHUB_TOKEN=
 
 # --- Stage 0: hc source ------------------------------------------------------
@@ -42,6 +44,7 @@ FROM ${HC_REF} AS hc
 FROM ${FORGE_BUILDER_GO_REF} AS go-builder
 
 ARG IPMI_EXPORTER_VERSION
+# hadolint ignore=DL3064
 ARG GITHUB_TOKEN
 
 WORKDIR /src
