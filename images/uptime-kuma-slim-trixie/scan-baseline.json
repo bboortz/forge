@@ -2,8 +2,10 @@
   "version": 1,
   "critical_cves": [
     "GHSA-23hp-3jrh-7fpw",
+    "GHSA-2943-5xfg-gq5f",
+    "GHSA-66mm-25pp-rfff",
     "GHSA-xq3m-2v4x-88gg"
   ],
-  "generated_at": "2026-11-09T22:26:34Z",
-  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=images/uptime-kuma-slim-trixie"
+  "generated_at": "2026-11-14T11:37:28Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
 }

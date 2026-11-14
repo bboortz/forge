@@ -13,11 +13,15 @@
 # Shell + apt KEPT at runtime (slim contract — see image.has-shell CAP).
 # Runs as nonroot uid 1000 (upstream's `node` user convention).
 
-ARG NODE_BASE=node:22-trixie-slim
+# FG-048: builder stage FROMs forge-builder-node-trixie (shared Node 24
+# LTS + corepack + apt-upgraded + syft + git/curl/jq + native-dep toolchain).
+# Runtime stage bumps to node:24-trixie-slim upstream for version-alignment
+# with the builder (vite SPA output is Node-version-agnostic; Node 24
+# runtime matches the active LTS until April 2028).
+ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
+ARG NODE_BASE=node:24-trixie-slim
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-# syft binary via Docker Hub (same precedent as forge-builder-trixie).
-ARG SYFT_SRC=docker.io/anchore/syft:latest
 # Track upstream's latest GitHub release. Empty default → build-time
 # resolves via GitHub API (FG-013 pattern). Pin to an exact tag by passing
 # --build-arg UPTIME_KUMA_VERSION=2.5.9 for reproducible local builds.
@@ -26,27 +30,13 @@ ARG UPTIME_KUMA_VERSION=
 # --- Stage 0: hc source ------------------------------------------------------
 FROM ${HC_REF} AS hc
 
-# --- Stage 1: syft source ----------------------------------------------------
-FROM ${SYFT_SRC} AS syft-src
-
-# --- Stage 2: Node builder (npm ci + emit SBOM) -----------------------------
-FROM ${NODE_BASE} AS builder
+# --- Stage 1: Node builder (npm ci + emit SBOM) -----------------------------
+# FG-048: shared forge-signed Node 24 builder base. git/curl/jq/make/g++/
+# python3/dumb-init/syft all pre-baked, apt-upgraded. No per-image apt-install
+# needed here — we only clone + npm ci + npm run build + syft emit.
+FROM ${FORGE_BUILDER_NODE_REF} AS builder
 
 ARG UPTIME_KUMA_VERSION
-
-# git + curl + jq for clone + release resolution. make/g++/python3 are
-# safety-net for native-dep rebuilds (@louislam/sqlite3 ships prebuilt
-# binaries for amd64 so no compile needed in practice, but keep them so
-# a future dep switch doesn't fail silently).
-# hadolint ignore=DL3008
-RUN set -eux; \
-    apt-get update; \
-    apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install \
-      git curl jq ca-certificates make g++ python3 dumb-init; \
-    rm -rf /var/lib/apt/lists/*
-
-COPY --from=syft-src /syft /usr/local/bin/syft
 
 WORKDIR /src
 # Resolve the target tag: use UPTIME_KUMA_VERSION if provided, else fetch

@@ -12,13 +12,15 @@ permissions:
 
 jobs:
 
-  # FG-025 + FG-042 + FG-046: four-tier publish.
+  # FG-025 + FG-042 + FG-046 + FG-048: four-tier publish.
   # 1. pre-builders (debian-slim-trixie + python-slim-trixie) — forge-rooted
   #    slim bases that forge-builder-trixie + cadvisor-slim + ipmi-exporter-slim
   #    FROM. Publish first so downstream has a resolvable forge-signed FROM.
-  # 2. builders (forge-builder-trixie + forge-builder-go-trixie) — shared
-  #    builder-stage images. forge-builder-trixie now FROMs python-slim-trixie
-  #    (dogfood), so it needs pre-builders completed first.
+  # 2. builders (forge-builder-trixie + forge-builder-go-trixie +
+  #    forge-builder-node-trixie) — shared builder-stage images.
+  #    forge-builder-trixie FROMs python-slim-trixie (dogfood) so needs
+  #    pre-builders first. forge-builder-node-trixie FROMs node:24-trixie-slim
+  #    upstream (dedicated-toolchain exemption, same as forge-builder-go-trixie).
   # 3. base (scratch-base-trixie, remaining slim variants, externally-sourced
   #    leaf images) — publish in parallel.
   # 4. derivatives (scratch image variants, beaconry hub/scout) — FROM bases.

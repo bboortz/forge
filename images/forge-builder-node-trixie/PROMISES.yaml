@@ -1,0 +1,59 @@
+# FG-010 contract for forge-builder-node-trixie (FG-048).
+#
+# Not a runtime image — this is a builder-stage base for from-Node-source
+# derivatives. Every `FROM ${FORGE_BUILDER_NODE_REF} AS builder` relies on
+# these guarantees.
+
+spec_version: 1
+image: forge-builder-node-trixie
+version: "0.1"
+
+promises:
+  - id: files.node-toolchain
+    description: /usr/local/bin/node is present, `node --version` reports v24.x (Node 24 LTS). Downstream builders invoke `node`, `npm`, `pnpm`, or `yarn` without installing the runtime.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_node_version.sh
+
+  - id: files.corepack-enabled
+    description: corepack is enabled; /usr/local/bin/pnpm + /usr/local/bin/yarn shims exist. Downstream consumers can use any of npm / pnpm / yarn based on their package.json `packageManager` field without extra setup.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_corepack_wraps.sh
+
+  - id: files.syft-binary
+    description: /usr/local/bin/syft exists and runs (`syft version` exits 0). Downstream builders invoke `syft dir:/src/ ...` for SBOM emission.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_syft_available.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt is present. Downstream curl / git / npm registry fetch work without re-apt-installing.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_corepack_wraps.sh
+
+  - id: files.release-resolve-tools
+    description: git, curl, jq are all present — enables the FG-013 "resolve upstream latest release tag at build time" pattern that uptime-kuma already uses.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_corepack_wraps.sh
+
+  - id: files.native-dep-toolchain
+    description: make + g++ + python3 are present as a safety-net for native Node module rebuilds (@louislam/sqlite3, node-gyp, etc.). Native deps with amd64 prebuilds skip this path; the fallback compile route works if prebuilds are missing.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_corepack_wraps.sh
+
+  - id: apt.freshly-upgraded
+    description: Image was built with `apt-get upgrade` applied. Any trixie / trixie-security package update released before the image's BUILD_TIMESTAMP is included.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_corepack_wraps.sh
+
+  - id: apt.no-cache
+    description: /var/lib/apt/lists/ carries no Packages/Release/InRelease files. Downstream builders that `apt-get install` MUST re-run `apt-get update` first.
+    caps: [build.shared-node-builder]
+    tests:
+      - images/forge-builder-node-trixie/tests/smoke_corepack_wraps.sh
+    inverse: true
