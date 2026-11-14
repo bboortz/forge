@@ -1,0 +1,14 @@
+# FG-051: Pre-baked GitHub Actions self-hosted runner image.
+#
+# Consumer-facing CI tool. Replaces homelab's local build-at-deploy
+# flow (docker/github-runner/Dockerfile FROM ubuntu:24.04 + full stack).
+# Homelab (and future consumers) pull this image directly.
+#
+# FG-050 build.ref-latest-release pattern: the actions/runner binary
+# version resolves at build time via GitHub API. Daily cron re-resolves
+# so operators get fresh runner versions within 24h of upstream release.
+#
+# tag: "latest" + :latest-amd64 — 2-tag family (floating).
+tag: "latest"
+platforms:
+  - linux/amd64

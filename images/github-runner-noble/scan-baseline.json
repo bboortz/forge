@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "critical_cves": [
+    "CVE-2026-111497",
+    "GHSA-23hp-3jrh-7fpw",
+    "GHSA-ffc3-869f-jxw9"
+  ],
+  "generated_at": "2026-11-14T17:52:38Z",
+  "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
+}

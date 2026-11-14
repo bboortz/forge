@@ -12,10 +12,11 @@ permissions:
 
 jobs:
 
-  # FG-025 + FG-042 + FG-046 + FG-048: four-tier publish.
-  # 1. pre-builders (debian-slim-trixie + python-slim-trixie) — forge-rooted
-  #    slim bases that forge-builder-trixie + cadvisor-slim + ipmi-exporter-slim
-  #    FROM. Publish first so downstream has a resolvable forge-signed FROM.
+  # FG-025 + FG-042 + FG-046 + FG-048 + FG-051: four-tier publish.
+  # 1. pre-builders (debian-slim-trixie + python-slim-trixie + ubuntu-slim-noble)
+  #    — forge-rooted slim bases that forge-builder-trixie + cadvisor-slim +
+  #    ipmi-exporter-slim + github-runner-noble FROM. Publish first so
+  #    downstream has a resolvable forge-signed FROM.
   # 2. builders (forge-builder-trixie + forge-builder-go-trixie +
   #    forge-builder-node-trixie) — shared builder-stage images.
   #    forge-builder-trixie FROMs python-slim-trixie (dogfood) so needs
@@ -45,9 +46,11 @@ jobs:
             echo "derivatives=$(bash scripts/discover-images.sh derivatives | jq -c .)"
           } >> "$GITHUB_OUTPUT"
 
-  # FG-042: pre-builders tier — forge-rooted slim bases (debian-slim-trixie,
-  # python-slim-trixie). Must publish BEFORE publish-builders because
-  # forge-builder-trixie now FROMs python-slim-trixie (dogfood).
+  # FG-042 + FG-051: pre-builders tier — forge-rooted slim bases
+  # (debian-slim-trixie, python-slim-trixie, ubuntu-slim-noble). Must publish
+  # BEFORE publish-builders because forge-builder-trixie now FROMs
+  # python-slim-trixie (dogfood) and derivatives FROM the Debian + Ubuntu
+  # pre-builders.
   publish-pre-builders:
     name: Publish ${{ matrix.image_dir }}
     needs: discover

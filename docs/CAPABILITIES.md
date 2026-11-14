@@ -271,8 +271,8 @@ Documented exception to the scratch-image-runs-nonroot default (every other scra
 
 Positive-form contract that a Forge image **keeps** a shell at runtime (counterpart to `image.no-shell`). Applies to `-slim` variants: `python-slim-trixie`, `postgres-slim-trixie`, `ipmi-exporter-slim-trixie`, `cadvisor-slim-trixie`, `uptime-kuma-slim-trixie`. Guarantees `/bin/sh` + `apt` + coreutils are present for operator ergonomics (`docker exec -it <container> sh`, interactive debugging, in-container package management). The attack-surface trade-off is explicit — slim images accept nonzero CVE counts in their `scan-baseline.json`.
 
-- **Delivered by**: FG-001 (python-slim-trixie first established the pattern); FG-026 extended to postgres-slim-trixie; FG-037 extends to ipmi-exporter-slim-trixie; FG-044 extends to cadvisor-slim-trixie; FG-045 extends to uptime-kuma-slim-trixie
-- **Covered by**: `images/python-slim-trixie/tests/smoke_entrypoint.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh`, `images/cadvisor-slim-trixie/tests/smoke_has_shell.sh`, `images/uptime-kuma-slim-trixie/tests/smoke_has_shell.sh`
+- **Delivered by**: FG-001 (python-slim-trixie first established the pattern); FG-026 extended to postgres-slim-trixie; FG-037 extends to ipmi-exporter-slim-trixie; FG-044 extends to cadvisor-slim-trixie; FG-045 extends to uptime-kuma-slim-trixie; FG-051 extends to ubuntu-slim-noble + github-runner-noble
+- **Covered by**: `images/python-slim-trixie/tests/smoke_entrypoint.sh`, `images/postgres-slim-trixie/tests/smoke_entrypoint_shell.sh`, `images/ipmi-exporter-slim-trixie/tests/smoke_has_shell.sh`, `images/cadvisor-slim-trixie/tests/smoke_has_shell.sh`, `images/uptime-kuma-slim-trixie/tests/smoke_has_shell.sh`, `images/ubuntu-slim-noble/tests/smoke_ca_bundle.sh`, `images/github-runner-noble/tests/smoke_tools_present.sh`
 
 ### image.redis-serves-cache
 
@@ -477,17 +477,19 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 
 ### build.pre-builder-tier
 
-Four-tier daily-cron publish ordering (FG-042 raised from three): `publish-pre-builders` → `publish-builders` → `publish-base` → `publish-derivatives`. Each tier gated on the previous completing via `needs:`. The new pre-builders tier publishes forge-rooted slim bases (`debian-slim-trixie`, `python-slim-trixie`) before anything FROMs them. Collapses multi-consumer Docker Hub trust anchors to one forge image per family + makes version bumps atomic (bump a pre-builder, every downstream consumer inherits on next cron).
+Four-tier daily-cron publish ordering (FG-042 raised from three): `publish-pre-builders` → `publish-builders` → `publish-base` → `publish-derivatives`. Each tier gated on the previous completing via `needs:`. The new pre-builders tier publishes forge-rooted slim bases (`debian-slim-trixie`, `python-slim-trixie`, `ubuntu-slim-noble`) before anything FROMs them. Collapses multi-consumer Docker Hub trust anchors to one forge image per family + makes version bumps atomic (bump a pre-builder, every downstream consumer inherits on next cron).
 
 - **Delivered by**: FG-042
-- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `scripts/discover-images.sh` (pre-builders mode)
+- **Extended by**: FG-051 (ubuntu-slim-noble added as Forge's first Ubuntu pre-builder)
+- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `scripts/discover-images.sh` (pre-builders mode)
 
 ### image.forge-rooted-slim-bases
 
-Forge owns the Debian + Python slim bases consumed by every other slim / scratch builder image. `debian-slim-trixie` (NEW — FG-042) is FROMed by `cadvisor-slim-trixie` + `ipmi-exporter-slim-trixie`. `python-slim-trixie` (existing — FG-001, reclassified as pre-builder in FG-042) is FROMed by `forge-builder-trixie` (dogfood). Each upstream Docker Hub anchor (`debian:trixie-slim`, `python:3.14-slim-trixie`) is now consumed exactly once per daily cron — by the forge pre-builder — instead of in parallel by multiple downstream images. Version drift between consumers of the same family is structurally impossible: one bump propagates atomically.
+Forge owns the Debian + Python + Ubuntu slim bases consumed by every other slim / scratch builder image. `debian-slim-trixie` (NEW — FG-042) is FROMed by `cadvisor-slim-trixie` + `ipmi-exporter-slim-trixie`. `python-slim-trixie` (existing — FG-001, reclassified as pre-builder in FG-042) is FROMed by `forge-builder-trixie` (dogfood). `ubuntu-slim-noble` (NEW — FG-051) is FROMed by `github-runner-noble`. Each upstream Docker Hub anchor (`debian:trixie-slim`, `python:3.14-slim-trixie`, `ubuntu:24.04`) is now consumed exactly once per daily cron — by the forge pre-builder — instead of in parallel by multiple downstream images. Version drift between consumers of the same family is structurally impossible: one bump propagates atomically.
 
 - **Delivered by**: FG-042
-- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `images/debian-slim-trixie/tests/smoke_*.sh`
+- **Extended by**: FG-051 (ubuntu-slim-noble added; `scripts/verify-no-upstream-drift.sh` _EXPECTED raised 2 → 3)
+- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `images/debian-slim-trixie/tests/smoke_*.sh`, `images/ubuntu-slim-noble/tests/smoke_*.sh`
 
 ### build.shared-go-builder
 
@@ -530,7 +532,8 @@ The acceptance test suite runs as a GitHub Actions matrix (one job per `tests/ac
 Build-time pattern for Forge images that track an upstream project's latest GitHub Release tag. Dockerfile declares an empty-default version ARG (e.g. `ARG CADVISOR_VERSION=`); the Dockerfile's builder stage resolves the current release tag via `GET https://api.github.com/repos/<upstream>/releases/latest` + `jq -r .tag_name`, writes it to `/tmp/resolved-version`, and the subsequent build step consumes it. The resolved sha + tag get baked into `org.opencontainers.image.revision` + the SBOM. `image.yaml` carries `tag: "latest"` instead of a numeric major.minor; the 4-tag publish family collapses to `:latest` + `:latest-amd64`. Daily cron re-resolves, so the fleet auto-tracks upstream. Applied only to upstreams with stable release discipline + no config-contract churn between minor versions. Precedent: FG-045 uptime-kuma-slim-trixie first shipped this shape inline as a step of `build.from-node-source`; FG-050 formalizes it as a reusable CAP + extends it to cadvisor-slim-trixie + ipmi-exporter-scratch/slim-trixie.
 
 - **Delivered by**: FG-050 (formalized); FG-045 (first consumer, inline)
-- **Covered by**: `tests/acceptance/test_FG_050_freshen-upstream-pins.sh`, `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`
+- **Extended by**: FG-051 (github-runner-noble resolves `actions/runner` latest release tag)
+- **Covered by**: `tests/acceptance/test_FG_050_freshen-upstream-pins.sh`, `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`
 
 ### build.shared-node-builder
 
@@ -545,3 +548,17 @@ Dual-builder pattern for from-source Go projects whose binary embeds a JavaScrip
 
 - **Delivered by**: FG-048
 - **Covered by**: `tests/acceptance/test_FG_048b_prometheus-from-source.sh`
+
+### build.ubuntu-base-noble
+
+Forge's first Ubuntu-base slim image. `ubuntu-slim-noble` is a pre-builder FROM `ubuntu:24.04` (LTS until April 2029) + `apt-get upgrade` + `ca-certificates` + `libicu74` pre-installed. Ubuntu picked over trixie strictly for the GitHub Actions runner's .NET 6 runtime that requires libicu74 (upstream `installdependencies.sh` only tries libicu70-72, which Debian trixie ships but which apt reports as unsatisfiable for the runner; Ubuntu 24.04 ships libicu74 natively). Composes into the existing publish-pre-builders CI tier alongside `debian-slim-trixie` + `python-slim-trixie`. Ubuntu is a **documented-exception** base family for images with Ubuntu-specific library requirements — the default base family remains Debian trixie (see `memory/design-decisions.md`).
+
+- **Delivered by**: FG-051
+- **Covered by**: `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `images/ubuntu-slim-noble/tests/smoke_*.sh`
+
+### image.github-runner-noble-pre-baked
+
+`github-runner-noble` is a consumer-facing pre-baked GitHub Actions self-hosted runner image. FROMs `ubuntu-slim-noble` + bakes the full homelab-compatible CI toolset (hadolint, terraform, shellcheck, make, jq, unzip, python3, pip, git, curl, dumb-init, ansible + vendored `requirements-dev.txt` + `ansible-requirements.yml` collections) + the upstream `actions/runner` binary (resolved via FG-050 `build.ref-latest-release` CAP). `ENTRYPOINT /entrypoint.sh` matches the homelab-current entrypoint behavior: first-start registers via GitHub API; subsequent starts skip to `run.sh`. Replaces homelab's local `build: .` + Dockerfile — homelab consumes `ghcr.io/bboortz/github-runner-noble:latest` directly. Deployment time cut from "build + push on each deploy" to "pull".
+
+- **Delivered by**: FG-051
+- **Covered by**: `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `images/github-runner-noble/tests/smoke_*.sh`

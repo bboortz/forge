@@ -1,0 +1,53 @@
+# FG-010 contract for ubuntu-slim-noble (FG-051).
+#
+# Forge's first Ubuntu-base image. Pre-builder — downstream Ubuntu-
+# needing Forge images FROM this instead of ubuntu:24.04 upstream
+# directly.
+
+spec_version: 1
+image: ubuntu-slim-noble
+version: "0.1"
+
+promises:
+  - id: files.ubuntu-noble
+    description: "/etc/os-release reports NAME=Ubuntu + UBUNTU_CODENAME=noble + VERSION_ID=24.04. Downstream consumers that pin to Ubuntu codename-specific library names (libicu74, specific libstdc++ versions) can rely on this."
+    caps: [build.ubuntu-base-noble]
+    tests:
+      - images/ubuntu-slim-noble/tests/smoke_os_release.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt is present. Downstream curl / git / pip registry fetch works without re-apt-installing.
+    caps: [build.ubuntu-base-noble]
+    tests:
+      - images/ubuntu-slim-noble/tests/smoke_ca_bundle.sh
+
+  - id: files.libicu74
+    description: libicu74 package is apt-installed. Required by the GitHub Actions runner's .NET 6 runtime (upstream installdependencies.sh only tries libicu70-72 and fails to find anything on Ubuntu 24.04); pre-baking in the base means each downstream Ubuntu consumer doesn't re-apt-install it.
+    caps: [build.ubuntu-base-noble]
+    tests:
+      - images/ubuntu-slim-noble/tests/smoke_libicu74_installed.sh
+
+  - id: apt.freshly-upgraded
+    description: Image was built with `apt-get upgrade` applied. Any ubuntu-security backport released before the image's BUILD_TIMESTAMP is included.
+    caps: [build.ubuntu-base-noble]
+    tests:
+      - images/ubuntu-slim-noble/tests/smoke_libicu74_installed.sh
+
+  - id: apt.no-cache
+    description: /var/lib/apt/lists/ carries no Packages/Release/InRelease files. Downstream Dockerfiles that apt-get install MUST re-run apt-get update first.
+    caps: [build.ubuntu-base-noble]
+    tests:
+      - images/ubuntu-slim-noble/tests/smoke_apt_no_cache.sh
+    inverse: true
+
+  - id: presence.shell
+    description: /bin/sh + /bin/bash are present (slim contract). Downstream builders invoke shell scripts; runtime consumers have `docker exec -it <container> sh` access.
+    caps: [image.has-shell]
+    tests:
+      - images/ubuntu-slim-noble/tests/smoke_ca_bundle.sh
+
+  - id: scan.nonzero-accepted
+    description: Image carries an apt + dpkg database; grype will report Ubuntu-source matches (slim contract, not scratch). Scan-baseline.json records the accepted set; PR scan-regression gate (FG-019) fails on new CRITICALs beyond the baseline.
+    caps: [scan.regression-gate]
+    tests:
+      - images/ubuntu-slim-noble/tests/smoke_libicu74_installed.sh
