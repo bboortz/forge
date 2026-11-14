@@ -531,3 +531,17 @@ Build-time pattern for Forge images that track an upstream project's latest GitH
 
 - **Delivered by**: FG-050 (formalized); FG-045 (first consumer, inline)
 - **Covered by**: `tests/acceptance/test_FG_050_freshen-upstream-pins.sh`, `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`
+
+### build.shared-node-builder
+
+`ghcr.io/bboortz/forge-builder-node-trixie:0.1` is a published builder-base image mirroring FG-046's `forge-builder-go-trixie` shape but for Node builds. `FROM node:24-trixie-slim` + `apt-get upgrade` + CA certificates + syft + git + curl + jq + make/g++/python3 (native-module rebuild safety-net) + dumb-init + `corepack enable` (npm / pnpm / yarn shims resolve on first invocation from the consumer's `packageManager` field). Daily cron rebuilds this first so Node-stdlib + npm/pnpm/yarn security fixes land within 24h via derivative rebuilds. Dedicated-toolchain exemption from the FG-042 single-upstream-consumer rule (same precedent as forge-builder-go-trixie): FROMs `node:24-trixie-slim` directly because Debian trixie's packaged Node is far older than the active LTS line. Consumers: prometheus-scratch-trixie (dual-builder: Node UI + Go binary via -tags builtinassets) and uptime-kuma-slim-trixie (builder stage).
+
+- **Delivered by**: FG-048
+- **Covered by**: `tests/acceptance/test_FG_048a_forge-builder-node-trixie.sh`, `images/forge-builder-node-trixie/tests/smoke_*.sh`
+
+### build.from-node-and-go-source
+
+Dual-builder pattern for from-source Go projects whose binary embeds a JavaScript-compiled UI via `//go:embed`. Dockerfile has three stages: (1) UI builder `FROM forge-builder-node-trixie` runs `npm ci && npm run build` + the project's `compress_assets.sh`-equivalent to generate the embed directives in Go; (2) Go builder `FROM forge-builder-go-trixie` takes the source tree (now with compiled UI + embed.go) and runs `go build -tags builtinassets` to produce a self-contained binary; (3) runtime stage FROMs scratch-base-trixie (or slim-trixie variant) and overlays the single binary + any non-embedded assets (templates, console libraries, text configs). First consumer: prometheus-scratch-trixie (FG-048). Future consumers likely: alertmanager v0.32+ (its `ui/web.go` has the same `//go:embed app/dist/*` shape).
+
+- **Delivered by**: FG-048
+- **Covered by**: `tests/acceptance/test_FG_048b_prometheus-from-source.sh`

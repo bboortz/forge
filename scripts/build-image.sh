@@ -71,6 +71,16 @@ if [[ -d "${_FORGE_BUILDER_GO_DIR}" && -f "${SRC}/Dockerfile" ]] \
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-go-trixie
 fi
 
+# FG-048: forge-builder-node-trixie is the Node analog — builder-stage
+# dep for prometheus-scratch (dual-builder) + uptime-kuma-slim-trixie.
+# Auto-build on demand when the Dockerfile declares FORGE_BUILDER_NODE_REF.
+_FORGE_BUILDER_NODE_DIR="${ROOT}/images/forge-builder-node-trixie"
+if [[ -d "${_FORGE_BUILDER_NODE_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "FORGE_BUILDER_NODE_REF" "${SRC}/Dockerfile"; then
+  echo "→ builder-stage dependency: forge-builder-node-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-node-trixie
+fi
+
 # FG-042: debian-slim-trixie is a runtime-base dependency for cadvisor-slim
 # + ipmi-exporter-slim. Build it on demand when the Dockerfile declares
 # DEBIAN_SLIM_REF.
@@ -151,6 +161,18 @@ if ! docker image inspect "${FORGE_BUILDER_GO_REF}" >/dev/null 2>&1; then
   FORGE_BUILDER_GO_REF="ghcr.io/bboortz/forge-builder-go-trixie:${_BUILDER_GO_TAG}"
 fi
 
+# FG-048: same for FORGE_BUILDER_NODE_REF.
+_BUILDER_NODE_YAML="${ROOT}/images/forge-builder-node-trixie/image.yaml"
+if [[ -f "${_BUILDER_NODE_YAML}" ]]; then
+  _BUILDER_NODE_TAG=$(image_yaml_get "${_BUILDER_NODE_YAML}" tag)
+else
+  _BUILDER_NODE_TAG="latest"
+fi
+FORGE_BUILDER_NODE_REF="${REGISTRY}/forge-builder-node-trixie:${_BUILDER_NODE_TAG}"
+if ! docker image inspect "${FORGE_BUILDER_NODE_REF}" >/dev/null 2>&1; then
+  FORGE_BUILDER_NODE_REF="ghcr.io/bboortz/forge-builder-node-trixie:${_BUILDER_NODE_TAG}"
+fi
+
 # FG-042: DEBIAN_SLIM_REF — forge-rooted Debian slim base for
 # cadvisor-slim + ipmi-exporter-slim runtime stages.
 _DEBIAN_SLIM_YAML="${ROOT}/images/debian-slim-trixie/image.yaml"
@@ -202,6 +224,10 @@ if [[ "${FORGE_BUILDER_REF}" == forge-local/* ]]; then
 fi
 # FG-046: same guard for FORGE_BUILDER_GO_REF.
 if [[ "${FORGE_BUILDER_GO_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-048: same guard for FORGE_BUILDER_NODE_REF.
+if [[ "${FORGE_BUILDER_NODE_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-042: same guards for DEBIAN_SLIM_REF + PYTHON_SLIM_REF.
@@ -289,7 +315,11 @@ fi
 BUILDX_CACHE_FROM="${BUILDX_CACHE_FROM:-}"
 BUILDX_CACHE_TO="${BUILDX_CACHE_TO:-}"
 if [[ -z "${BUILDX_CACHE_FROM}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" ]]; then
-  BUILDX_CACHE_FROM="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache"
+  # FG-048: `ignore-error=true` tolerates first-time publish when the
+  # :buildcache tag doesn't exist yet. Without this, a brand-new image
+  # (e.g. forge-builder-node-trixie:0.1) + its downstream consumers
+  # fail buildx with "not found" before any build starts.
+  BUILDX_CACHE_FROM="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache,ignore-error=true"
 fi
 if [[ -z "${BUILDX_CACHE_TO}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" && "${FORGE_CACHE_PUSH:-0}" == "1" ]]; then
   BUILDX_CACHE_TO="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache,mode=max"
@@ -317,6 +347,12 @@ fi
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_GO_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
    && grep -q "FORGE_BUILDER_GO_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
+# FG-048: same for FORGE_BUILDER_NODE_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_NODE_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "FORGE_BUILDER_NODE_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
 # FG-042: same for DEBIAN_SLIM_REF + PYTHON_SLIM_REF.
@@ -356,6 +392,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
   --build-arg FORGE_BUILDER_REF="${FORGE_BUILDER_REF}" \
   --build-arg FORGE_BUILDER_GO_REF="${FORGE_BUILDER_GO_REF}" \
+  --build-arg FORGE_BUILDER_NODE_REF="${FORGE_BUILDER_NODE_REF}" \
   --build-arg DEBIAN_SLIM_REF="${DEBIAN_SLIM_REF}" \
   --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}" \
   --build-arg HC_REF="${HC_REF}" \

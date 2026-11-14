@@ -3,10 +3,16 @@
 # Covers: FG-039
 # CAPs:   image.prometheus-serves-metrics (EXT)
 #
-# Validates FG-039: prometheus-scratch-trixie:2.53 ships
-# /usr/share/prometheus/web/ — the Debian-build-compile-time path for
-# UI chrome templates. Without it, `GET /` redirects to /classic/graph
-# which 500s with `error reading base template`.
+# Validates FG-039: the React UI at `GET /` renders — i.e. no "error
+# reading base template" regression. Originally (Debian-packaged image)
+# this required shipping /usr/share/prometheus/web/ as a filesystem
+# overlay with `cp -r[L]`. FG-048 replaced that mechanism with
+# upstream's `-tags builtinassets` which embeds the UI into the Go
+# binary via //go:embed; the filesystem overlay is no longer necessary
+# and no longer present. What FG-039 CARES ABOUT — the regression
+# "GET / returns 500 with 'error reading base template'" — is still
+# guarded by smoke_web_ui.sh, which now probes the HTTP surface
+# directly rather than inspecting the filesystem.
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -20,16 +26,21 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 # -----------------------------------------------------------------------------
 say "1. source files encode the FG-039 contract"
 
-grep -qE 'cp -rL? /usr/share/prometheus/web ' images/prometheus-scratch-trixie/Dockerfile \
-  || fail "images/prometheus-scratch-trixie/Dockerfile: missing cp -r[L] /usr/share/prometheus/web overlay step"
-
-grep -q 'runtime.web-ui-serves' images/prometheus-scratch-trixie/PROMISES.yaml \
-  || fail "images/prometheus-scratch-trixie/PROMISES.yaml: missing promise runtime.web-ui-serves"
+# FG-048: the /usr/share/prometheus/web overlay was removed when the
+# Dockerfile switched to from-source with -tags builtinassets (the Go
+# binary now carries the UI). The invariant FG-039 enforces — "the UI
+# renders at GET / without a base-template error" — is covered by
+# smoke_web_ui.sh (HTTP probes) rather than a filesystem assertion.
+# Static check: the Dockerfile must be the dual-builder shape AND
+# build with builtinassets tag (which is what actually ships the UI
+# into the runtime now).
+grep -q "builtinassets" images/prometheus-scratch-trixie/Dockerfile \
+  || fail "images/prometheus-scratch-trixie/Dockerfile: missing -tags builtinassets (FG-048 embeds the UI into the Go binary)"
 
 test -x images/prometheus-scratch-trixie/tests/smoke_web_ui.sh \
   || fail "images/prometheus-scratch-trixie/tests/smoke_web_ui.sh: missing or not executable"
 
-pass "all static invariants in place"
+pass "all static invariants in place (FG-048 shape: -tags builtinassets embeds UI)"
 
 # -----------------------------------------------------------------------------
 # Section 2 — build

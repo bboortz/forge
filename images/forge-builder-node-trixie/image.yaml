@@ -1,0 +1,18 @@
+# FG-048: shared Node builder-base. Sibling of forge-builder-go-trixie
+# (FG-046) + forge-builder-trixie (FG-025).
+#
+# Not a runtime image — this is a builder-stage base. Consumers:
+#   - prometheus-scratch-trixie (dual-builder: Node UI + Go binary)
+#   - uptime-kuma-slim-trixie (Node builder stage)
+#
+# Published in the `publish-builders` CI tier (before derivatives).
+# Daily cron rebuilds first → Node/npm security fixes propagate within
+# 24h via derivative rebuilds.
+#
+# Dedicated-toolchain exemption per memory/docker-standard.md: FROMs
+# `node:24-trixie-slim` upstream directly (not forge-signed debian-slim-
+# trixie) because Debian trixie's node package is far older than the
+# active LTS (currently node 24).
+tag: "0.1"
+platforms:
+  - linux/amd64

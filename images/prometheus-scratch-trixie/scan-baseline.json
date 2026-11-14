@@ -1,6 +1,18 @@
 {
   "version": 1,
-  "critical_cves": [],
-  "generated_at": "2026-11-09T19:23:38Z",
+  "critical_cves": [
+    "GHSA-5cgq-3rg8-m6cv",
+    "GHSA-89gr-r52h-f8rx",
+    "GHSA-f5wc-c3c7-36mc",
+    "GHSA-jppx-rxg9-jmrx",
+    "GHSA-p77j-4mvh-x3m3",
+    "GHSA-rm3j-f69w-wqmq",
+    "GHSA-v23v-6jw2-98fq",
+    "GHSA-v778-237x-gjrc",
+    "GHSA-vgwf-h737-ff37",
+    "GHSA-x527-x647-q7gg",
+    "GO-2026-6612"
+  ],
+  "generated_at": "2026-11-14T11:37:25Z",
   "note": "regenerate with: make scan-baseline-update IMAGE_DIR=<dir>"
 }
