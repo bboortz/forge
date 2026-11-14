@@ -5,7 +5,7 @@
 # Snapshot date: 2026-11-14.
 ansible-lint==26.4.0
 fastapi==0.136.3
-PyJWT==2.13.0
+PyJWT==2.15.0
 pytest==9.0.3
 pytest-xdist==3.8.0
 ruff==0.15.22
