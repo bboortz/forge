@@ -396,6 +396,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg DEBIAN_SLIM_REF="${DEBIAN_SLIM_REF}" \
   --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}" \
   --build-arg HC_REF="${HC_REF}" \
+  --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \
   --file "${BUILD_DOCKERFILE}" \

@@ -26,6 +26,11 @@ ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # resolves via GitHub API (FG-013 pattern). Pin to an exact tag by passing
 # --build-arg UPTIME_KUMA_VERSION=2.5.9 for reproducible local builds.
 ARG UPTIME_KUMA_VERSION=
+# Optional GitHub API token. CI passes secrets.GITHUB_TOKEN via
+# --build-arg for the authenticated 5000/hr rate limit (vs 60/hr
+# unauthenticated — hits HTTP 403 on shared GHA runner IPs during
+# matrix publish). Fix for 2026-11-14 run 43613702946 flake.
+ARG GITHUB_TOKEN=
 
 # --- Stage 0: hc source ------------------------------------------------------
 FROM ${HC_REF} AS hc
@@ -37,6 +42,7 @@ FROM ${HC_REF} AS hc
 FROM ${FORGE_BUILDER_NODE_REF} AS builder
 
 ARG UPTIME_KUMA_VERSION
+ARG GITHUB_TOKEN
 
 WORKDIR /src
 # Resolve the target tag: use UPTIME_KUMA_VERSION if provided, else fetch
@@ -50,6 +56,7 @@ RUN set -eux; \
     TARGET_REF="${UPTIME_KUMA_VERSION}"; \
     if [ -z "${TARGET_REF}" ]; then \
       TARGET_REF="$(curl -fsSL \
+        ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
         https://api.github.com/repos/louislam/uptime-kuma/releases/latest \
         | jq -r '.tag_name // empty')"; \
       [ -n "${TARGET_REF}" ] || { echo "could not resolve latest release" >&2; exit 1; }; \

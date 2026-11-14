@@ -93,6 +93,11 @@ jobs:
           IMAGE_DIR: ${{ matrix.image_dir }}
           FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
           FORGE_CACHE_PUSH: '1'
+          # FG-048 follow-up: authenticated GitHub API for build.ref-latest-
+          # release curl calls. Shared GHA runner IPs exhaust the 60/hr
+          # unauthenticated cap during parallel matrix publish; the authed
+          # cap is 5000/hr. Fixes 2026-11-14 run 43613702946 flake.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: REGISTRY="$REGISTRY" bash scripts/build-image.sh "$IMAGE_DIR"
       - name: Scan + SBOM
         env:
@@ -192,6 +197,11 @@ jobs:
           IMAGE_DIR: ${{ matrix.image_dir }}
           FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
           FORGE_CACHE_PUSH: '1'
+          # FG-048 follow-up: authenticated GitHub API for build.ref-latest-
+          # release curl calls. Shared GHA runner IPs exhaust the 60/hr
+          # unauthenticated cap during parallel matrix publish; the authed
+          # cap is 5000/hr. Fixes 2026-11-14 run 43613702946 flake.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: REGISTRY="$REGISTRY" bash scripts/build-image.sh "$IMAGE_DIR"
       - name: Scan + SBOM
         env:
@@ -293,6 +303,11 @@ jobs:
           # FG-021: push cache from the daily cron (trusted event).
           FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
           FORGE_CACHE_PUSH: '1'
+          # FG-048 follow-up: authenticated GitHub API for build.ref-latest-
+          # release curl calls. Shared GHA runner IPs exhaust the 60/hr
+          # unauthenticated cap during parallel matrix publish; the authed
+          # cap is 5000/hr. Fixes 2026-11-14 run 43613702946 flake.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: REGISTRY="$REGISTRY" bash scripts/build-image.sh "$IMAGE_DIR"
       - name: Scan + SBOM
         env:
@@ -394,6 +409,11 @@ jobs:
           IMAGE_DIR: ${{ matrix.image_dir }}
           FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
           FORGE_CACHE_PUSH: '1'
+          # FG-048 follow-up: authenticated GitHub API for build.ref-latest-
+          # release curl calls. Shared GHA runner IPs exhaust the 60/hr
+          # unauthenticated cap during parallel matrix publish; the authed
+          # cap is 5000/hr. Fixes 2026-11-14 run 43613702946 flake.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: REGISTRY="$REGISTRY" bash scripts/build-image.sh "$IMAGE_DIR"
       - name: Scan + SBOM
         env:
