@@ -1,7 +1,7 @@
 ---
 id: FG-048
 slug: prometheus-from-source-and-node-builder
-status: ready
+status: shipped
 owner: bboortz
 created: 2026-11-14
 ---
