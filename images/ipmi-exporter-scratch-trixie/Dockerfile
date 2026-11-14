@@ -32,6 +32,13 @@ ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # ipmi-exporter has a slow release cadence (~1-2/yr), metrics-only, no
 # config contract — safe candidate for the floating pattern.
 ARG IPMI_EXPORTER_VERSION=
+# Optional GitHub API token. CI passes secrets.GITHUB_TOKEN via
+# --build-arg for the authenticated 5000/hr rate limit (vs 60/hr
+# unauthenticated — hits HTTP 403 on shared GHA runner IPs during
+# matrix publish). Fix for 2026-11-14 run 43613702946 flake. See
+# cadvisor-slim-trixie's Dockerfile for the DL3064 suppression rationale.
+# hadolint ignore=DL3064
+ARG GITHUB_TOKEN=
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -43,6 +50,8 @@ FROM ${HC_REF} AS hc
 FROM ${FORGE_BUILDER_GO_REF} AS go-builder
 
 ARG IPMI_EXPORTER_VERSION
+# hadolint ignore=DL3064
+ARG GITHUB_TOKEN
 
 WORKDIR /src
 # FG-050: the resolve step pipes curl into jq; needs pipefail set before
@@ -54,6 +63,7 @@ RUN set -eux; \
     TARGET_REF="${IPMI_EXPORTER_VERSION}"; \
     if [ -z "${TARGET_REF}" ]; then \
       TARGET_REF="$(curl -fsSL \
+        ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
         https://api.github.com/repos/prometheus-community/ipmi_exporter/releases/latest \
         | jq -r '.tag_name // empty')"; \
       [ -n "${TARGET_REF}" ] || { echo "could not resolve latest ipmi_exporter release" >&2; exit 1; }; \
