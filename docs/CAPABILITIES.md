@@ -26,10 +26,11 @@ On push to `dev` or PR targeting `dev`, build the affected image(s) and run gryp
 
 ### build.daily-publish
 
-Daily 03:00 UTC cron (`workflow_dispatch` also available) builds every image with `--pull`, attaches attestations, signs, and pushes.
+Daily 03:00 UTC cron (`workflow_dispatch` also available) builds every image with `--pull`, attaches attestations, signs, and pushes. FG-057 adds a `workflow_dispatch.inputs.images` filter so operators can scope a manual publish to one image / comma list / glob; scheduled cron ignores the input and always publishes everything.
 
 - **Delivered by**: FG-001
-- **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`
+- **Extended by**: FG-057 (workflow_dispatch image filter)
+- **Covered by**: `tests/acceptance/test_FG_001_python-slim-pipeline.sh`, `tests/acceptance/test_FG_057_build-image-filter.sh`
 
 ### sbom.cyclonedx-attest
 
@@ -141,10 +142,18 @@ Single `scripts/test-images.sh [image-dir]` discovers every `images/*/tests/smok
 
 ### publish.matrix-auto-discovery
 
-`.github/workflows/build.yml` matrix job is driven by `scripts/discover-images.sh`, which emits a JSON matrix listing every `images/*/image.yaml`. Adding a new image dir auto-enrolls it in the daily publish pipeline — no workflow edit needed.
+`.github/workflows/build.yml` matrix job is driven by `scripts/discover-images.sh`, which emits a JSON matrix listing every `images/*/image.yaml`. Adding a new image dir auto-enrolls it in the daily publish pipeline — no workflow edit needed. FG-057 extends the script with a `--filter <pattern>` option so manual dispatches can scope to a subset (exact name / comma list / shell glob); scheduled cron uses the default `all`.
 
 - **Delivered by**: FG-003
-- **Covered by**: `scripts/discover-images.sh` + `.github/workflows/build.yml`
+- **Extended by**: FG-057 (post-tier filter)
+- **Covered by**: `scripts/discover-images.sh` + `.github/workflows/build.yml`, `tests/acceptance/test_FG_057_build-image-filter.sh`
+
+### build.workflow-dispatch-image-filter
+
+Manual `workflow_dispatch` on `build.yml` accepts an `images` input (default `all`). Operator-facing: a dev who just updated beaconry's repo can run `gh workflow run build.yml -f images=beaconry-hub` and get a fresh signed `ghcr.io/bboortz/beaconry-hub:latest` digest within ~2 min, instead of waiting for the next 03:00 UTC cron or triggering all 22 images. Filter grammar: exact dir name, comma-separated list, or shell glob (`prometheus-*`, `*-scratch-trixie`). Zero-match filters fail fast with a clear error listing available image dirs. Scheduled cron carries no inputs so the default `all` applies — nightly behaviour unchanged.
+
+- **Delivered by**: FG-057
+- **Covered by**: `tests/acceptance/test_FG_057_build-image-filter.sh`, `scripts/discover-images.sh`, `.github/workflows/build.yml`
 
 ### image.nginx-serves-http
 
