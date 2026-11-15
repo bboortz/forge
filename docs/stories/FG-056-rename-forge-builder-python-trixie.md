@@ -78,8 +78,8 @@ Pure refactor — zero behaviour change, zero consumer impact. No external consu
 8. **How do we know it's done** — see Gherkin below.
 
 9. **Capabilities delivered or extended**:
-   - **EXT** `build.shared-builder` — adopts the new name; description updated to clarify that the builder family splits by pre-installed toolchain (python / go / node).
-   - **EXT** `build.pre-builder-tier` — references to the old name in the CAP description bumped to the new name.
+   - EXT `build.shared-builder` — adopts the new name; description updated to clarify that the builder family splits by pre-installed toolchain (python / go / node).
+   - EXT `build.pre-builder-tier` — references to the old name in the CAP description bumped to the new name.
    - No new CAPs.
 
 ## Gherkin acceptance
