@@ -18,6 +18,19 @@ Debian trixie remains the default. Ubuntu is accepted **case-by-case** for speci
 - Ubuntu images follow the same chain-depth + single-upstream-consumer invariants (FG-042): a single Forge pre-builder per family (`ubuntu-slim-noble`), downstream Ubuntu-needing images FROM the pre-builder, not `ubuntu:24.04` directly. Enforced by `scripts/verify-no-upstream-drift.sh`.
 - One LTS release at a time. When Ubuntu 26.04 LTS ships (April 2026 cycle — tracked via a future story), we rev the pre-builder; no overlap window unless a consumer explicitly needs it.
 
+### Exception — Debian sid (FG-058, 2026-11-15)
+
+Debian trixie remains the default. Debian sid is accepted **case-by-case** when a specific CVE or feature requires it. First precedent:
+
+- **`debian-slim-sid` pre-builder** — `FROM debian:sid-slim`. Zero consumers today; sits in the publish-pre-builders CI tier as infrastructure. Rationale: trixie occasionally ships CVE-exposed legacy-ABI packages that Debian explicitly won't fix (the trigger for FG-058 was libxml2 2.9.14's `<no-dsa>` UAF; sid preserves the same vulnerable `.so.2` ABI by design so a sid pin didn't help *in that specific case*). But future CVEs on packages where sid DOES ship a `.so.2`-compatible fix (curl, openssl rolling point releases, etc.) can land in a 30-min FG by consuming this pre-builder.
+
+**Policy for `debian-slim-sid` consumption**:
+
+- Default is still Debian trixie. Reach for sid only when a specific trixie package is stuck unfixed AND sid's version is ABI-compatible with the downstream consumer.
+- Document the reason in the consumer image's story + reference FG-058's pre-builder.
+- Rolling-release means scan-baseline.json drifts more than trixie's. Accept nonzero CRITICALs; daily cron re-resolves.
+- Chain-depth invariant (FG-042) still applies: downstream images FROM `debian-slim-sid`, not `debian:sid-slim` directly. Enforced by `scripts/verify-no-upstream-drift.sh` (`_EXPECTED=4`; `debian:sid-slim` added to `_UPSTREAM_ANCHORS`).
+
 ## sid pinning — faster than waiting for backports
 
 When a CVE fix lands in Debian `sid` but has not yet been backported to `trixie`, Forge pulls that specific package from `sid` while the rest of the image stays on `trixie`. Mechanism: `/etc/apt/preferences.d/` pin files committed in `images/<name>/sid-pins/`, enabled during the builder stage.

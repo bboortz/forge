@@ -22,11 +22,12 @@ permissions:
 
 jobs:
 
-  # FG-025 + FG-042 + FG-046 + FG-048 + FG-051: four-tier publish.
-  # 1. pre-builders (debian-slim-trixie + python-slim-trixie + ubuntu-slim-noble)
-  #    — forge-rooted slim bases that forge-builder-python-trixie + cadvisor-slim +
-  #    ipmi-exporter-slim + github-runner-noble FROM. Publish first so
-  #    downstream has a resolvable forge-signed FROM.
+  # FG-025 + FG-042 + FG-046 + FG-048 + FG-051 + FG-058: four-tier publish.
+  # 1. pre-builders (debian-slim-trixie + debian-slim-sid + python-slim-trixie
+  #    + ubuntu-slim-noble) — forge-rooted slim bases that forge-builder-python-
+  #    trixie + cadvisor-slim + ipmi-exporter-slim + github-runner-noble FROM.
+  #    Publish first so downstream has a resolvable forge-signed FROM.
+  #    debian-slim-sid has zero consumers today; it's escape-hatch infra.
   # 2. builders (forge-builder-python-trixie + forge-builder-go-trixie +
   #    forge-builder-node-trixie) — shared builder-stage images.
   #    forge-builder-python-trixie FROMs python-slim-trixie (dogfood) so needs

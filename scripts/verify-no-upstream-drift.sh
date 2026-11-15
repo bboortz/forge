@@ -31,12 +31,13 @@ cd "$(git rev-parse --show-toplevel)"
 # Upstream Docker Hub tags that MUST go through a forge pre-builder.
 _UPSTREAM_ANCHORS=(
   'debian:trixie-slim'
+  'debian:sid-slim'
   'python:3\.14-slim-trixie'
   'ubuntu:24\.04'
 )
 # How many Dockerfiles SHOULD FROM each anchor (= how many pre-builders
 # each anchor should feed into).
-_EXPECTED=3
+_EXPECTED=4
 
 # Build a single alternation for grep (|-separated).
 _ANCHOR_RE="$(IFS='|'; echo "${_UPSTREAM_ANCHORS[*]}")"
@@ -51,9 +52,9 @@ if [[ "${hits}" -ne "${_EXPECTED}" ]]; then
     | sed 's/^/  /' >&2
   echo >&2
   echo "FG-042 invariant: upstream Docker Hub anchors must be consumed" >&2
-  echo "by exactly one forge pre-builder (debian-slim-trixie," >&2
-  echo "python-slim-trixie, ubuntu-slim-noble). If you need a new slim" >&2
-  echo "image rooted on any of those upstreams, FROM the forge" >&2
+  echo "by exactly one forge pre-builder (debian-slim-trixie, debian-" >&2
+  echo "slim-sid, python-slim-trixie, ubuntu-slim-noble). If you need a" >&2
+  echo "new slim image rooted on any of those upstreams, FROM the forge" >&2
   echo "pre-builder instead of the upstream Docker Hub tag." >&2
   exit 1
 fi
