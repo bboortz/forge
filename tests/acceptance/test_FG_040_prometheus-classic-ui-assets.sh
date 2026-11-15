@@ -36,22 +36,22 @@ pass "builtinassets present (UI embedded in Go binary)"
 # -----------------------------------------------------------------------------
 # Section 2 — build
 # -----------------------------------------------------------------------------
-say "2. prometheus-scratch-trixie:2.53 builds (with dereferenced static libs)"
+say "2. prometheus-scratch-trixie:latest builds (with dereferenced static libs)"
 bash scripts/build-image.sh prometheus-scratch-trixie >/dev/null
-docker image inspect forge-local/prometheus-scratch-trixie:2.53 >/dev/null
-pass "forge-local/prometheus-scratch-trixie:2.53 built"
+docker image inspect forge-local/prometheus-scratch-trixie:latest >/dev/null
+pass "forge-local/prometheus-scratch-trixie:latest built"
 
 # -----------------------------------------------------------------------------
 # Section 3 — extended web UI smoke + FG-035/FG-039 regression
 # -----------------------------------------------------------------------------
 say "3. extended smoke_web_ui.sh (includes classic-UI asset matrix)"
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
+IMAGE_TAG=latest bash images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
 pass "smoke_web_ui.sh (incl. every /classic/static/* href/src returns 200)"
 
 # Re-run every other prometheus smoke for regression.
 for s in images/prometheus-scratch-trixie/tests/smoke_*.sh; do
   [[ "${s}" == *smoke_web_ui.sh ]] && continue
-  IMAGE_TAG=2.53 bash "${s}" >/dev/null
+  IMAGE_TAG=latest bash "${s}" >/dev/null
 done
 pass "all other prometheus smokes still green"
 

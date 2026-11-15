@@ -5,7 +5,7 @@
 #         image.ssl-cert-env, build.two-stage-scratch, test.size-budget,
 #         build.scratch-baseline
 #
-# Validates FG-035: prometheus-scratch-trixie:2.53 — Debian trixie's
+# Validates FG-035: prometheus-scratch-trixie:latest — Debian trixie's
 # prometheus 2.53.3 server FROM scratch; /-/healthy, /-/ready, SIGHUP
 # reload, promtool via docker exec, outbound TLS (CA bundle via baseline).
 
@@ -35,27 +35,27 @@ pass "all required files present"
 # -----------------------------------------------------------------------------
 # Section 2 — build
 # -----------------------------------------------------------------------------
-say "2. prometheus-scratch-trixie:2.53 builds"
+say "2. prometheus-scratch-trixie:latest builds"
 bash scripts/build-image.sh prometheus-scratch-trixie >/dev/null
-docker image inspect forge-local/prometheus-scratch-trixie:2.53 >/dev/null
-pass "forge-local/prometheus-scratch-trixie:2.53 built"
+docker image inspect forge-local/prometheus-scratch-trixie:latest >/dev/null
+pass "forge-local/prometheus-scratch-trixie:latest built"
 
 # -----------------------------------------------------------------------------
 # Section 3 — per-image smoke suite
 # -----------------------------------------------------------------------------
 say "3. per-image smoke suite"
 for s in images/prometheus-scratch-trixie/tests/smoke_*.sh; do
-  IMAGE_TAG=2.53 bash "${s}"
+  IMAGE_TAG=latest bash "${s}"
 done
 pass "all smoke tests green"
 
 # -----------------------------------------------------------------------------
 # Section 4 — image.yaml invariants
 # -----------------------------------------------------------------------------
-say "4. image.yaml: tag=2.53, depends_on=[scratch-base-trixie]"
+say "4. image.yaml: tag=latest (FG-053 floating), depends_on=[scratch-base-trixie]"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' \
         images/prometheus-scratch-trixie/image.yaml)
-[[ "${tag}" == "2.53" ]] || fail "image.yaml tag = '${tag}' (want 2.53)"
+[[ "${tag}" == "latest" ]] || fail "image.yaml tag = '${tag}' (want latest per FG-053)"
 grep -qE '^[[:space:]]*-[[:space:]]*scratch-base-trixie' \
   images/prometheus-scratch-trixie/image.yaml \
   || fail "image.yaml: depends_on must list scratch-base-trixie"

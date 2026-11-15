@@ -1,41 +1,43 @@
 # syntax=docker/dockerfile:1.7
 #
-# FG-048: Prometheus server 2.53.5 FROM scratch, built from upstream Go
-# source via dual-builder (same pattern ipmi-exporter-scratch-trixie
-# uses for Go + C). Replaces the FG-035 Debian-packaged `prometheus`
-# apt-install so the Go stdlib matches forge-builder-go-trixie's
-# toolchain (go1.27.x) instead of Debian's lagging go1.24.x — eliminates
-# the Debian-Go-toolchain-lag CVE class (GO-2025-3563, GO-2026-4337,
-# GO-2026-6612).
+# FG-048 → FG-053: Prometheus server FROM scratch, built from upstream
+# Go source via dual-builder. FG-053 (this revision) bumps v2.53.5 LTS →
+# v3.x floating :latest per FG-050 `build.ref-latest-release` pattern.
+# Motivation: v2.53.5's transitive golang.org/x/crypto v0.39.0 pin is
+# vulnerable to GHSA-x527-x647-q7gg / CVE-2026-46595 (CVSS 10.0,
+# VerifiedPublicKeyCallback permissions-skip enforcement). The v2.53 LTS
+# line last shipped in June 2025 — no backport coming. v3.16.0 uses
+# x/crypto v0.58.0 (patched) and the UI build is now pnpm-based (Mantine).
 #
 # Stage 1 (UI builder) — FROM forge-builder-node-trixie: clones
-# prometheus @ PROMETHEUS_VERSION, runs upstream's scripts/build_ui.sh
-# which npm-builds the 2 workspace modules (lezer-promql, codemirror-
-# promql) + the react-app. Output: web/ui/static/react/ tree populated
-# with compiled SPA assets that -tags builtinassets embeds into the
-# Go binary via //go:embed.
+# prometheus @ <resolved>, enables corepack, runs `pnpm install
+# --frozen-lockfile` + `pnpm run build` which invokes build_ui.sh --all
+# (same script name as v2.53; internals produce the Mantine SPA now).
+# Then `scripts/compress_assets.sh` gzips + generates web/ui/embed.go.
 #
 # Stage 2 (Go builder) — FROM forge-builder-go-trixie: COPY the full
-# /src tree (including compiled UI assets) from the UI stage, then
-# `go build -tags "netgo builtinassets stringlabels" -ldflags "..."`
-# per upstream's .promu.yml. Produces /out/usr/bin/{prometheus,promtool}.
+# /src tree, `go build -tags "netgo builtinassets stringlabels"`.
 #
 # Stage 3 (runtime scratch) — baseline + prometheus binaries + console
-# templates + default prometheus.yml. **With -tags builtinassets the UI
-# is embedded in the binary** — the FG-039 /usr/share/prometheus/web/
-# overlay + the FG-040 cp -rL symlink-dereferencing fix become
-# unnecessary and are removed in this rewrite.
+# templates + default prometheus.yml. UI embedded via -tags builtinassets.
+#
+# Homelab impact (v2.53 → v3): webhook/alerting paths unchanged; TSDB
+# format is backward-compatible on read; /api/v1/query stable; /classic/*
+# routes gone (homelab's grafana-verify.py already updated in FG-048
+# follow-up). Full audit in docs/plan/FG-053-prometheus-v3-cve-fix-plan.md.
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-# FG-048: dual-builder (Node for UI compile; Go for binary compile).
 ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
-# FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-# Upstream prometheus release. Pinned to v2.53.x LTS line (operator
-# stability); v3 migration is a separate story (new Mantine UI, pnpm,
-# storage format changes).
-ARG PROMETHEUS_VERSION=v2.53.5
+# FG-053: FG-050 build.ref-latest-release pattern — empty default →
+# resolved at build time via GitHub Releases API. Pin explicitly via
+# --build-arg for reproducibility (e.g. PROMETHEUS_VERSION=v3.16.0).
+ARG PROMETHEUS_VERSION=
+# Optional GitHub API token for the 5000/hr authenticated rate limit
+# (vs 60/hr unauthenticated; CI matrix publish exhausts it otherwise).
+# hadolint ignore=DL3064
+ARG GITHUB_TOKEN=
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -47,39 +49,55 @@ FROM ${HC_REF} AS hc
 FROM ${FORGE_BUILDER_NODE_REF} AS ui-builder
 
 ARG PROMETHEUS_VERSION
+# hadolint ignore=DL3064
+ARG GITHUB_TOKEN
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 WORKDIR /src
-# Shallow clone at the pinned release tag + run upstream's own build
-# pipeline:
-#   1) `cd web/ui && npm ci` — install workspace deps
-#   2) `npm run build` — invokes build_ui.sh --all, which builds the
-#      two UI modules (lezer-promql + codemirror-promql) AND the React
-#      app, placing the compiled SPA under web/ui/static/react/
-#   3) `bash scripts/compress_assets.sh` — gzips every file under
-#      web/ui/static/ in place AND generates web/ui/embed.go from
-#      embed.go.tmpl with the list of //go:embed directives. Without
-#      step 3, `go build -tags builtinassets` fails with
-#      `undefined: EmbedFS` (embed.go.tmpl alone declares no var).
-# gzip/npm/git provided by forge-builder-node-trixie (corepack);
-# prometheus v2.53 uses plain npm, not pnpm.
+# FG-053: resolve :latest at build time (FG-050 pattern) + run upstream's
+# UI pipeline:
+#   1) `cd web/ui && pnpm install --frozen-lockfile` — v3 switched from
+#      npm to pnpm (pnpm-lock.yaml + pnpm-workspace.yaml). forge-builder-
+#      node-trixie has `corepack enable`; pnpm is resolved from the
+#      package.json `packageManager` field if set.
+#   2) `pnpm run build:mantine-ui` → invokes `bash build_ui.sh --mantine-ui`
+#      which builds the module/* workspaces + the Mantine UI, SKIPPING
+#      the legacy react-app. Rationale: v3 serves Mantine at `/` by
+#      default (`web/web.go:500`); the react-app is only reachable via
+#      `--use-old-ui` and homelab doesn't set that flag. react-app lives
+#      outside the pnpm workspace (own package.json, own deps) and would
+#      require a separate `cd react-app && pnpm install` step — not worth
+#      the extra install for a deprecated-by-default surface.
+#   3) `bash scripts/compress_assets.sh` — gzips web/ui/static/ in place
+#      AND generates web/ui/embed.go from embed.go.tmpl.
 # hadolint ignore=DL3003
 RUN set -eux; \
-    git clone --depth 1 --branch "${PROMETHEUS_VERSION}" \
+    TARGET_REF="${PROMETHEUS_VERSION}"; \
+    if [ -z "${TARGET_REF}" ]; then \
+      TARGET_REF="$(curl -fsSL \
+        ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
+        https://api.github.com/repos/prometheus/prometheus/releases/latest \
+        | jq -r '.tag_name // empty')"; \
+      [ -n "${TARGET_REF}" ] || { echo "could not resolve latest prometheus release" >&2; exit 1; }; \
+    fi; \
+    echo "${TARGET_REF}" > /tmp/resolved-version; \
+    git clone --depth 1 --branch "${TARGET_REF}" \
       https://github.com/prometheus/prometheus.git .; \
-    (cd web/ui && npm ci && npm run build); \
+    (cd web/ui && pnpm install --frozen-lockfile && pnpm run build:mantine-ui); \
     bash scripts/compress_assets.sh
 
 # --- Stage 2: Go builder -----------------------------------------------------
 FROM ${FORGE_BUILDER_GO_REF} AS builder
 
-ARG PROMETHEUS_VERSION
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
 WORKDIR /src
 # Take the full source tree from the UI builder (including compiled UI
-# assets at web/ui/static/react/ that -tags builtinassets will embed).
+# assets at web/ui/static/react/ that -tags builtinassets will embed) +
+# the resolved version marker.
 COPY --from=ui-builder /src /src
+COPY --from=ui-builder /tmp/resolved-version /tmp/resolved-version
 
 # Build prometheus + promtool with upstream's .promu.yml linux tags
 # (netgo + builtinassets + stringlabels) and the standard LDFLAGS pattern
@@ -88,22 +106,23 @@ COPY --from=ui-builder /src /src
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # hadolint ignore=DL3003
 RUN set -eux; \
+    TARGET_REF="$(cat /tmp/resolved-version)"; \
     REV="$(git rev-parse --short HEAD)"; \
     BUILD_DATE="$(date -u +%Y%m%d-%H:%M:%S)"; \
     GO_VERSION="$(go version | awk '{print $3}')"; \
     PKG="github.com/prometheus/common/version"; \
     LDFLAGS="-s -w \
-      -X ${PKG}.Version=${PROMETHEUS_VERSION#v} \
+      -X ${PKG}.Version=${TARGET_REF#v} \
       -X ${PKG}.Revision=${REV} \
       -X ${PKG}.Branch=HEAD \
       -X ${PKG}.BuildUser=forge@github-actions \
       -X ${PKG}.BuildDate=${BUILD_DATE} \
       -X ${PKG}.GoVersion=${GO_VERSION}"; \
     mkdir -p /out/usr/bin; \
-    GOFLAGS=-mod=mod CGO_ENABLED=0 \
+    GOFLAGS=-mod=mod CGO_ENABLED=0 GOWORK=off \
       go build -tags 'netgo builtinassets stringlabels' -ldflags "${LDFLAGS}" \
         -o /out/usr/bin/prometheus ./cmd/prometheus; \
-    GOFLAGS=-mod=mod CGO_ENABLED=0 \
+    GOFLAGS=-mod=mod CGO_ENABLED=0 GOWORK=off \
       go build -tags 'netgo builtinassets stringlabels' -ldflags "${LDFLAGS}" \
         -o /out/usr/bin/promtool ./cmd/promtool
 
@@ -111,16 +130,16 @@ RUN set -eux; \
 # graph and the Node package graph.
 RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 
-# Collect the prometheus-specific overlay — binaries + consoles +
-# console_libraries (text templates, NOT embedded in the binary) +
-# default prometheus.yml + TSDB dir.
+# Collect the prometheus-specific overlay — binaries + default
+# prometheus.yml + TSDB dir. v3 removed the `consoles/` + `console_libraries/`
+# directories from the repo root (deprecated feature). We still create the
+# target dirs (empty) + symlinks so operators who pass `--web.console.*`
+# flags don't get a startup error. Consumers who want classic consoles
+# can bind-mount them into /etc/prometheus/consoles.
 RUN set -eux; \
     install -d /out/etc/prometheus /out/prometheus \
-               /out/usr/share/prometheus; \
-    cp -r consoles          /out/usr/share/prometheus/consoles; \
-    cp -r console_libraries /out/usr/share/prometheus/console_libraries; \
-    # Symlinks at /etc/prometheus/{consoles,console_libraries} so CMD's
-    # --web.console.* flags can keep pointing there.
+               /out/usr/share/prometheus/consoles \
+               /out/usr/share/prometheus/console_libraries; \
     ln -s /usr/share/prometheus/consoles         /out/etc/prometheus/consoles; \
     ln -s /usr/share/prometheus/console_libraries /out/etc/prometheus/console_libraries; \
     # chown TSDB to nobody (65534) — matches upstream prom/prometheus
@@ -136,20 +155,22 @@ FROM scratch AS runtime
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
-ARG PROMETHEUS_VERSION
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Minimal, continuously patched Prometheus 2.53 server base image (FROM scratch runtime; built from Go source + Node-built UI embedded via -tags builtinassets; derives from scratch-base-trixie)"
+LABEL org.opencontainers.image.description="Minimal, continuously patched Prometheus server base image (FROM scratch runtime; built from Go source + Node-built UI embedded via -tags builtinassets; derives from scratch-base-trixie). FG-053: v3.x floating :latest for the x/crypto CVE fix."
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
-LABEL org.opencontainers.image.version="${PROMETHEUS_VERSION}"
+# FG-053: image.version no longer hard-pinned via ARG. Operators can
+# inspect the resolved version via `docker exec <ctr> prometheus --version`
+# or by reading /tmp/resolved-version at build time.
 
 # Baseline first, overlay on top.
 # hadolint ignore=DL3067
 COPY --from=scratch_base / /
 COPY --from=builder /out /
 COPY --from=builder /sbom.json /sbom.json
+COPY --from=builder /tmp/resolved-version /tmp/resolved-version
 # FG-031: /hc for docker-native HEALTHCHECK.
 COPY --from=hc /hc /hc
 

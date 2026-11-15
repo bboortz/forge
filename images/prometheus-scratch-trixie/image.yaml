@@ -1,6 +1,9 @@
-# Per FG-004: repo = dir name, tag = version. Publishes 4-tag family:
-# :2.53, :2.53-amd64, :latest, :latest-amd64.
-tag: "2.53"
+# FG-053: floating :latest (resolved via GitHub Releases API at build
+# time per FG-050 `build.ref-latest-release`). v2.53.5 LTS was pinned,
+# but it has x/crypto v0.39.0 (GHSA-x527-x647-q7gg / CVE-2026-46595
+# CVSS 10.0); v3.x ships x/crypto v0.58.0 which patches it.
+# 2-tag family per FG-050 precedent: :latest + :latest-amd64.
+tag: "latest"
 platforms:
   - linux/amd64
 depends_on:
