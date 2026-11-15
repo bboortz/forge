@@ -52,6 +52,7 @@ hits=$(grep -rln "${old}" \
   | grep -v '^README.md$' || true)
 if [[ -n "${hits}" ]]; then
   echo "  ✗ old name 'forge-builder-trixie' still present in live paths:" >&2
+  # shellcheck disable=SC2001  # multi-line indent via sed is cleaner than per-line expansion
   echo "${hits}" | sed 's/^/    /' >&2
   exit 1
 fi
@@ -64,6 +65,7 @@ bad=$(grep -lE "^ARG FORGE_BUILDER_REF=.*/forge-builder-trixie:" \
   images/*/Dockerfile 2>/dev/null || true)
 if [[ -n "${bad}" ]]; then
   echo "  ✗ Dockerfiles still reference old builder name:" >&2
+  # shellcheck disable=SC2001  # multi-line indent via sed is cleaner than per-line expansion
   echo "${bad}" | sed 's/^/    /' >&2
   exit 1
 fi
