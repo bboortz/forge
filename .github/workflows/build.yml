@@ -74,7 +74,7 @@ jobs:
     # chain stays happy. `contains()` checks for 'image_dir' which exists
     # IFF the matrix has at least one entry — more robust than string-
     # equality against '{"include":[]}' (which trips on whitespace / \n).
-    if: ${{ fromJSON(needs.discover.outputs.pre_builders).include[0] != null }}
+    if: ${{ !cancelled() && fromJSON(needs.discover.outputs.pre_builders).include[0] != null }}
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per pre-builder. Typical 2-4 min (apt-upgrade + push).
     timeout-minutes: 10
@@ -177,7 +177,7 @@ jobs:
     # FG-057: run if this tier has content AND the upstream tier either
     # ran successfully (standard cron) OR was intentionally skipped by
     # the filter (so an empty pre-builders tier doesn't cascade-skip us).
-    if: ${{ fromJSON(needs.discover.outputs.builders).include[0] != null && (needs.publish-pre-builders.result == 'success' || needs.publish-pre-builders.result == 'skipped') }}
+    if: ${{ !cancelled() && fromJSON(needs.discover.outputs.builders).include[0] != null && (needs.publish-pre-builders.result == 'success' || needs.publish-pre-builders.result == 'skipped') }}
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per builder image. Typical 3-5 min (apt-upgrade
     # + syft install + push). ~2× worst-case typical.
@@ -283,7 +283,7 @@ jobs:
     name: Publish ${{ matrix.image_dir }}
     needs: [discover, publish-builders]
     # FG-057: allow intentional skips in the upstream tier.
-    if: ${{ fromJSON(needs.discover.outputs.base).include[0] != null && (needs.publish-builders.result == 'success' || needs.publish-builders.result == 'skipped') }}
+    if: ${{ !cancelled() && fromJSON(needs.discover.outputs.base).include[0] != null && (needs.publish-builders.result == 'success' || needs.publish-builders.result == 'skipped') }}
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per scratch-base image (same cadence as builders).
     timeout-minutes: 10
@@ -391,7 +391,7 @@ jobs:
     name: Publish ${{ matrix.image_dir }}
     needs: [discover, publish-base]
     # FG-057: allow intentional skips in the upstream tier.
-    if: ${{ fromJSON(needs.discover.outputs.derivatives).include[0] != null && (needs.publish-base.result == 'success' || needs.publish-base.result == 'skipped') }}
+    if: ${{ !cancelled() && fromJSON(needs.discover.outputs.derivatives).include[0] != null && (needs.publish-base.result == 'success' || needs.publish-base.result == 'skipped') }}
     runs-on: ubuntu-latest
     # FG-038: 16-min cap per derivative image. Typical 5-8 min (apt
     # install + syft + overlay + cosign sign + push + attestations).
