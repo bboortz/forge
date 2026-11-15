@@ -219,10 +219,10 @@ The service scratch images that need an HTTP/TCP healthcheck probe carry `/hc` (
 
 ### image.alertmanager-routes-alerts
 
-`alertmanager-scratch-trixie` runs Prometheus Alertmanager (Debian `prometheus-alertmanager` package), responds to `/-/healthy` + `/-/ready` + `/api/v2/alerts` on `:9093`. Initiates outbound HTTPS for every webhook receiver (Telegram, Mattermost, email over SMTPS, generic `webhook_configs`) — the baseline CA bundle resolves via re-declared `ENV SSL_CERT_FILE` (FG-009). Honors SIGHUP for config reload. `amtool` bundled for `docker exec`-based config validation. Runs as nonroot uid 65534. Zero OS CVEs.
+`alertmanager-scratch-trixie` runs Prometheus Alertmanager, responds to `/-/healthy` + `/-/ready` + `/api/v2/alerts` on `:9093`. Both UIs served from embedded assets: classic Elm UI at `/` + new Mantine UI at `/ui/` (both baked in via `-tags builtinassets`). Initiates outbound HTTPS for every webhook receiver (Telegram, Mattermost, email over SMTPS, generic `webhook_configs`) — the baseline CA bundle resolves via re-declared `ENV SSL_CERT_FILE` (FG-009). Honors SIGHUP for config reload. `amtool` bundled for `docker exec`-based config validation. Runs as nonroot uid 65534. Zero OS CVEs.
 
-- **Delivered by**: FG-036
-- **Covered by**: `tests/acceptance/test_FG_036_alertmanager-scratch-trixie.sh`, `images/alertmanager-scratch-trixie/tests/smoke_healthy_endpoint.sh`
+- **Delivered by**: FG-036 (Debian-packaged); FG-046 (migrated to from-Go-source); FG-052 (bumped v0.28.1 → v0.35 floating `:latest` via dual-builder for both Elm + Mantine UIs)
+- **Covered by**: `tests/acceptance/test_FG_036_alertmanager-scratch-trixie.sh`, `tests/acceptance/test_FG_052_alertmanager-v0.35.sh`, `images/alertmanager-scratch-trixie/tests/smoke_healthy_endpoint.sh`
 
 ### image.cadvisor-serves-metrics
 
@@ -532,8 +532,8 @@ The acceptance test suite runs as a GitHub Actions matrix (one job per `tests/ac
 Build-time pattern for Forge images that track an upstream project's latest GitHub Release tag. Dockerfile declares an empty-default version ARG (e.g. `ARG CADVISOR_VERSION=`); the Dockerfile's builder stage resolves the current release tag via `GET https://api.github.com/repos/<upstream>/releases/latest` + `jq -r .tag_name`, writes it to `/tmp/resolved-version`, and the subsequent build step consumes it. The resolved sha + tag get baked into `org.opencontainers.image.revision` + the SBOM. `image.yaml` carries `tag: "latest"` instead of a numeric major.minor; the 4-tag publish family collapses to `:latest` + `:latest-amd64`. Daily cron re-resolves, so the fleet auto-tracks upstream. Applied only to upstreams with stable release discipline + no config-contract churn between minor versions. Precedent: FG-045 uptime-kuma-slim-trixie first shipped this shape inline as a step of `build.from-node-source`; FG-050 formalizes it as a reusable CAP + extends it to cadvisor-slim-trixie + ipmi-exporter-scratch/slim-trixie.
 
 - **Delivered by**: FG-050 (formalized); FG-045 (first consumer, inline)
-- **Extended by**: FG-051 (github-runner-noble resolves `actions/runner` latest release tag)
-- **Covered by**: `tests/acceptance/test_FG_050_freshen-upstream-pins.sh`, `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`
+- **Extended by**: FG-051 (github-runner-noble resolves `actions/runner` latest release tag); FG-052 (alertmanager-scratch-trixie resolves `prometheus/alertmanager` latest release tag — bumped from pinned v0.28.1 to floating :latest)
+- **Covered by**: `tests/acceptance/test_FG_050_freshen-upstream-pins.sh`, `tests/acceptance/test_FG_045_uptime-kuma-slim-trixie.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `tests/acceptance/test_FG_052_alertmanager-v0.35.sh`
 
 ### build.shared-node-builder
 
@@ -544,10 +544,11 @@ Build-time pattern for Forge images that track an upstream project's latest GitH
 
 ### build.from-node-and-go-source
 
-Dual-builder pattern for from-source Go projects whose binary embeds a JavaScript-compiled UI via `//go:embed`. Dockerfile has three stages: (1) UI builder `FROM forge-builder-node-trixie` runs `npm ci && npm run build` + the project's `compress_assets.sh`-equivalent to generate the embed directives in Go; (2) Go builder `FROM forge-builder-go-trixie` takes the source tree (now with compiled UI + embed.go) and runs `go build -tags builtinassets` to produce a self-contained binary; (3) runtime stage FROMs scratch-base-trixie (or slim-trixie variant) and overlays the single binary + any non-embedded assets (templates, console libraries, text configs). First consumer: prometheus-scratch-trixie (FG-048). Future consumers likely: alertmanager v0.32+ (its `ui/web.go` has the same `//go:embed app/dist/*` shape).
+Dual-builder pattern for from-source Go projects whose binary embeds a JavaScript-compiled UI via `//go:embed`. Dockerfile has three stages: (1) UI builder `FROM forge-builder-node-trixie` runs `npm ci && npm run build` + the project's `compress_assets.sh`-equivalent to generate the embed directives in Go; (2) Go builder `FROM forge-builder-go-trixie` takes the source tree (now with compiled UI + embed.go) and runs `go build -tags builtinassets` to produce a self-contained binary; (3) runtime stage FROMs scratch-base-trixie (or slim-trixie variant) and overlays the single binary + any non-embedded assets (templates, console libraries, text configs). First consumer: prometheus-scratch-trixie (FG-048). Second consumer: alertmanager-scratch-trixie (FG-052 — builds both the Elm classic UI + the new Mantine UI from `ui/app/package.json` + `ui/mantine-ui/package.json`).
 
 - **Delivered by**: FG-048
-- **Covered by**: `tests/acceptance/test_FG_048b_prometheus-from-source.sh`
+- **Extended by**: FG-052 (alertmanager-scratch-trixie dual-UI build — Elm classic + Mantine)
+- **Covered by**: `tests/acceptance/test_FG_048b_prometheus-from-source.sh`, `tests/acceptance/test_FG_052_alertmanager-v0.35.sh`
 
 ### build.ubuntu-base-noble
 

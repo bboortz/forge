@@ -1,9 +1,10 @@
-# Per FG-004: repo = dir name, tag = version. Publishes 4-tag family:
-# :0.28, :0.28-amd64, :latest, :latest-amd64.
-# FG-050 attempted bump to v0.35 but hit upstream UI-pipeline blocker
-# (v0.32.0+ no longer ships pre-built UI assets in-tree). Bump deferred
-# until FG-048's forge-builder-node-trixie lands.
-tag: "0.28"
+# FG-052: bumped to v0.35.0 via dual-builder (forge-builder-node-trixie
+# for UI assets + forge-builder-go-trixie for binary). Floating :latest
+# per FG-050 build.ref-latest-release pattern — daily cron re-resolves
+# upstream GitHub Releases API to track new releases within 24h.
+#
+# 2-tag family per FG-050 precedent: :latest + :latest-amd64.
+tag: "latest"
 platforms:
   - linux/amd64
 depends_on:
