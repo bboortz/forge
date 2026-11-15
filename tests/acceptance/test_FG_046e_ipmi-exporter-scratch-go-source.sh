@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Covers: FG-046 (part e — ipmi-exporter-scratch dual-builder: forge-builder-go-trixie for the
-#         Go exporter + forge-builder-trixie for the Debian freeipmi C deps)
+#         Go exporter + forge-builder-python-trixie for the Debian freeipmi C deps)
 # CAPs:   build.from-go-source, image.ipmi-exporter-serves-metrics
 
 set -euo pipefail

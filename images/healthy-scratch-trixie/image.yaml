@@ -10,5 +10,5 @@ tag: "2"
 platforms:
   - linux/amd64
 # No depends_on — image is raw FROM scratch with minimal manual libc.
-# Builder-stage sources (hc image, forge-builder-trixie for sleep) are
+# Builder-stage sources (hc image, forge-builder-python-trixie for sleep) are
 # handled by the Dockerfile's FROM args, not by image.yaml dependencies.

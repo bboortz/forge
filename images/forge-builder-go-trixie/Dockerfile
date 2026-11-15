@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 #
 # FG-046: shared builder-base image for every Forge-native from-Go-source
-# image. Sibling to FG-025's forge-builder-trixie (Debian-base + syft).
+# image. Sibling to FG-025's forge-builder-python-trixie (Debian-base + syft).
 # Pre-bakes:
 #   - apt-get upgrade applied (trixie-security included)
 #   - ca-certificates

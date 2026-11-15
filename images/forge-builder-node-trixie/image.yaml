@@ -1,5 +1,5 @@
 # FG-048: shared Node builder-base. Sibling of forge-builder-go-trixie
-# (FG-046) + forge-builder-trixie (FG-025).
+# (FG-046) + forge-builder-python-trixie (FG-025).
 #
 # Not a runtime image — this is a builder-stage base. Consumers:
 #   - prometheus-scratch-trixie (dual-builder: Node UI + Go binary)

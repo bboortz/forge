@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# FG-028: Two-stage. Builder from forge-builder-trixie (apt-upgraded +
+# FG-028: Two-stage. Builder from forge-builder-python-trixie (apt-upgraded +
 # syft + CA certs pre-installed). Runtime FROM scratch, composed of:
 #   1. scratch-base-trixie (glibc + TLS + DNS + zoneinfo + /etc identity)
 #   2. mosquitto-specific overlay (mosquitto server + clients + libcjson
@@ -13,7 +13,7 @@
 # their own config at the same path.
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -26,7 +26,7 @@ ARG BUILD_TIMESTAMP=unknown
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# forge-builder-trixie cleared apt lists + applied apt-upgrade. Re-populate
+# forge-builder-python-trixie cleared apt lists + applied apt-upgrade. Re-populate
 # the lists and install mosquitto. apt-upgrade NOT repeated.
 # hadolint ignore=DL3008
 RUN set -eux; \

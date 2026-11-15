@@ -40,7 +40,7 @@ graph TD
     %% ======================================================================
     %% Forge builders (never runtime)
     %% ======================================================================
-    FBT["forge-builder-trixie<br/>FG-025 + FG-042 • dogfoods python-slim-trixie"]:::builder
+    FBT["forge-builder-python-trixie<br/>FG-025 + FG-042 • dogfoods python-slim-trixie"]:::builder
     FBG["forge-builder-go-trixie<br/>FG-046 • Go1.27+syft"]:::builder
 
     %% ======================================================================
@@ -182,7 +182,7 @@ Before FG-042, 5 Docker Hub upstream images were trust-anchors for the forge fle
 
 | Upstream | Before FG-042 | After FG-042 |
 |---|---|---|
-| `python:3.14-slim-trixie` | 2 forge consumers (forge-builder-trixie + python-slim-trixie) | 1 forge consumer (python-slim-trixie only); forge-builder-trixie dogfood-FROMs python-slim-trixie |
+| `python:3.14-slim-trixie` | 2 forge consumers (forge-builder-python-trixie + python-slim-trixie) | 1 forge consumer (python-slim-trixie only); forge-builder-python-trixie dogfood-FROMs python-slim-trixie |
 | `debian:trixie-slim` | 2 forge consumers (cadvisor-slim + ipmi-exporter-slim) | 1 forge consumer (new `debian-slim-trixie`); both downstream slim images FROM it |
 | `golang:1.27-trixie` | 1 consumer (forge-builder-go-trixie) | unchanged |
 | `node:22-trixie-slim` | 1 consumer (uptime-kuma-slim-trixie) | unchanged (tracked in IDEAS.md for renewal if 2nd Node consumer appears) |
@@ -195,7 +195,7 @@ Grep-invariant checked by `test_FG_042_...sh` §7: `^FROM (debian:trixie-slim\|p
 `.github/workflows/build.yml` publishes in this order:
 
 1. `publish-pre-builders` (NEW — FG-042): `debian-slim-trixie`, `python-slim-trixie` in parallel
-2. `publish-builders`: `forge-builder-trixie` (FROM python-slim-trixie), `forge-builder-go-trixie`
+2. `publish-builders`: `forge-builder-python-trixie` (FROM python-slim-trixie), `forge-builder-go-trixie`
 3. `publish-base`: `scratch-base-trixie` + the remaining single-consumer slim images + externally-sourced leaf images
 4. `publish-derivatives`: everything with `depends_on` (scratch variants + beaconry hub/scout)
 
@@ -203,7 +203,7 @@ Each tier gated on the previous completing via `needs:`.
 
 ### Three builder lineages
 
-1. **Debian-world builder** — `forge-builder-trixie` (FG-025, extended by FG-042): now FROMs forge-signed `python-slim-trixie` (was Docker Hub `python:3.14-slim-trixie`). Used as the builder stage for every Debian-apt-install image. 10 current consumers.
+1. **Debian-world builder** — `forge-builder-python-trixie` (FG-025, extended by FG-042): now FROMs forge-signed `python-slim-trixie` (was Docker Hub `python:3.14-slim-trixie`). Used as the builder stage for every Debian-apt-install image. 10 current consumers.
 
 2. **Go-world builder** — `forge-builder-go-trixie` (FG-046): `FROM golang:1.27-trixie` + apt-upgrade + CA + syft + git/curl/jq. Used as the builder stage for every from-Go-source image. 5 current consumers (cadvisor, node-exporter, alertmanager, ipmi-exporter scratch + slim). Introduced to eliminate the Debian-Go-toolchain-lag CVE class.
 
@@ -211,7 +211,7 @@ Each tier gated on the previous completing via `needs:`.
 
 ### Dual-builder pattern (ipmi-exporter-scratch)
 
-`ipmi-exporter-scratch-trixie` uses **both** `forge-builder-go-trixie` AND `forge-builder-trixie` in the same build — Go builder for the exporter binary from upstream source, Debian builder for the C freeipmi tools (`ipmi-sensors`, `bmc-info`, etc.) via apt-install. Only image with this shape today.
+`ipmi-exporter-scratch-trixie` uses **both** `forge-builder-go-trixie` AND `forge-builder-python-trixie` in the same build — Go builder for the exporter binary from upstream source, Debian builder for the C freeipmi tools (`ipmi-sensors`, `bmc-info`, etc.) via apt-install. Only image with this shape today.
 
 ### `/hc` embed
 

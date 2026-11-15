@@ -44,24 +44,24 @@ while IFS= read -r dep; do
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" "${dep}"
 done < <(image_yaml_depends "${SRC}/image.yaml")
 
-# FG-025: forge-builder-trixie is a builder-stage dependency, not a scratch_base
+# FG-025: forge-builder-python-trixie is a builder-stage dependency, not a scratch_base
 # COPY-from dependency. It's not listed in image.yaml depends_on (to preserve
 # the current CI publish ordering model), but it must exist locally before any
 # scratch-image build. Build it on demand if any scratch image is being built.
-_FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-trixie"
+_FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-python-trixie"
 case "${IMAGE_DIR}" in
-  forge-builder-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie)
+  forge-builder-python-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie)
     _needs_forge_builder=0 ;;
   *)
     _needs_forge_builder=1 ;;
 esac
 if [[ "${_needs_forge_builder}" == "1" && -d "${_FORGE_BUILDER_DIR}" ]]; then
-  echo "→ builder-stage dependency: forge-builder-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-trixie
+  echo "→ builder-stage dependency: forge-builder-python-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-python-trixie
 fi
 
 # FG-046: forge-builder-go-trixie is a builder-stage dependency for every
-# from-Go-source image. Same pattern as forge-builder-trixie above.
+# from-Go-source image. Same pattern as forge-builder-python-trixie above.
 # Auto-build on demand when the current image's Dockerfile declares
 # FORGE_BUILDER_GO_REF.
 _FORGE_BUILDER_GO_DIR="${ROOT}/images/forge-builder-go-trixie"
@@ -91,7 +91,7 @@ if [[ -d "${_DEBIAN_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" debian-slim-trixie
 fi
 
-# FG-042: python-slim-trixie is a runtime-base dependency for forge-builder-trixie
+# FG-042: python-slim-trixie is a runtime-base dependency for forge-builder-python-trixie
 # (dogfood). Build it on demand when the Dockerfile declares PYTHON_SLIM_REF.
 _PYTHON_SLIM_DIR="${ROOT}/images/python-slim-trixie"
 if [[ -d "${_PYTHON_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
@@ -148,15 +148,15 @@ SCRATCH_BASE_REF="${REGISTRY}/scratch-base-trixie:${_BASELINE_TAG}"
 
 # FG-025: resolve FORGE_BUILDER_REF the same way — prefer the local tag if
 # present (we just built it above), else fall back to GHCR.
-_BUILDER_YAML="${ROOT}/images/forge-builder-trixie/image.yaml"
+_BUILDER_YAML="${ROOT}/images/forge-builder-python-trixie/image.yaml"
 if [[ -f "${_BUILDER_YAML}" ]]; then
   _BUILDER_TAG=$(image_yaml_get "${_BUILDER_YAML}" tag)
 else
   _BUILDER_TAG="latest"
 fi
-FORGE_BUILDER_REF="${REGISTRY}/forge-builder-trixie:${_BUILDER_TAG}"
+FORGE_BUILDER_REF="${REGISTRY}/forge-builder-python-trixie:${_BUILDER_TAG}"
 if ! docker image inspect "${FORGE_BUILDER_REF}" >/dev/null 2>&1; then
-  FORGE_BUILDER_REF="ghcr.io/bboortz/forge-builder-trixie:${_BUILDER_TAG}"
+  FORGE_BUILDER_REF="ghcr.io/bboortz/forge-builder-python-trixie:${_BUILDER_TAG}"
 fi
 
 # FG-046: same for FORGE_BUILDER_GO_REF.
@@ -197,7 +197,7 @@ if ! docker image inspect "${DEBIAN_SLIM_REF}" >/dev/null 2>&1; then
 fi
 
 # FG-042: PYTHON_SLIM_REF — forge-rooted Python slim base that
-# forge-builder-trixie now FROMs (dogfood).
+# forge-builder-python-trixie now FROMs (dogfood).
 _PYTHON_SLIM_YAML="${ROOT}/images/python-slim-trixie/image.yaml"
 if [[ -f "${_PYTHON_SLIM_YAML}" ]]; then
   _PYTHON_SLIM_TAG=$(image_yaml_get "${_PYTHON_SLIM_YAML}" tag)
@@ -356,7 +356,7 @@ fi
 # builder container). Fall back to classic docker build if ANY FROM
 # reference this image will use resolves to a forge-local tag:
 #   - SCRATCH_BASE_REF for scratch derivatives (FG-021)
-#   - FORGE_BUILDER_REF for images whose builder stage FROMs forge-builder-trixie (FG-025)
+#   - FORGE_BUILDER_REF for images whose builder stage FROMs forge-builder-python-trixie (FG-025)
 _HAS_LOCAL_DEP=0
 if [[ "${SCRATCH_BASE_REF}" == forge-local/* ]] \
    && image_yaml_depends "${SRC}/image.yaml" | grep -q .; then

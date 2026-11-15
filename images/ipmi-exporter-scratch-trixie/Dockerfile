@@ -8,7 +8,7 @@
 # - freeipmi ELF tools (bmc-info, ipmi-sensors, ipmi-chassis, ipmi-dcmi,
 #   ipmi-sel) + their libs + their /etc/freeipmi/*.conf files are C
 #   binaries from Debian — installed in a separate builder stage via
-#   forge-builder-trixie, then overlayed.
+#   forge-builder-python-trixie, then overlayed.
 #
 # Runs as root for /dev/ipmi0 access (documented exception to
 # scratch-nonroot default — see smoke_user_root.sh + PROMISES).
@@ -23,7 +23,7 @@ ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
 # FG-046: Go builder for the exporter binary.
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-025: Debian builder for the C freeipmi tools.
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # FG-050: track upstream's latest GitHub release. Empty default → build-time

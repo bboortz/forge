@@ -2,11 +2,11 @@
 
 ## Chain depth ≤ 5 (FG-042 invariant)
 
-Current deepest trust chain: `debian:trixie-slim` (Docker Hub) → `python:3.14-slim-trixie` (Docker Hub) → `python-slim-trixie` (forge) → `forge-builder-trixie` (forge) → `scratch-base-trixie` (forge) → **5 hops to a scratch runtime like `python-scratch-trixie`**. That's the ceiling.
+Current deepest trust chain: `debian:trixie-slim` (Docker Hub) → `python:3.14-slim-trixie` (Docker Hub) → `python-slim-trixie` (forge) → `forge-builder-python-trixie` (forge) → `scratch-base-trixie` (forge) → **5 hops to a scratch runtime like `python-scratch-trixie`**. That's the ceiling.
 
 Every added Forge pre-builder / builder / baseline tier deepens the chain for its downstream. Keep the cap at 5 unless a story explicitly justifies going deeper. Each extra layer is +~1 min of daily-cron time + an extra single-point-of-failure between the operator and the upstream distro.
 
-If you find yourself adding a 6th tier, first ask: can this collapse into an existing tier? E.g. don't introduce `forge-builder-python-trixie` as a sibling of `forge-builder-trixie` — add the Python bits to forge-builder-trixie itself.
+If you find yourself adding a 6th tier, first ask: can this collapse into an existing tier? E.g. the three builder siblings (`forge-builder-python-trixie`, `forge-builder-go-trixie`, `forge-builder-node-trixie`) are each justified by their distinct upstream toolchain (python / go / node); do NOT add e.g. `forge-builder-rust-python-trixie` — add the Rust bits to an existing builder.
 
 ## Upstream Docker Hub anchor consumption (FG-042 invariant)
 

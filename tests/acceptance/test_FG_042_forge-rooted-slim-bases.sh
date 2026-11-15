@@ -28,17 +28,17 @@ for s in images/debian-slim-trixie/tests/smoke_*.sh; do
 done
 pass "debian-slim-trixie:0.1 built + 5 smokes green"
 
-say "3. forge-builder-trixie dogfoods python-slim-trixie"
-if ! grep -q "PYTHON_SLIM_REF" images/forge-builder-trixie/Dockerfile; then
-  fail "forge-builder-trixie Dockerfile missing PYTHON_SLIM_REF"
+say "3. forge-builder-python-trixie dogfoods python-slim-trixie"
+if ! grep -q "PYTHON_SLIM_REF" images/forge-builder-python-trixie/Dockerfile; then
+  fail "forge-builder-python-trixie Dockerfile missing PYTHON_SLIM_REF"
 fi
-if grep -q "DEBIAN_BASE=python:3.14-slim-trixie" images/forge-builder-trixie/Dockerfile; then
-  fail "forge-builder-trixie still references upstream python:3.14-slim-trixie directly"
+if grep -q "DEBIAN_BASE=python:3.14-slim-trixie" images/forge-builder-python-trixie/Dockerfile; then
+  fail "forge-builder-python-trixie still references upstream python:3.14-slim-trixie directly"
 fi
-bash scripts/build-image.sh forge-builder-trixie >/dev/null
-docker image inspect forge-local/forge-builder-trixie:0.1 >/dev/null \
-  || fail "forge-builder-trixie:0.1 not in daemon after build"
-pass "forge-builder-trixie FROMs python-slim-trixie"
+bash scripts/build-image.sh forge-builder-python-trixie >/dev/null
+docker image inspect forge-local/forge-builder-python-trixie:0.1 >/dev/null \
+  || fail "forge-builder-python-trixie:0.1 not in daemon after build"
+pass "forge-builder-python-trixie FROMs python-slim-trixie"
 
 say "4. cadvisor-slim + ipmi-exporter-slim FROM debian-slim-trixie"
 for img in cadvisor-slim-trixie ipmi-exporter-slim-trixie; do

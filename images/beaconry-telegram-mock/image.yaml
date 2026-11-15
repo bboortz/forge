@@ -2,7 +2,7 @@
 # Originally FROMed python:3.12-slim upstream (deliberate base-agnosticism
 # proof of the FG-012 mechanism). As of beaconry BC-100, the upstream
 # Dockerfile was migrated onto the forge-signed chain (python-scratch-trixie
-# runtime + forge-builder-trixie builder) — same shape as scout + hub.
+# runtime + forge-builder-python-trixie builder) — same shape as scout + hub.
 # This image.yaml now declares the depends_on accordingly so forge's
 # four-tier publish ordering (FG-042) resolves the chain correctly.
 tag: "0.1"

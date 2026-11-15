@@ -14,12 +14,12 @@ jobs:
 
   # FG-025 + FG-042 + FG-046 + FG-048 + FG-051: four-tier publish.
   # 1. pre-builders (debian-slim-trixie + python-slim-trixie + ubuntu-slim-noble)
-  #    — forge-rooted slim bases that forge-builder-trixie + cadvisor-slim +
+  #    — forge-rooted slim bases that forge-builder-python-trixie + cadvisor-slim +
   #    ipmi-exporter-slim + github-runner-noble FROM. Publish first so
   #    downstream has a resolvable forge-signed FROM.
-  # 2. builders (forge-builder-trixie + forge-builder-go-trixie +
+  # 2. builders (forge-builder-python-trixie + forge-builder-go-trixie +
   #    forge-builder-node-trixie) — shared builder-stage images.
-  #    forge-builder-trixie FROMs python-slim-trixie (dogfood) so needs
+  #    forge-builder-python-trixie FROMs python-slim-trixie (dogfood) so needs
   #    pre-builders first. forge-builder-node-trixie FROMs node:24-trixie-slim
   #    upstream (dedicated-toolchain exemption, same as forge-builder-go-trixie).
   # 3. base (scratch-base-trixie, remaining slim variants, externally-sourced
@@ -48,7 +48,7 @@ jobs:
 
   # FG-042 + FG-051: pre-builders tier — forge-rooted slim bases
   # (debian-slim-trixie, python-slim-trixie, ubuntu-slim-noble). Must publish
-  # BEFORE publish-builders because forge-builder-trixie now FROMs
+  # BEFORE publish-builders because forge-builder-python-trixie now FROMs
   # python-slim-trixie (dogfood) and derivatives FROM the Debian + Ubuntu
   # pre-builders.
   publish-pre-builders:

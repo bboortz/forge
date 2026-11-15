@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Smoke: forge-builder-trixie removed curl after syft install (apt.no-curl)
+# Smoke: forge-builder-python-trixie removed curl after syft install (apt.no-curl)
 # and includes an apt-upgrade layer (apt.freshly-upgraded).
 
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-trixie}"
+: "${IMAGE_NAME:=forge-builder-python-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

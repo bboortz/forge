@@ -11,9 +11,9 @@
 # sidecar for one-time cluster init (see FG-007 smoke_server_accepts.sh).
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-# FG-025 Phase 2: builder stage FROMs the shared forge-builder-trixie image
+# FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image
 # (apt-upgraded + CA certs + syft pre-installed).
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -28,7 +28,7 @@ COPY sid-pins/ /etc/apt/preferences.d/
 
 # FG-026: PostgreSQL 18 is not in Debian trixie yet — pull from the PGDG
 # official apt repository (same source Docker Hub's `postgres:18` image
-# uses). forge-builder-trixie cleared apt lists + applied apt-upgrade;
+# uses). forge-builder-python-trixie cleared apt lists + applied apt-upgrade;
 # we add the PGDG source, then install postgres 18 + extras.
 # DL3008: postgres + deps float within the trixie release channel.
 # hadolint ignore=DL3008,DL4006
@@ -65,7 +65,7 @@ RUN set -eux; \
     locale -a | grep -qx en_US.utf8
 
 # FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
-# forge-builder-trixie (FG-025). Scan AFTER apt-get install.
+# forge-builder-python-trixie (FG-025). Scan AFTER apt-get install.
 RUN set -eux; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
