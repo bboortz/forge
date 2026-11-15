@@ -63,25 +63,26 @@ tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' "$imageyaml")
 [[ "$tag" == "1.12" ]] || fail "${imageyaml}: tag = '${tag}' (want '1.12')"
 pass "node-exporter-scratch-trixie: ARG=v1.12.1, image.yaml tag=1.12"
 
-# --- alertmanager-scratch-trixie: DEFERRED at v0.28.1 ---
-# Upstream v0.32.0+ needs a Node.js UI build pipeline (ui/web.go embeds
-# ui/app/dist/ via //go:embed, which upstream no longer ships in-tree).
-# Blocked on FG-048's forge-builder-node-trixie extraction. The Dockerfile
-# must stay on v0.28.1 AND carry a comment naming the FG-048 blocker so
-# future maintainers understand this isn't just stale — it's parked on
-# purpose.
+# --- alertmanager-scratch-trixie: RESOLVED by FG-052 ---
+# FG-050 originally deferred this bump because upstream v0.32.0+ needs a
+# Node.js UI build pipeline (ui/web.go embeds ui/app/dist/ via //go:embed).
+# FG-048 shipped forge-builder-node-trixie; FG-052 then applied the
+# dual-builder pattern and flipped alertmanager to floating :latest (same
+# shape as cadvisor + ipmi-exporter + uptime-kuma). The Dockerfile must
+# now have an EMPTY ALERTMANAGER_VERSION default (FG-050 pattern) and the
+# image.yaml must carry tag "latest".
 dockerfile=images/alertmanager-scratch-trixie/Dockerfile
 imageyaml=images/alertmanager-scratch-trixie/image.yaml
-if ! grep -qE '^ARG ALERTMANAGER_VERSION=v0\.28\.1$' "$dockerfile"; then
+if ! grep -qE '^ARG ALERTMANAGER_VERSION=\s*$' "$dockerfile"; then
   got=$(grep -E '^ARG ALERTMANAGER_VERSION=' "$dockerfile" || true)
-  fail "${dockerfile}: expected ARG ALERTMANAGER_VERSION=v0.28.1 (bump deferred); got: ${got}"
+  fail "${dockerfile}: expected empty ARG ALERTMANAGER_VERSION= (FG-052 floating :latest); got: ${got}"
 fi
 tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' "$imageyaml")
-[[ "$tag" == "0.28" ]] || fail "${imageyaml}: tag = '${tag}' (want '0.28' — bump deferred)"
-if ! grep -qE 'FG-048|forge-builder-node-trixie' "$dockerfile"; then
-  fail "${dockerfile} must carry a comment naming the FG-048 / forge-builder-node-trixie blocker"
+[[ "$tag" == "latest" ]] || fail "${imageyaml}: tag = '${tag}' (want 'latest' per FG-052)"
+if ! grep -qE 'FG-048|FG-052|forge-builder-node-trixie' "$dockerfile"; then
+  fail "${dockerfile} must reference FG-052 / FG-048 / forge-builder-node-trixie (dual-builder migration context)"
 fi
-pass "alertmanager-scratch-trixie: deferred at v0.28.1 with documented FG-048 blocker"
+pass "alertmanager-scratch-trixie: resolved by FG-052 (floating :latest via dual-builder)"
 
 # ---------------------------------------------------------------------------
 # §2. PROMISES.yaml version banner strings updated to new upstream versions.
@@ -94,11 +95,9 @@ if ! grep -qF 'version 1.12.1' images/node-exporter-scratch-trixie/PROMISES.yaml
 fi
 pass "node-exporter PROMISES version banner is 1.12.1"
 
-# alertmanager: deferred — PROMISES should still read "version 0.28.1".
-if ! grep -qF 'version 0.28.1' images/alertmanager-scratch-trixie/PROMISES.yaml; then
-  fail "alertmanager PROMISES.yaml should still read 'version 0.28.1' (bump deferred)"
-fi
-pass "alertmanager PROMISES version banner is 0.28.1 (deferred)"
+# alertmanager: FG-052 bumped. PROMISES banner no longer pins a specific
+# version string — the image floats on upstream :latest.
+pass "alertmanager PROMISES check skipped (FG-052 moved to floating :latest)"
 
 # ---------------------------------------------------------------------------
 # §3. Each affected image builds + all its smokes pass.
