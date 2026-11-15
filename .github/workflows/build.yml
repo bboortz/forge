@@ -68,6 +68,11 @@ jobs:
   publish-pre-builders:
     name: Publish ${{ matrix.image_dir }}
     needs: discover
+    # FG-057: when the filter skips this tier entirely (empty matrix), the
+    # job is marked `skipped` which would normally cascade-fail downstream
+    # tiers' `needs:`. Make this job explicitly succeed-when-empty so the
+    # chain stays happy.
+    if: ${{ needs.discover.outputs.pre_builders != '{"include":[]}' }}
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per pre-builder. Typical 2-4 min (apt-upgrade + push).
     timeout-minutes: 10
@@ -167,6 +172,12 @@ jobs:
   publish-builders:
     name: Publish ${{ matrix.image_dir }}
     needs: [discover, publish-pre-builders]
+    # FG-057: run if this tier has content AND the upstream tier either
+    # ran successfully (standard cron) OR was intentionally skipped by
+    # the filter (so an empty pre-builders tier doesn't cascade-skip us).
+    if: |
+      needs.discover.outputs.builders != '{"include":[]}'
+      && (needs.publish-pre-builders.result == 'success' || needs.publish-pre-builders.result == 'skipped')
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per builder image. Typical 3-5 min (apt-upgrade
     # + syft install + push). ~2× worst-case typical.
@@ -271,6 +282,10 @@ jobs:
   publish-base:
     name: Publish ${{ matrix.image_dir }}
     needs: [discover, publish-builders]
+    # FG-057: allow intentional skips in the upstream tier.
+    if: |
+      needs.discover.outputs.base != '{"include":[]}'
+      && (needs.publish-builders.result == 'success' || needs.publish-builders.result == 'skipped')
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per scratch-base image (same cadence as builders).
     timeout-minutes: 10
@@ -377,6 +392,10 @@ jobs:
   publish-derivatives:
     name: Publish ${{ matrix.image_dir }}
     needs: [discover, publish-base]
+    # FG-057: allow intentional skips in the upstream tier.
+    if: |
+      needs.discover.outputs.derivatives != '{"include":[]}'
+      && (needs.publish-base.result == 'success' || needs.publish-base.result == 'skipped')
     runs-on: ubuntu-latest
     # FG-038: 16-min cap per derivative image. Typical 5-8 min (apt
     # install + syft + overlay + cosign sign + push + attestations).
