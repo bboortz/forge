@@ -54,7 +54,7 @@ pass "forge-local/prometheus-scratch-trixie:latest built"
 # Section 3 — new web UI smoke + FG-035 regression guard
 # -----------------------------------------------------------------------------
 say "3. web UI smoke + FG-035 regression"
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
+IMAGE_TAG=latest bash images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
 pass "smoke_web_ui.sh"
 
 # Re-run every FG-035 smoke (except the one we just ran) to catch regressions
@@ -62,7 +62,7 @@ pass "smoke_web_ui.sh"
 # overlay; nothing else should shift.
 for s in images/prometheus-scratch-trixie/tests/smoke_*.sh; do
   [[ "${s}" == *smoke_web_ui.sh ]] && continue
-  IMAGE_TAG=2.53 bash "${s}" >/dev/null
+  IMAGE_TAG=latest bash "${s}" >/dev/null
 done
 pass "all existing FG-035 smokes still green"
 

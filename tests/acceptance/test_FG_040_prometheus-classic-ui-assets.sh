@@ -45,13 +45,13 @@ pass "forge-local/prometheus-scratch-trixie:latest built"
 # Section 3 — extended web UI smoke + FG-035/FG-039 regression
 # -----------------------------------------------------------------------------
 say "3. extended smoke_web_ui.sh (includes classic-UI asset matrix)"
-IMAGE_TAG=2.53 bash images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
+IMAGE_TAG=latest bash images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
 pass "smoke_web_ui.sh (incl. every /classic/static/* href/src returns 200)"
 
 # Re-run every other prometheus smoke for regression.
 for s in images/prometheus-scratch-trixie/tests/smoke_*.sh; do
   [[ "${s}" == *smoke_web_ui.sh ]] && continue
-  IMAGE_TAG=2.53 bash "${s}" >/dev/null
+  IMAGE_TAG=latest bash "${s}" >/dev/null
 done
 pass "all other prometheus smokes still green"
 
