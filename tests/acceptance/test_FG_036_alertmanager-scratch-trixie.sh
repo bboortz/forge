@@ -25,21 +25,21 @@ for f in Dockerfile image.yaml PROMISES.yaml EXPECTATIONS.yaml scan-baseline.jso
 done
 pass "all required files present"
 
-say "2. alertmanager-scratch-trixie:0.28 builds"
+say "2. alertmanager-scratch-trixie:latest builds"
 bash scripts/build-image.sh alertmanager-scratch-trixie >/dev/null
-docker image inspect forge-local/alertmanager-scratch-trixie:0.28 >/dev/null
-pass "forge-local/alertmanager-scratch-trixie:0.28 built"
+docker image inspect forge-local/alertmanager-scratch-trixie:latest >/dev/null
+pass "forge-local/alertmanager-scratch-trixie:latest built"
 
 say "3. per-image smoke suite"
 for s in images/alertmanager-scratch-trixie/tests/smoke_*.sh; do
-  IMAGE_TAG=0.28 bash "${s}"
+  IMAGE_TAG=latest bash "${s}"
 done
 pass "all smoke tests green"
 
-say "4. image.yaml: tag=0.28, depends_on=[scratch-base-trixie]"
+say "4. image.yaml: tag=latest, depends_on=[scratch-base-trixie]"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' \
         images/alertmanager-scratch-trixie/image.yaml)
-[[ "${tag}" == "0.28" ]] || fail "image.yaml tag = '${tag}' (want 0.28)"
+[[ "${tag}" == "latest" ]] || fail "image.yaml tag = '${tag}' (want latest)"
 grep -qE '^[[:space:]]*-[[:space:]]*scratch-base-trixie' \
   images/alertmanager-scratch-trixie/image.yaml \
   || fail "image.yaml: depends_on must list scratch-base-trixie"

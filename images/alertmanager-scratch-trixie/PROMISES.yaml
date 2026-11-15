@@ -6,7 +6,7 @@ version: "0.1"
 
 promises:
   - id: runtime.alertmanager-binary
-    description: /usr/bin/prometheus-alertmanager is present, executes, `--version` prints `alertmanager, version 0.28.1`.
+    description: /usr/bin/prometheus-alertmanager is present, executes, and `--version` prints `alertmanager, version 0.X.Y` matching the upstream tag resolved at build time via FG-050 `build.ref-latest-release` (floating :latest).
     caps: [build.two-stage-scratch]
     tests:
       - images/alertmanager-scratch-trixie/tests/smoke_binary_runs.sh
