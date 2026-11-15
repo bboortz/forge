@@ -3,7 +3,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-prometheus-scratch-trixie}"
-IMAGE_TAG="${IMAGE_TAG:-2.53}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
@@ -16,8 +16,10 @@ if [[ $rc -ne 0 ]]; then
   echo "${out}" >&2
   exit 1
 fi
+# FG-053: floating :latest, resolved via GitHub Releases API each build.
+# Accept any vX.Y.Z as long as it identifies as prometheus.
 case "${out}" in
-  *"prometheus, version 2.53"*) ;;
+  *"prometheus, version "*) ;;
   *) echo "  ✗ unexpected --version output: ${out}" >&2; exit 1 ;;
 esac
 echo "  ✓ $(echo "${out}" | head -1)"

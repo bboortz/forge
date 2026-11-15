@@ -36,10 +36,10 @@ pass "builtinassets present (UI embedded in Go binary)"
 # -----------------------------------------------------------------------------
 # Section 2 — build
 # -----------------------------------------------------------------------------
-say "2. prometheus-scratch-trixie:2.53 builds (with dereferenced static libs)"
+say "2. prometheus-scratch-trixie:latest builds (with dereferenced static libs)"
 bash scripts/build-image.sh prometheus-scratch-trixie >/dev/null
-docker image inspect forge-local/prometheus-scratch-trixie:2.53 >/dev/null
-pass "forge-local/prometheus-scratch-trixie:2.53 built"
+docker image inspect forge-local/prometheus-scratch-trixie:latest >/dev/null
+pass "forge-local/prometheus-scratch-trixie:latest built"
 
 # -----------------------------------------------------------------------------
 # Section 3 — extended web UI smoke + FG-035/FG-039 regression

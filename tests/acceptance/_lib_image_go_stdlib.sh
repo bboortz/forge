@@ -17,7 +17,11 @@ image_go_stdlib() {
   docker save "${image}" -o "${tmp}/i.tar"
   (cd "${tmp}" && tar xf i.tar) >/dev/null 2>&1
   python3 - "${tmp}" "${bin}" <<'PY'
-import json, tarfile, pathlib, subprocess, sys, tempfile
+# Canonical Go stdlib detection: prefer `go version <bin>` (reads the
+# embedded buildinfo header); fall back to a regex that matches ONLY a
+# canonical semver-shaped stdlib version — not stray `go1.23.0H9`-style
+# garbage that newer compilers emit as internal markers.
+import json, re, tarfile, pathlib, shutil, subprocess, sys, tempfile
 root, binpath = sys.argv[1], sys.argv[2].lstrip('/')
 m = json.loads(pathlib.Path(f"{root}/manifest.json").read_text())
 for layer_file in m[0]['Layers']:
@@ -27,11 +31,20 @@ for layer_file in m[0]['Layers']:
             if binpath in t.getnames():
                 with tempfile.TemporaryDirectory() as td:
                     t.extract(binpath, td)
-                    out = subprocess.check_output(['strings', f'{td}/{binpath}']).decode()
+                    bp = f'{td}/{binpath}'
+                    if shutil.which('go'):
+                        try:
+                            out = subprocess.check_output(['go', 'version', bp], stderr=subprocess.DEVNULL).decode()
+                            mm = re.search(r'\bgo1\.\d+(\.\d+)?\b', out)
+                            if mm:
+                                print(mm.group(0)); sys.exit(0)
+                        except Exception:
+                            pass
+                    out = subprocess.check_output(['strings', bp]).decode()
                     for line in out.split('\n'):
-                        if line.startswith('go1.'):
-                            print(line.split()[0])
-                            sys.exit(0)
+                        line = line.strip()
+                        if re.fullmatch(r'go1\.\d+(\.\d+)?', line):
+                            print(line); sys.exit(0)
     except Exception:
         pass
 sys.exit(1)
