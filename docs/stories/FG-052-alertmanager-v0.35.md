@@ -1,9 +1,10 @@
 ---
 id: FG-052
 slug: alertmanager-v0.35
-status: ready
+status: shipped
 owner: bboortz
 created: 2026-11-15
+shipped: 2026-11-15
 ---
 
 # FG-052 — alertmanager-scratch-trixie v0.28.1 → v0.35.0 (dual-builder migration)
