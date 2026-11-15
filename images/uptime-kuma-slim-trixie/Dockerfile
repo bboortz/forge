@@ -118,13 +118,18 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# Fresh apt-upgrade (daily cron). ca-certificates for outbound HTTPS probes.
-# dumb-init for proper PID 1 signal forwarding (upstream convention).
+# Fresh apt-upgrade (daily cron). Packages:
+#   - ca-certificates: outbound HTTPS probe targets
+#   - dumb-init: proper PID 1 signal forwarding (upstream convention)
+#   - iputils-ping: FG-055 — Uptime Kuma's "Ping" monitor type invokes
+#     /bin/ping. Without this, operators get "ping: command not found"
+#     in the Uptime Kuma logs when they create a Ping monitor.
 # hadolint ignore=DL3008
 RUN set -eux; \
     apt-get update; \
     apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install ca-certificates dumb-init; \
+    apt-get -y --no-install-recommends install \
+      ca-certificates dumb-init iputils-ping; \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /out/app /app
