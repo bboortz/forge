@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Smoke: forge-builder-trixie carries a working syft binary.
+# Smoke: forge-builder-python-trixie carries a working syft binary.
 
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-trixie}"
+: "${IMAGE_NAME:=forge-builder-python-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

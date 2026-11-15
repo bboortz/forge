@@ -19,7 +19,7 @@ set -euo pipefail
 MODE="${1:-all}"
 
 # FG-042 + FG-051: pre-builders — forge-rooted slim bases consumed by
-# multiple downstream slim images. Must publish BEFORE forge-builder-trixie
+# multiple downstream slim images. Must publish BEFORE forge-builder-python-trixie
 # (which FROMs python-slim-trixie post-FG-042) and BEFORE cadvisor-slim
 # / ipmi-exporter-slim (which FROM debian-slim-trixie). FG-051 adds
 # ubuntu-slim-noble as the first Ubuntu pre-builder (github-runner-noble
@@ -33,12 +33,12 @@ _is_pre_builder() {
   return 1
 }
 
-# FG-025 + FG-046 + FG-048: forge-builder-trixie + forge-builder-go-trixie
+# FG-025 + FG-046 + FG-048: forge-builder-python-trixie + forge-builder-go-trixie
 # + forge-builder-node-trixie are pre-base builder images. Every scratch /
 # from-Go / from-Node derivative's builder stage FROMs one of them. They
 # must publish BEFORE anything that depends on them. Centralizing the
 # special-case here keeps build.yml table-driven.
-_FORGE_BUILDERS=(forge-builder-trixie forge-builder-go-trixie forge-builder-node-trixie)
+_FORGE_BUILDERS=(forge-builder-python-trixie forge-builder-go-trixie forge-builder-node-trixie)
 _is_builder() {
   local name="$1"
   for b in "${_FORGE_BUILDERS[@]}"; do

@@ -12,7 +12,7 @@
 # Result: ~500 KB image. Smaller than busybox:latest (~4.2 MB) by ~8×.
 
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 
 # --- Stage 0: hc binary source -----------------------------------------------
 FROM ${HC_REF} AS hc
@@ -24,7 +24,7 @@ ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
 COPY --from=hc /hc /tmp/hc
-# syft is pre-installed in forge-builder-trixie (FG-025). Scan the hc
+# syft is pre-installed in forge-builder-python-trixie (FG-025). Scan the hc
 # binary directly — produces a minimal CycloneDX SBOM with the hc
 # component. No OS-package footprint because hc is static Zig.
 RUN set -eux; \

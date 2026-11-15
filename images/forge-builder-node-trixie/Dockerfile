@@ -2,7 +2,7 @@
 #
 # FG-048: shared builder-base image for every Forge-native from-Node-source
 # image. Sibling to FG-046's forge-builder-go-trixie (Go from-source) and
-# FG-025's forge-builder-trixie (Debian builder + syft).
+# FG-025's forge-builder-python-trixie (Debian builder + syft).
 #
 # Pre-bakes:
 #   - apt-get upgrade applied (trixie-security included)

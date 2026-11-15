@@ -6,7 +6,7 @@
 #
 # FG-042: FROMs ghcr.io/bboortz/python-slim-trixie (dogfood) instead of
 # python:3.14-slim-trixie upstream. Benefits: version drift between
-# forge-builder-trixie and python-slim-trixie is now structurally
+# forge-builder-python-trixie and python-slim-trixie is now structurally
 # impossible (one bump propagates atomically), fewer Docker Hub digest
 # re-resolves per daily cron, scanner sees a single forge-signed base.
 #
@@ -16,7 +16,7 @@
 # here (just add syft + ca-certificates on top).
 #
 # Not a runtime image — not FROM scratch. Intended as a builder base
-# only: `FROM ghcr.io/bboortz/forge-builder-trixie:<tag> AS builder`.
+# only: `FROM ghcr.io/bboortz/forge-builder-python-trixie:<tag> AS builder`.
 
 # FG-042: resolve at build time to forge-local during local builds,
 # ghcr.io/bboortz/python-slim-trixie:latest in CI. See

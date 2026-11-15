@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 #
 # FG-042: forge-rooted Debian base — the slim equivalent of FG-025's
-# forge-builder-trixie (which is python-rooted). Every Forge slim image
+# forge-builder-python-trixie (which is python-rooted). Every Forge slim image
 # that needs a plain Debian runtime FROMs this instead of Docker Hub's
 # debian:trixie-slim directly.
 #

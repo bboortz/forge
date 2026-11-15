@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Smoke: forge-builder-trixie has a usable CA bundle at the standard path.
+# Smoke: forge-builder-python-trixie has a usable CA bundle at the standard path.
 
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-trixie}"
+: "${IMAGE_NAME:=forge-builder-python-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

@@ -6,9 +6,9 @@
 #   2. nginx-specific overlay (binary + libpcre2 + config + www-data user)
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-# FG-025 Phase 2: builder stage FROMs the shared forge-builder-trixie image
+# FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image
 # (apt-upgraded + CA certs + syft pre-installed).
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 # FG-031: embed `hc` (static Zig healthcheck binary from bboortz/healthy) so
 # a docker-native HEALTHCHECK can replace the FG-030 sidecar companion.
 # Same pin as FG-030's healthy-scratch-trixie.
@@ -28,8 +28,8 @@ ARG BUILD_TIMESTAMP=unknown
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# forge-builder-trixie cleared apt lists; re-populate and install nginx-specific
-# packages. apt-upgrade is NOT repeated — it was done in forge-builder-trixie.
+# forge-builder-python-trixie cleared apt lists; re-populate and install nginx-specific
+# packages. apt-upgrade is NOT repeated — it was done in forge-builder-python-trixie.
 # DL3008: trixie's nginx + deps float within the release channel.
 # hadolint ignore=DL3008
 RUN set -eux; \
@@ -38,7 +38,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
-# forge-builder-trixie (FG-025). Scan AFTER apt-get install so the overlay
+# forge-builder-python-trixie (FG-025). Scan AFTER apt-get install so the overlay
 # packages are captured.
 RUN set -eux; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json

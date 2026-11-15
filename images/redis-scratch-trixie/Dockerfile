@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Two-stage. Builder from forge-builder-trixie (apt-upgraded + syft + CA
+# Two-stage. Builder from forge-builder-python-trixie (apt-upgraded + syft + CA
 # certs pre-installed). Runtime FROM scratch, composed of:
 #   1. scratch-base-trixie (glibc + TLS + DNS + zoneinfo + /etc)
 #   2. redis-specific overlay (redis-server + redis-cli + libatomic + libcap
@@ -12,8 +12,8 @@
 # healthcheck uses `redis-cli ping` which also works without a shell.)
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
-# FG-025 Phase 2: builder stage FROMs the shared forge-builder-trixie image.
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-trixie:latest
+# FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image.
+ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 
 # --- Stage 0: baseline reference ---------------------------------------------
 FROM ${SCRATCH_BASE_REF} AS scratch_base
@@ -26,7 +26,7 @@ ARG BUILD_TIMESTAMP=unknown
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# forge-builder-trixie cleared apt lists + applied apt-upgrade. Re-populate
+# forge-builder-python-trixie cleared apt lists + applied apt-upgrade. Re-populate
 # the lists and install redis. apt-upgrade NOT repeated (pre-done upstream).
 # hadolint ignore=DL3008
 RUN set -eux; \
@@ -35,7 +35,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
-# forge-builder-trixie (FG-025). Scan AFTER apt-get install so the overlay
+# forge-builder-python-trixie (FG-025). Scan AFTER apt-get install so the overlay
 # packages (redis + its runtime deps) are captured.
 RUN set -eux; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json

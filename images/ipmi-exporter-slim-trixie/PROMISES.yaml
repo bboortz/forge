@@ -47,7 +47,7 @@ promises:
       - images/ipmi-exporter-slim-trixie/tests/smoke_size.sh
 
   - id: scan.nonzero-accepted
-    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim images inherit the full dpkg closure; scan-regression gate fires only on NEW CRITICALs beyond baseline (precedent: forge-builder-trixie)."
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim images inherit the full dpkg closure; scan-regression gate fires only on NEW CRITICALs beyond baseline (precedent: forge-builder-python-trixie)."
     caps: [scan.regression-gate]
     tests:
       - images/ipmi-exporter-slim-trixie/tests/smoke_size.sh

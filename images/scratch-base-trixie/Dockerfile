@@ -25,8 +25,8 @@
 # FG-025: builder base pre-loads apt-upgrade + ca-certificates + syft. The
 # ARG default lets a cold local dev build fall back to python:3.14-slim-trixie
 # directly; CI + scripts/build-image.sh override FORGE_BUILDER_REF to the
-# forge-local (or ghcr.io/bboortz) tag of forge-builder-trixie.
-ARG FORGE_BUILDER_REF=forge-local/forge-builder-trixie:0.1
+# forge-local (or ghcr.io/bboortz) tag of forge-builder-python-trixie.
+ARG FORGE_BUILDER_REF=forge-local/forge-builder-python-trixie:0.1
 
 # --- Stage 1: builder ---------------------------------------------------------
 FROM ${FORGE_BUILDER_REF} AS builder
@@ -34,13 +34,13 @@ FROM ${FORGE_BUILDER_REF} AS builder
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
-# Re-populate apt lists for this stage (forge-builder-trixie cleared them per
-# its PROMISES.yaml). apt-upgrade was already done in forge-builder-trixie —
+# Re-populate apt lists for this stage (forge-builder-python-trixie cleared them per
+# its PROMISES.yaml). apt-upgrade was already done in forge-builder-python-trixie —
 # we don't repeat it here. Only sid pins get applied.
 COPY sid-pins/ /etc/apt/preferences.d/
 
 # FG-020: embedded SBOM from builder-stage dpkg. syft is already installed
-# in forge-builder-trixie (FG-025).
+# in forge-builder-python-trixie (FG-025).
 RUN set -eux; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 

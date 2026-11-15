@@ -42,20 +42,20 @@ if grep -nE 'python3\.13|python:3\.13' images/python-scratch-trixie/Dockerfile; 
   fail "python-scratch-trixie/Dockerfile: unexpected 3.13 literal"
 fi
 
-# forge-builder-trixie base points at python 3.14 — post-FG-042, the ARG is
+# forge-builder-python-trixie base points at python 3.14 — post-FG-042, the ARG is
 # PYTHON_SLIM_REF (dogfood of python-slim-trixie, which itself FROMs
 # python:3.14-slim-trixie upstream). The 3.14 version pin is enforced at
 # python-slim-trixie's FROM line (checked above on line 30-32).
-grep -qE '^ARG PYTHON_SLIM_REF=ghcr\.io/bboortz/python-slim-trixie:' images/forge-builder-trixie/Dockerfile \
-  || fail "forge-builder-trixie/Dockerfile: expected ARG PYTHON_SLIM_REF=ghcr.io/bboortz/python-slim-trixie:… (post-FG-042 dogfood)"
+grep -qE '^ARG PYTHON_SLIM_REF=ghcr\.io/bboortz/python-slim-trixie:' images/forge-builder-python-trixie/Dockerfile \
+  || fail "forge-builder-python-trixie/Dockerfile: expected ARG PYTHON_SLIM_REF=ghcr.io/bboortz/python-slim-trixie:… (post-FG-042 dogfood)"
 
 pass "all static invariants in place"
 
 # -----------------------------------------------------------------------------
 # Section 2 — build
 # -----------------------------------------------------------------------------
-say "2. build forge-builder-trixie + python-slim-trixie + python-scratch-trixie"
-for d in forge-builder-trixie python-slim-trixie python-scratch-trixie; do
+say "2. build forge-builder-python-trixie + python-slim-trixie + python-scratch-trixie"
+for d in forge-builder-python-trixie python-slim-trixie python-scratch-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
 done
 docker image inspect forge-local/python-slim-trixie:3.14 >/dev/null
