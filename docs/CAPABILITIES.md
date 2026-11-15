@@ -486,19 +486,19 @@ CI runs persist layer + CVE-DB caches across runs. **FG-021**: `scripts/build-im
 
 ### build.pre-builder-tier
 
-Four-tier daily-cron publish ordering (FG-042 raised from three): `publish-pre-builders` → `publish-builders` → `publish-base` → `publish-derivatives`. Each tier gated on the previous completing via `needs:`. The new pre-builders tier publishes forge-rooted slim bases (`debian-slim-trixie`, `python-slim-trixie`, `ubuntu-slim-noble`) before anything FROMs them. Collapses multi-consumer Docker Hub trust anchors to one forge image per family + makes version bumps atomic (bump a pre-builder, every downstream consumer inherits on next cron).
+Four-tier daily-cron publish ordering (FG-042 raised from three): `publish-pre-builders` → `publish-builders` → `publish-base` → `publish-derivatives`. Each tier gated on the previous completing via `needs:`. The new pre-builders tier publishes forge-rooted slim bases (`debian-slim-trixie`, `debian-slim-sid`, `python-slim-trixie`, `ubuntu-slim-noble`) before anything FROMs them. Collapses multi-consumer Docker Hub trust anchors to one forge image per family + makes version bumps atomic (bump a pre-builder, every downstream consumer inherits on next cron).
 
 - **Delivered by**: FG-042
-- **Extended by**: FG-051 (ubuntu-slim-noble added as Forge's first Ubuntu pre-builder)
-- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `scripts/discover-images.sh` (pre-builders mode)
+- **Extended by**: FG-051 (ubuntu-slim-noble added as Forge's first Ubuntu pre-builder); FG-058 (debian-slim-sid added as escape-hatch pre-builder for CVEs that trixie leaves unfixed)
+- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `tests/acceptance/test_FG_058_libxml2-waiver-and-debian-sid-base.sh`, `scripts/discover-images.sh` (pre-builders mode)
 
 ### image.forge-rooted-slim-bases
 
-Forge owns the Debian + Python + Ubuntu slim bases consumed by every other slim / scratch builder image. `debian-slim-trixie` (NEW — FG-042) is FROMed by `cadvisor-slim-trixie` + `ipmi-exporter-slim-trixie`. `python-slim-trixie` (existing — FG-001, reclassified as pre-builder in FG-042) is FROMed by `forge-builder-python-trixie` (dogfood). `ubuntu-slim-noble` (NEW — FG-051) is FROMed by `github-runner-noble`. Each upstream Docker Hub anchor (`debian:trixie-slim`, `python:3.14-slim-trixie`, `ubuntu:24.04`) is now consumed exactly once per daily cron — by the forge pre-builder — instead of in parallel by multiple downstream images. Version drift between consumers of the same family is structurally impossible: one bump propagates atomically.
+Forge owns the Debian + Python + Ubuntu slim bases consumed by every other slim / scratch builder image. `debian-slim-trixie` (NEW — FG-042) is FROMed by `cadvisor-slim-trixie` + `ipmi-exporter-slim-trixie`. `python-slim-trixie` (existing — FG-001, reclassified as pre-builder in FG-042) is FROMed by `forge-builder-python-trixie` (dogfood). `ubuntu-slim-noble` (NEW — FG-051) is FROMed by `github-runner-noble`. `debian-slim-sid` (NEW — FG-058) is an escape-hatch pre-builder with zero consumers today, kept warm for CVEs that trixie leaves unfixed but sid patches at the same SONAME. Each upstream Docker Hub anchor (`debian:trixie-slim`, `debian:sid-slim`, `python:3.14-slim-trixie`, `ubuntu:24.04`) is consumed exactly once per daily cron — by the forge pre-builder — instead of in parallel by multiple downstream images. Version drift between consumers of the same family is structurally impossible: one bump propagates atomically.
 
 - **Delivered by**: FG-042
-- **Extended by**: FG-051 (ubuntu-slim-noble added; `scripts/verify-no-upstream-drift.sh` _EXPECTED raised 2 → 3)
-- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `images/debian-slim-trixie/tests/smoke_*.sh`, `images/ubuntu-slim-noble/tests/smoke_*.sh`
+- **Extended by**: FG-051 (ubuntu-slim-noble added; `_EXPECTED=3`); FG-058 (debian-slim-sid added; `_EXPECTED=4`)
+- **Covered by**: `tests/acceptance/test_FG_042_forge-rooted-slim-bases.sh`, `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `tests/acceptance/test_FG_058_libxml2-waiver-and-debian-sid-base.sh`, `images/debian-slim-trixie/tests/smoke_*.sh`, `images/debian-slim-sid/tests/smoke_*.sh`, `images/ubuntu-slim-noble/tests/smoke_*.sh`
 
 ### build.shared-go-builder
 
@@ -572,3 +572,10 @@ Forge's first Ubuntu-base slim image. `ubuntu-slim-noble` is a pre-builder FROM 
 
 - **Delivered by**: FG-051
 - **Covered by**: `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `images/github-runner-noble/tests/smoke_*.sh`
+
+### build.debian-sid-base
+
+Forge-rooted Debian sid (unstable) slim pre-builder. `debian-slim-sid` sits in the publish-pre-builders CI tier as infrastructure — zero consumers today, kept warm as an escape hatch for CVEs where trixie's package stays unfixed but sid patches at the same SONAME. Debian sid is a case-by-case exception per `memory/design-decisions.md` § "Exception — Debian sid" (first precedent FG-058); default is still trixie. Policy: downstream images FROM `debian-slim-sid`, not `debian:sid-slim` directly (FG-042 upstream-grep invariant). FG-058's trigger was CVE-2026-6653 libxml2 UAF where sid couldn't help (Debian keeps the vulnerable `.so.2` ABI in both suites), but future CVEs on curl / openssl / zlib etc. where sid DOES ship a `.so.2`-compatible fix become 30-min FGs instead of apt-source gymnastics.
+
+- **Delivered by**: FG-058
+- **Covered by**: `tests/acceptance/test_FG_058_libxml2-waiver-and-debian-sid-base.sh`, `images/debian-slim-sid/tests/smoke_*.sh`

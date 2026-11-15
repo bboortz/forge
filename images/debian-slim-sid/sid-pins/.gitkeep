@@ -1,0 +1,3 @@
+# FG-058: per-image sid-pin directory. Empty at image birth — consumers
+# that need specific sid packages pinned add .pref files here following
+# the format documented in memory/docker-standard.md.

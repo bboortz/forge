@@ -51,13 +51,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# FG-042 + FG-051: pre-builders — forge-rooted slim bases consumed by
-# multiple downstream slim images. Must publish BEFORE forge-builder-python-trixie
-# (which FROMs python-slim-trixie post-FG-042) and BEFORE cadvisor-slim
-# / ipmi-exporter-slim (which FROM debian-slim-trixie). FG-051 adds
-# ubuntu-slim-noble as the first Ubuntu pre-builder (github-runner-noble
-# FROMs it).
-_PRE_BUILDERS=(debian-slim-trixie python-slim-trixie ubuntu-slim-noble)
+# FG-042 + FG-051 + FG-058: pre-builders — forge-rooted slim bases
+# consumed by downstream slim/scratch images. Must publish BEFORE
+# forge-builder-python-trixie (dogfood FROMs python-slim-trixie) and
+# BEFORE cadvisor-slim / ipmi-exporter-slim (FROM debian-slim-trixie).
+# FG-051 adds ubuntu-slim-noble (github-runner-noble FROMs it).
+# FG-058 adds debian-slim-sid as an escape-hatch pre-builder for CVEs
+# that trixie leaves unfixed but sid patches at the same SONAME.
+_PRE_BUILDERS=(debian-slim-trixie debian-slim-sid python-slim-trixie ubuntu-slim-noble)
 _is_pre_builder() {
   local name="$1"
   for b in "${_PRE_BUILDERS[@]}"; do
