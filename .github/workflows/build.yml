@@ -3,7 +3,17 @@ name: Build — daily publish (cron + manual)
 on:
   schedule:
     - cron: "0 3 * * *"      # 03:00 UTC — see memory/design-decisions.md
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      images:
+        description: >-
+          Which image(s) to rebuild + publish. Accepts "all" (default),
+          an exact dir name (e.g. "beaconry-hub"), a comma list
+          ("a,b,c"), or a shell glob ("prometheus-*", "*-scratch-trixie").
+          FG-057. Daily cron ignores this input.
+        type: string
+        required: false
+        default: 'all'
 
 permissions:
   contents: read
@@ -38,12 +48,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: disc
+        env:
+          # FG-057: workflow_dispatch may pass `images=<name|csv|glob>`.
+          # Scheduled cron carries no inputs, so default to "all".
+          FILTER: ${{ inputs.images || 'all' }}
         run: |
           {
-            echo "pre_builders=$(bash scripts/discover-images.sh pre-builders | jq -c .)"
-            echo "builders=$(bash scripts/discover-images.sh builders | jq -c .)"
-            echo "base=$(bash scripts/discover-images.sh base | jq -c .)"
-            echo "derivatives=$(bash scripts/discover-images.sh derivatives | jq -c .)"
+            echo "pre_builders=$(bash scripts/discover-images.sh pre-builders --filter "${FILTER}" | jq -c .)"
+            echo "builders=$(bash scripts/discover-images.sh builders --filter "${FILTER}" | jq -c .)"
+            echo "base=$(bash scripts/discover-images.sh base --filter "${FILTER}" | jq -c .)"
+            echo "derivatives=$(bash scripts/discover-images.sh derivatives --filter "${FILTER}" | jq -c .)"
           } >> "$GITHUB_OUTPUT"
 
   # FG-042 + FG-051: pre-builders tier — forge-rooted slim bases

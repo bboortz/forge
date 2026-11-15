@@ -121,6 +121,26 @@ make push                     # push to your registry
 
 The GitHub Actions workflow at `.github/workflows/build.yml` runs the same `make build && make scan && make push` sequence on a daily cron. Self-hosting requires a registry (GHCR, ECR, or any OCI-compliant registry) and a cosign key pair.
 
+### Manual publish — rebuild a subset immediately (FG-057)
+
+A `workflow_dispatch` accepts an optional `images` filter, so you don't have to wait for the next cron when a source-repo bump needs a fresh published digest:
+
+```bash
+# Rebuild + publish everything (same as the cron)
+gh workflow run build.yml
+
+# Rebuild just one image (e.g. after a beaconry commit lands)
+gh workflow run build.yml -f images=beaconry-hub
+
+# Rebuild a slice via shell glob
+gh workflow run build.yml -f images='prometheus-*'
+
+# Rebuild a comma-separated list
+gh workflow run build.yml -f images=beaconry-hub,beaconry-scout
+```
+
+A zero-match filter fails fast with the list of available image dirs.
+
 ---
 
 ## Beaconry integration
