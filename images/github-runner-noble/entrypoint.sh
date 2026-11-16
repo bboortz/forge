@@ -1,14 +1,29 @@
 #!/bin/bash
 # FG-051: GitHub Actions self-hosted runner entrypoint.
-# FG-063: added RUNNER_CREDS_DIR env var for narrow credential-volume deploys.
+# FG-063: RUNNER_CREDS_DIR env var for narrow credential-volume deploys —
+#         two-phase persistence (restart: pre-symlink; first-start: post-
+#         config.sh move-into-creds-dir + symlink).
 #
 # Behavior:
 #   - Read GITHUB_ORG / GITHUB_RUNNER_PAT / RUNNER_NAME / RUNNER_LABELS env.
 #   - Read RUNNER_CREDS_DIR env (default /home/runner). When non-default,
-#     mkdir the target + symlink .runner, .credentials, .credentials_rsaparams
-#     from /home/runner into RUNNER_CREDS_DIR so the runner binary tree under
-#     /home/runner/bin/ stays image-layer owned (no more named-volume
-#     binary-shadow bug — see FG-063 story).
+#     the entrypoint persists credentials outside /home/runner so the
+#     runner binary tree (/home/runner/bin/ + externals/) stays image-
+#     layer owned and forge image bumps propagate every restart.
+#     Two phases:
+#       Phase 1 (restart): if RUNNER_CREDS_DIR/.runner already exists,
+#         symlink the three credential files from /home/runner/ into
+#         RUNNER_CREDS_DIR BEFORE invoking config.sh / run.sh. Note:
+#         ONLY files that exist in the creds dir get a symlink —
+#         pre-creating dangling symlinks for .credentials /
+#         .credentials_rsaparams crashes Runner.Listener configure
+#         because its LoadDefaultUserAgents() path follows the dangling
+#         link and throws FileNotFoundException.
+#       Phase 2 (first-start): no symlinks pre-created. config.sh writes
+#         .runner / .credentials / .credentials_rsaparams natively into
+#         /home/runner/. After config.sh completes, we move each regular
+#         file into RUNNER_CREDS_DIR and replace it with a symlink —
+#         persisting through the volume for next container startup.
 #   - If /home/runner/.runner does NOT exist: request a registration token
 #     from the GitHub Actions API + run config.sh --unattended --replace.
 #   - If /home/runner/.runner DOES exist: skip registration, go straight
@@ -26,18 +41,22 @@ RUNNER_DIR="/home/runner"
 REG_FILE="${RUNNER_DIR}/.runner"
 RUNNER_CREDS_DIR="${RUNNER_CREDS_DIR:-$RUNNER_DIR}"
 
-# FG-063: when the operator points credential persistence at a path other
-# than /home/runner (typically a narrow mounted volume at /runner-creds),
-# redirect the three credential files via symlinks BEFORE config.sh runs.
-# On first start the symlinks are dangling and config.sh writes through
-# them; on later starts they resolve + the REG_FILE check below short-
-# circuits registration. Binary tree (/home/runner/bin/ + externals/) is
-# never shadowed, so forge image updates propagate every restart.
+# FG-063 Phase 1 (restart): if the creds dir already holds a .runner,
+# this is a restart with persisted credentials — symlink every existing
+# credential file into /home/runner/ so Runner.Listener reads through
+# the symlinks. Files that DON'T yet exist in the creds dir (incomplete
+# prior registration, GHE-only .credentials_rsaparams on github.com
+# deploys) get NO symlink — a dangling symlink crashes
+# Runner.Listener's LoadDefaultUserAgents() path.
 if [[ "${RUNNER_CREDS_DIR}" != "${RUNNER_DIR}" ]]; then
   mkdir -p "${RUNNER_CREDS_DIR}"
-  for _f in .runner .credentials .credentials_rsaparams; do
-    ln -sf "${RUNNER_CREDS_DIR}/${_f}" "${RUNNER_DIR}/${_f}"
-  done
+  if [[ -f "${RUNNER_CREDS_DIR}/.runner" ]]; then
+    for _f in .runner .credentials .credentials_rsaparams; do
+      if [[ -f "${RUNNER_CREDS_DIR}/${_f}" ]]; then
+        ln -sf "${RUNNER_CREDS_DIR}/${_f}" "${RUNNER_DIR}/${_f}"
+      fi
+    done
+  fi
 fi
 
 if [[ -z "${GITHUB_ORG:-}" ]] && [[ ! -f "${REG_FILE}" ]]; then
@@ -76,6 +95,21 @@ if [[ ! -f "${REG_FILE}" ]]; then
     --unattended \
     --replace
   echo "==> Runner registered."
+
+  # FG-063 Phase 2 (first-start post-config): move the freshly-written
+  # credential files into RUNNER_CREDS_DIR and replace each with a
+  # symlink so the next container start (potentially with a new forge
+  # image layer via `docker compose up -d --pull always`) resolves
+  # through the symlinks into the persistent volume.
+  if [[ "${RUNNER_CREDS_DIR}" != "${RUNNER_DIR}" ]]; then
+    for _f in .runner .credentials .credentials_rsaparams; do
+      if [[ -f "${RUNNER_DIR}/${_f}" && ! -L "${RUNNER_DIR}/${_f}" ]]; then
+        mv "${RUNNER_DIR}/${_f}" "${RUNNER_CREDS_DIR}/${_f}"
+        ln -sf "${RUNNER_CREDS_DIR}/${_f}" "${RUNNER_DIR}/${_f}"
+      fi
+    done
+    echo "==> Credentials persisted to ${RUNNER_CREDS_DIR}."
+  fi
 else
   echo "==> Runner already registered (${REG_FILE} exists), skipping config.sh."
 fi

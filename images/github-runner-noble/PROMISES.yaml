@@ -2,7 +2,7 @@
 
 spec_version: 1
 image: github-runner-noble
-version: "0.2"
+version: "0.3"
 
 promises:
   - id: runtime.gha-runner-binary
@@ -30,7 +30,7 @@ promises:
       - images/github-runner-noble/tests/smoke_entrypoint_env_validation.sh
 
   - id: runtime.runner-creds-dir-env
-    description: "/entrypoint.sh reads RUNNER_CREDS_DIR env var (default /home/runner). When set to a non-default path, the entrypoint mkdir-p's the target and symlinks .runner + .credentials + .credentials_rsaparams from /home/runner/ into RUNNER_CREDS_DIR before invoking config.sh / run.sh. Lets operators persist runner credentials in a narrow mounted volume without shadowing the runner binary tree under /home/runner/bin/ + /home/runner/externals/."
+    description: "/entrypoint.sh reads RUNNER_CREDS_DIR env var (default /home/runner). When set to a non-default path, the entrypoint persists credentials in that directory via a two-phase scheme. Phase 1 (restart): if RUNNER_CREDS_DIR/.runner already exists, symlink each existing credential file (.runner, .credentials, .credentials_rsaparams) from /home/runner/ into RUNNER_CREDS_DIR BEFORE invoking config.sh / run.sh. Files that don't yet exist in RUNNER_CREDS_DIR get NO symlink (pre-creating a dangling symlink crashes Runner.Listener configure's LoadDefaultUserAgents() path with FileNotFoundException). Phase 2 (first-start post-config): after config.sh writes credentials into /home/runner/ natively, the entrypoint mv's each regular file into RUNNER_CREDS_DIR and replaces it with a symlink. Net effect: credentials persist in the narrow volume across container recreation; the runner binary tree under /home/runner/bin/ stays image-layer owned."
     caps: [image.github-runner-creds-dir]
     tests:
       - images/github-runner-noble/tests/smoke_runner_creds_dir.sh
