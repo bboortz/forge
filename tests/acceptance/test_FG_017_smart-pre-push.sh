@@ -91,13 +91,17 @@ pass "scratch-base → full bailout"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
-# Section 5 — Dispatch: scripts/ change → full bailout
+# Section 5 — Dispatch: core scripts/ change → full bailout
+# FG-059 extended the scripts classification: core scripts trigger a full run
+# with reason=tooling-core; non-core scripts fall through to the scoped path.
+# scripts/build-image.sh is a core script.
 # -----------------------------------------------------------------------------
-say "5. scripts/ change → full bailout"
+say "5. core scripts/ change → full bailout"
 commit_touch "scripts: synth" "scripts/build-image.sh"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
-grep -q 'DISPATCH=full reason=tooling-or-baseline' <<<"${out}" || { echo "  ✗ expected scripts bailout; got: ${out}" >&2; exit 1; }
-pass "scripts/*.sh → full bailout"
+grep -qE 'DISPATCH=full reason=tooling-(or-baseline|core)' <<<"${out}" \
+  || { echo "  ✗ expected scripts bailout (tooling-core or tooling-or-baseline); got: ${out}" >&2; exit 1; }
+pass "scripts/build-image.sh → full bailout"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
@@ -121,8 +125,12 @@ commit_touch ">4 images: synth" \
   "images/python-slim-trixie/image.yaml" \
   "images/nginx-scratch-trixie/image.yaml"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
-grep -q 'DISPATCH=full reason=image-count count=5' <<<"${out}" || { echo "  ✗ expected count=5 bailout; got: ${out}" >&2; exit 1; }
-pass "5 images → image-count bailout"
+# FG-059: fan-out via Dockerfile FROM-graph can inflate the count further
+# (python-slim-trixie → forge-builder-python-trixie → every scratch deriv).
+# The invariant that matters: >4 triggers the image-count bailout.
+grep -qE 'DISPATCH=full reason=image-count count=[5-9]|DISPATCH=full reason=image-count count=[0-9]{2,}' <<<"${out}" \
+  || { echo "  ✗ expected image-count bailout (count≥5); got: ${out}" >&2; exit 1; }
+pass "≥5 images → image-count bailout"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
