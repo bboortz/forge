@@ -43,23 +43,21 @@ tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' images/debian-s
 [[ "$tag" == "latest" ]] || fail "debian-slim-sid image.yaml tag = '${tag}' (want 'latest')"
 pass "image.yaml tag correct"
 
-say "5. verify-no-upstream-drift: _EXPECTED=4 and debian:sid-slim in anchors"
+say "5. verify-no-upstream-drift: debian:sid-slim in anchors + guard runs clean"
+# FG-058 added debian:sid-slim as the 4th anchor. FG-061 added node:24-trixie-slim
+# as the 5th. We assert membership here and let the guard check that _EXPECTED
+# tracks the live set of pre-builders — forward-compatible with future additions.
 grep -q "'debian:sid-slim'" scripts/verify-no-upstream-drift.sh \
   || fail "scripts/verify-no-upstream-drift.sh does not list 'debian:sid-slim' in _UPSTREAM_ANCHORS"
-grep -qE '^_EXPECTED=4$' scripts/verify-no-upstream-drift.sh \
-  || fail "scripts/verify-no-upstream-drift.sh _EXPECTED must be 4"
-# Guard runs clean:
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails — mismatch between _EXPECTED and FROM-grep count"
-pass "upstream-drift invariant satisfied (4 pre-builders anchors)"
+pass "upstream-drift invariant satisfied (debian:sid-slim anchor present, guard clean)"
 
-say "6. discover-images.sh pre-builders mode returns the 4 pre-builders"
+say "6. discover-images.sh pre-builders mode includes debian-slim-sid"
 out=$(bash scripts/discover-images.sh pre-builders)
-got=$(echo "${out}" | jq '.include | length')
-[[ "$got" -eq 4 ]] || fail "pre-builders tier returned ${got} entries (want 4)"
 echo "${out}" | jq -e '.include | map(.image_dir) | contains(["debian-slim-sid"])' >/dev/null \
   || fail "pre-builders tier missing debian-slim-sid"
-pass "4 pre-builders including debian-slim-sid"
+pass "pre-builders tier includes debian-slim-sid"
 
 say "7. Full build + smoke suite (skip in fast-mode)"
 if [[ "${FORGE_FAST:-0}" == "1" ]]; then
