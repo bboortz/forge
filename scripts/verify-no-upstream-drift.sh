@@ -34,10 +34,16 @@ _UPSTREAM_ANCHORS=(
   'debian:sid-slim'
   'python:3\.14-slim-trixie'
   'ubuntu:24\.04'
+  'node:24-trixie-slim'
 )
 # How many Dockerfiles SHOULD FROM each anchor (= how many pre-builders
-# each anchor should feed into).
-_EXPECTED=4
+# each anchor should feed into). FG-061 adds node-slim-trixie as the
+# 5th pre-builder using a LITERAL `FROM node:24-trixie-slim` line.
+# forge-builder-node-trixie also uses this base but via ARG-indirect
+# (`FROM ${NODE_BASE}`), which the grep below doesn't match — that's
+# the dedicated-toolchain exemption, same pattern as forge-builder-
+# go-trixie with `golang:1.27-trixie`.
+_EXPECTED=5
 
 # Build a single alternation for grep (|-separated).
 _ANCHOR_RE="$(IFS='|'; echo "${_UPSTREAM_ANCHORS[*]}")"
@@ -53,9 +59,10 @@ if [[ "${hits}" -ne "${_EXPECTED}" ]]; then
   echo >&2
   echo "FG-042 invariant: upstream Docker Hub anchors must be consumed" >&2
   echo "by exactly one forge pre-builder (debian-slim-trixie, debian-" >&2
-  echo "slim-sid, python-slim-trixie, ubuntu-slim-noble). If you need a" >&2
-  echo "new slim image rooted on any of those upstreams, FROM the forge" >&2
-  echo "pre-builder instead of the upstream Docker Hub tag." >&2
+  echo "slim-sid, python-slim-trixie, ubuntu-slim-noble, node-slim-" >&2
+  echo "trixie). If you need a new slim image rooted on any of those" >&2
+  echo "upstreams, FROM the forge pre-builder instead of the upstream" >&2
+  echo "Docker Hub tag." >&2
   exit 1
 fi
 

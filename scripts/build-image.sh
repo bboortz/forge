@@ -110,6 +110,15 @@ if [[ -d "${_UBUNTU_SLIM_NOBLE_DIR}" && -f "${SRC}/Dockerfile" ]] \
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" ubuntu-slim-noble
 fi
 
+# FG-061: node-slim-trixie is the Node runtime pre-builder. Build on
+# demand when the Dockerfile declares NODE_SLIM_REF.
+_NODE_SLIM_DIR="${ROOT}/images/node-slim-trixie"
+if [[ -d "${_NODE_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "NODE_SLIM_REF" "${SRC}/Dockerfile"; then
+  echo "→ pre-builder dependency: node-slim-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" node-slim-trixie
+fi
+
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
 TAG=$(image_yaml_get   "${SRC}/image.yaml" tag)
 [[ -n "${TAG}" ]] || { echo "${SRC}/image.yaml missing required 'tag:' field" >&2; exit 1; }
@@ -221,6 +230,18 @@ if ! docker image inspect "${UBUNTU_SLIM_NOBLE_REF}" >/dev/null 2>&1; then
   UBUNTU_SLIM_NOBLE_REF="ghcr.io/bboortz/ubuntu-slim-noble:${_UBUNTU_SLIM_NOBLE_TAG}"
 fi
 
+# FG-061: NODE_SLIM_REF — Forge-rooted Node runtime pre-builder.
+_NODE_SLIM_YAML="${ROOT}/images/node-slim-trixie/image.yaml"
+if [[ -f "${_NODE_SLIM_YAML}" ]]; then
+  _NODE_SLIM_TAG=$(image_yaml_get "${_NODE_SLIM_YAML}" tag)
+else
+  _NODE_SLIM_TAG="latest"
+fi
+NODE_SLIM_REF="${REGISTRY}/node-slim-trixie:${_NODE_SLIM_TAG}"
+if ! docker image inspect "${NODE_SLIM_REF}" >/dev/null 2>&1; then
+  NODE_SLIM_REF="ghcr.io/bboortz/node-slim-trixie:${_NODE_SLIM_TAG}"
+fi
+
 # FG-031: resolve HC_REF the same way for images whose Dockerfile declares
 # ARG HC_REF (healthy-scratch-trixie + any image embedding /hc per FG-031).
 # Prefer forge-local/hc:0.1.0 if present (set up for local dev); else fall
@@ -261,6 +282,10 @@ if [[ "${PYTHON_SLIM_REF}" == forge-local/* ]]; then
 fi
 # FG-051: same guard for UBUNTU_SLIM_NOBLE_REF.
 if [[ "${UBUNTU_SLIM_NOBLE_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-061: same guard for NODE_SLIM_REF.
+if [[ "${NODE_SLIM_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-031: same guard for HC_REF — forge-local/hc:0.1.0 isn't a real registry.
@@ -398,6 +423,12 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${UBUNTU_SLIM_NOBLE_REF}" == forge-local/* 
    && grep -q "UBUNTU_SLIM_NOBLE_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-061: same for NODE_SLIM_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${NODE_SLIM_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "NODE_SLIM_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -428,6 +459,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg DEBIAN_SLIM_REF="${DEBIAN_SLIM_REF}" \
   --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}" \
   --build-arg UBUNTU_SLIM_NOBLE_REF="${UBUNTU_SLIM_NOBLE_REF}" \
+  --build-arg NODE_SLIM_REF="${NODE_SLIM_REF}" \
   --build-arg HC_REF="${HC_REF}" \
   --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   "${EXTRA_LABELS[@]}" \
