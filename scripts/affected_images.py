@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -91,6 +92,30 @@ def load_expectations_graph() -> dict[str, set[str]]:
     return graph
 
 
+def load_from_graph() -> dict[str, list[str]]:
+    """FG-059: reverse-dep graph derived from Dockerfile FROM lines.
+
+    Keys: image name; values: list of images that FROM the key.
+    Shells out to image_from_graph.py so the parser lives in one place.
+    Returns empty dict on any error (graceful degradation — the PROMISES
+    fan-out path still works).
+    """
+    try:
+        p = subprocess.run(
+            ["python3", str(REPO_ROOT / "scripts/image_from_graph.py")],
+            cwd=REPO_ROOT, capture_output=True, text=True, check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    try:
+        data = json.loads(p.stdout)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: (v if isinstance(v, list) else []) for k, v in data.items()}
+
+
 def dependents_of(graph: dict[str, set[str]], image: str) -> set[str]:
     """Images that depend on `image` (direct + transitive)."""
     out: set[str] = set()
@@ -124,7 +149,8 @@ def main() -> int:
 
     affected = set(direct)
 
-    # Transitive: PROMISES promise removed / modified → fan-out to dependents
+    # Transitive 1: PROMISES promise removed / modified → fan-out to dependents
+    # via EXPECTATIONS graph (contract-based).
     graph = load_expectations_graph()
     for img in direct:
         old = load_promises_from_ref(base, img)
@@ -136,6 +162,26 @@ def main() -> int:
         if removed or modified:
             for dependent in dependents_of(graph, img):
                 affected.add(dependent)
+
+    # Transitive 2 (FG-059): fan out through the Dockerfile FROM graph. An
+    # image's bump propagates to every image that FROMs it (recursively).
+    # Capture ALL direct changes, not just PROMISES-breaking ones — a
+    # Dockerfile tweak in a base image (e.g. extra apt package, env var)
+    # may not change promises but still affects downstream builds.
+    from_graph = load_from_graph()
+    pending = list(direct)
+    seen = set(pending)
+    for _ in range(5):  # chain-depth invariant cap; 5 is generous
+        next_round = []
+        for img in pending:
+            for dependent in from_graph.get(img, ()):
+                if dependent not in seen:
+                    seen.add(dependent)
+                    affected.add(dependent)
+                    next_round.append(dependent)
+        if not next_round:
+            break
+        pending = next_round
 
     for name in sorted(affected):
         print(name)

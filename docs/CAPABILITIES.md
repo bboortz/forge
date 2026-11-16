@@ -428,10 +428,11 @@ Forge's scan + sign + attest + publish pipeline (per-image smokes, grype scan, s
 
 ### tooling.smart-check
 
-Scope-aware pre-push gate (`make check-smart-strict`, implemented by `scripts/smart-check.sh` + `scripts/affected_images.py`). Reads `git diff $BASE..HEAD`, derives the affected image set (direct path match + FG-010 EXPECTATIONS fan-out on promise-removal/modification), and runs only that scoped build+smoke+acceptance. Full-run bailouts: `scripts/*`, `Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `images/scratch-base-trixie/*`, or `>4` images affected. Dispatch is observable via `SMART_CHECK_DRY_RUN=1`. Dedup under `make check` via `_FORGE_IN_CHECK=1` env — acceptance tests' internal `scripts/test-images.sh` invocations are skipped since the global `test-images` phase covers them.
+Scope-aware pre-push gate (`make check-smart-strict`, implemented by `scripts/smart-check.sh` + `scripts/affected_images.py`). Reads `git diff $BASE..HEAD`, derives the affected image set (direct path match + FG-010 EXPECTATIONS fan-out on promise-removal/modification + FG-059 Dockerfile FROM-graph fan-out), and runs only that scoped build+smoke+acceptance. Full-run bailouts: `Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*`, `images/scratch-base-trixie/*`, core `scripts/*` from an explicit allowlist (build-image.sh, affected_images.py, smart-check.sh, discover-images.sh, stamp-image.sh, scan-regression.py, verify-*, install-tool-from-docker.sh, image_from_graph.py, scan-baseline-update.py, smoke-server.sh), or `>4` images affected. Non-core `scripts/*` changes fall through to the normal affected-images path. Dispatch is observable via `SMART_CHECK_DRY_RUN=1`. Dedup under `make check` via `_FORGE_IN_CHECK=1` env.
 
 - **Delivered by**: FG-017
-- **Covered by**: `tests/acceptance/test_FG_017_smart-pre-push.sh`
+- **Extended by**: FG-059 (Dockerfile FROM-graph fan-out + finer scripts/ triage)
+- **Covered by**: `tests/acceptance/test_FG_017_smart-pre-push.sh`, `tests/acceptance/test_FG_059_smart-check-dep-graph.sh`
 
 ### tooling.unscoped-lint
 
