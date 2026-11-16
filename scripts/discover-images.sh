@@ -58,7 +58,7 @@ done
 # FG-051 adds ubuntu-slim-noble (github-runner-noble FROMs it).
 # FG-058 adds debian-slim-sid as an escape-hatch pre-builder for CVEs
 # that trixie leaves unfixed but sid patches at the same SONAME.
-_PRE_BUILDERS=(debian-slim-trixie debian-slim-sid python-slim-trixie ubuntu-slim-noble)
+_PRE_BUILDERS=(debian-slim-trixie debian-slim-sid python-slim-trixie ubuntu-slim-noble node-slim-trixie)
 _is_pre_builder() {
   local name="$1"
   for b in "${_PRE_BUILDERS[@]}"; do

@@ -1,0 +1,58 @@
+# FG-010 contract for node-slim-trixie (FG-061).
+#
+# Forge-rooted Node.js runtime slim base. Mirrors debian-slim-trixie's
+# shape with a Node 24 LTS stdlib baked in.
+
+spec_version: 1
+image: node-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.node-binary
+    description: "/usr/local/bin/node is present + executable; `node --version` prints v24.x.x (LTS line per upstream node:24-trixie-slim base)."
+    caps: [build.node-slim-base]
+    tests:
+      - images/node-slim-trixie/tests/smoke_node_version.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt is present. Downstream npm / fetch calls with outbound HTTPS work without re-apt-installing.
+    caps: [build.node-slim-base]
+    tests:
+      - images/node-slim-trixie/tests/smoke_ca_bundle.sh
+
+  - id: files.dumb-init
+    description: /usr/bin/dumb-init is present. Node consumers use it as ENTRYPOINT to get proper SIGTERM / signal propagation (upstream node convention).
+    caps: [build.node-slim-base]
+    tests:
+      - images/node-slim-trixie/tests/smoke_dumb_init.sh
+
+  - id: apt.freshly-upgraded
+    description: Image was built with `apt-get upgrade` applied against the Debian trixie-security snapshot. Any trixie-security backport released before BUILD_TIMESTAMP is included.
+    caps: [build.node-slim-base]
+    tests:
+      - images/node-slim-trixie/tests/smoke_apt_upgraded.sh
+
+  - id: apt.no-cache
+    description: /var/lib/apt/lists/ carries no Packages/Release/InRelease files. Downstream Dockerfiles that apt-get install MUST re-run apt-get update first.
+    caps: [build.node-slim-base]
+    tests:
+      - images/node-slim-trixie/tests/smoke_no_apt_cache.sh
+    inverse: true
+
+  - id: presence.shell
+    description: /bin/sh + /bin/bash are present (slim contract). Downstream builders invoke shell scripts; runtime consumers have `docker exec -it <container> sh` access.
+    caps: [image.has-shell]
+    tests:
+      - images/node-slim-trixie/tests/smoke_has_shell.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ upstream node:24-trixie-slim × 1.1 (10% headroom for apt-upgrade + ca-certs + dumb-init).
+    caps: [test.size-budget]
+    tests:
+      - images/node-slim-trixie/tests/smoke_size.sh
+
+  - id: scan.nonzero-accepted
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim images inherit Debian trixie's dpkg closure. PR scan-regression gate (FG-019) fails only on new CRITICALs beyond baseline."
+    caps: [scan.regression-gate]
+    tests:
+      - images/node-slim-trixie/tests/smoke_node_version.sh

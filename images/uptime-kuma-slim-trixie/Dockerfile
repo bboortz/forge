@@ -15,11 +15,11 @@
 
 # FG-048: builder stage FROMs forge-builder-node-trixie (shared Node 24
 # LTS + corepack + apt-upgraded + syft + git/curl/jq + native-dep toolchain).
-# Runtime stage bumps to node:24-trixie-slim upstream for version-alignment
-# with the builder (vite SPA output is Node-version-agnostic; Node 24
-# runtime matches the active LTS until April 2028).
+# FG-061: runtime migrated from upstream node:24-trixie-slim to the new
+# forge-rooted `node-slim-trixie` pre-builder, so apt-upgrade state is
+# shared with every other Forge Node runtime (psitransfer, future).
 ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
-ARG NODE_BASE=node:24-trixie-slim
+ARG NODE_SLIM_REF=ghcr.io/bboortz/node-slim-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # Track upstream's latest GitHub release. Empty default → build-time
@@ -101,8 +101,12 @@ RUN set -eux; \
 # SBOM — dpkg (base layer) + npm (node_modules graph).
 RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 
-# --- Stage 3: runtime (node:22-trixie-slim) ---------------------------------
-FROM ${NODE_BASE}
+# --- Stage 3: runtime (forge-rooted node-slim-trixie) ------------------------
+# FG-061: runtime now FROMs node-slim-trixie (not node:24-trixie-slim
+# upstream). ca-certificates + dumb-init are already baked by the pre-
+# builder; we only apt-install iputils-ping here (FG-055 — Ping monitor
+# type).
+FROM ${NODE_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
@@ -118,18 +122,13 @@ LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 
 COPY sid-pins/ /etc/apt/preferences.d/
 
-# Fresh apt-upgrade (daily cron). Packages:
-#   - ca-certificates: outbound HTTPS probe targets
-#   - dumb-init: proper PID 1 signal forwarding (upstream convention)
-#   - iputils-ping: FG-055 — Uptime Kuma's "Ping" monitor type invokes
-#     /bin/ping. Without this, operators get "ping: command not found"
-#     in the Uptime Kuma logs when they create a Ping monitor.
+# FG-055 + FG-061: node-slim-trixie already ships ca-certificates +
+# dumb-init. Only iputils-ping needs adding here (for the Ping monitor
+# type in Uptime Kuma).
 # hadolint ignore=DL3008
 RUN set -eux; \
     apt-get update; \
-    apt-get -y --no-install-recommends upgrade; \
-    apt-get -y --no-install-recommends install \
-      ca-certificates dumb-init iputils-ping; \
+    apt-get -y --no-install-recommends install iputils-ping; \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /out/app /app

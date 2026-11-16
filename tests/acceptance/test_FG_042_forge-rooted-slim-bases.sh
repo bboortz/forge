@@ -67,31 +67,32 @@ if ! grep -A 2 "^  publish-builders:" .github/workflows/build.yml \
 fi
 pass "4-tier chain: discover → pre-builders → builders → base → derivatives"
 
-say "6. discover-images.sh pre-builders mode returns the 4 pre-builders"
+say "6. discover-images.sh pre-builders mode returns the 5 pre-builders"
 # FG-051 extended _PRE_BUILDERS with ubuntu-slim-noble (Ubuntu precedent).
 # FG-058 added debian-slim-sid as an escape-hatch pre-builder for CVEs
 # that trixie leaves unfixed but sid patches at the same SONAME.
+# FG-061 added node-slim-trixie as the Node 24 LTS runtime pre-builder.
 out=$(bash scripts/discover-images.sh pre-builders)
-expected_count=4
+expected_count=5
 got=$(echo "${out}" | jq '.include | length')
 [[ "${got}" == "${expected_count}" ]] \
   || fail "pre-builders mode returned ${got} entries (want ${expected_count}); output: ${out}"
-# Order is alphabetical (per find | sort in discover-images.sh): debian-slim-sid, debian-slim-trixie, python-slim-trixie, ubuntu-slim-noble.
-echo "${out}" | jq -e '.include | map(.image_dir) | . == ["debian-slim-sid", "debian-slim-trixie", "python-slim-trixie", "ubuntu-slim-noble"]' >/dev/null \
-  || fail "pre-builders mode doesn't contain all four pre-builders in the expected order; output: ${out}"
-pass "pre-builders mode returns [debian-slim-sid, debian-slim-trixie, python-slim-trixie, ubuntu-slim-noble]"
+# Order is alphabetical (per find | sort in discover-images.sh): debian-slim-sid, debian-slim-trixie, node-slim-trixie, python-slim-trixie, ubuntu-slim-noble.
+echo "${out}" | jq -e '.include | map(.image_dir) | . == ["debian-slim-sid", "debian-slim-trixie", "node-slim-trixie", "python-slim-trixie", "ubuntu-slim-noble"]' >/dev/null \
+  || fail "pre-builders mode doesn't contain all five pre-builders in the expected order; output: ${out}"
+pass "pre-builders mode returns [debian-slim-sid, debian-slim-trixie, node-slim-trixie, python-slim-trixie, ubuntu-slim-noble]"
 
 say "7. upstream grep count collapsed"
-# Expect exactly 4 Dockerfiles to FROM the upstream Docker Hub bases:
-# debian-slim-trixie + debian-slim-sid + python-slim-trixie + ubuntu-slim-noble.
-# Everything else goes through the forge-rooted intermediates.
-hits=$(grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04)' images/*/Dockerfile 2>&1 | wc -l)
-expected=4
+# Expect exactly 5 Dockerfiles to FROM the upstream Docker Hub bases:
+# debian-slim-trixie + debian-slim-sid + python-slim-trixie + ubuntu-slim-noble
+# + node-slim-trixie. Everything else goes through the forge-rooted intermediates.
+hits=$(grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim)' images/*/Dockerfile 2>&1 | wc -l)
+expected=5
 [[ "${hits}" == "${expected}" ]] \
   || { echo "  ✗ expected ${expected} Dockerfiles to FROM upstream, got ${hits}:" >&2; \
-       grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04)' images/*/Dockerfile >&2; \
+       grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim)' images/*/Dockerfile >&2; \
        exit 1; }
-pass "exactly 4 Dockerfiles reference upstream directly (debian-slim-{trixie,sid}, python-slim-trixie, ubuntu-slim-noble)"
+pass "exactly 5 Dockerfiles reference upstream directly (debian-slim-{trixie,sid}, python-slim-trixie, ubuntu-slim-noble, node-slim-trixie)"
 
 echo
 echo "FG-042 acceptance: all sections passed."
