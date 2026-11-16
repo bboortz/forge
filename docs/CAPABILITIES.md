@@ -572,7 +572,15 @@ Forge's first Ubuntu-base slim image. `ubuntu-slim-noble` is a pre-builder FROM 
 `github-runner-noble` is a consumer-facing pre-baked GitHub Actions self-hosted runner image. FROMs `ubuntu-slim-noble` + bakes the full homelab-compatible CI toolset (hadolint, terraform, shellcheck, make, jq, unzip, python3, pip, git, curl, dumb-init, ansible + vendored `requirements-dev.txt` + `ansible-requirements.yml` collections) + the upstream `actions/runner` binary (resolved via FG-050 `build.ref-latest-release` CAP). `ENTRYPOINT /entrypoint.sh` matches the homelab-current entrypoint behavior: first-start registers via GitHub API; subsequent starts skip to `run.sh`. Replaces homelab's local `build: .` + Dockerfile — homelab consumes `ghcr.io/bboortz/github-runner-noble:latest` directly. Deployment time cut from "build + push on each deploy" to "pull".
 
 - **Delivered by**: FG-051
-- **Covered by**: `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `images/github-runner-noble/tests/smoke_*.sh`
+- **Extended by**: FG-063 (RUNNER_CREDS_DIR env var for narrow credential-volume deploys — supersedes homelab's wrapper-script workaround)
+- **Covered by**: `tests/acceptance/test_FG_051_ubuntu-base-and-github-runner.sh`, `tests/acceptance/test_FG_063_runner-creds-dir-env.sh`, `images/github-runner-noble/tests/smoke_*.sh`
+
+### image.github-runner-creds-dir
+
+The `github-runner-noble` entrypoint accepts a `RUNNER_CREDS_DIR` env var that redirects credential persistence to an operator-chosen path via symlinks. On startup, when `RUNNER_CREDS_DIR` is set to something other than the default `/home/runner`, the entrypoint mkdir-p's the target and creates three symlinks in `/home/runner/` (`.runner`, `.credentials`, `.credentials_rsaparams`) pointing into `RUNNER_CREDS_DIR` BEFORE invoking `config.sh` / `run.sh`. Lets operators mount a narrow volume for credentials only, so the runner binary tree under `/home/runner/bin/` + `/home/runner/externals/` stays image-layer owned — forge image bumps propagate every restart instead of being shadowed by a `/home/runner` volume Docker only seeds once. Default (`RUNNER_CREDS_DIR=/home/runner`, unset) is a literal no-op: no symlinks created, existing deploys unchanged.
+
+- **Delivered by**: FG-063
+- **Covered by**: `tests/acceptance/test_FG_063_runner-creds-dir-env.sh`, `images/github-runner-noble/tests/smoke_runner_creds_dir.sh`
 
 ### build.debian-sid-base
 
