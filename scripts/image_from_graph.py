@@ -252,6 +252,9 @@ def build_full_graph(local_images: set[str]):
 
         # COPY --from=<stage> edges — only for stages WITHOUT content
         # (those WITH content already produced a solid edge above).
+        # NOTE: for FG-059's reverse-dep lookup we ALSO add dashed-local
+        # deps into `forward` — a COPY-from overlay (scratch-base-trixie)
+        # still means "when X changes, Y must rebuild."
         emitted_dashed: set[tuple[str, str]] = set()
         for stage in copy_stages:
             ent = stage_to_resolved.get(stage)
@@ -265,6 +268,7 @@ def build_full_graph(local_images: set[str]):
                 if key not in emitted_dashed:
                     dashed_local.append(key)
                     emitted_dashed.add(key)
+                forward[img].add(name)  # FG-059 fan-out must include overlays
             elif kind in {"upstream", "helper-upstream", "helper-local"}:
                 key = (name, img)
                 if key not in emitted_dashed:
@@ -301,7 +305,8 @@ def _style_of(image: str, external: set[str]) -> str:
     return "slim"
 
 
-def emit_mermaid(local_images: set[str]) -> str:
+def emit_mermaid_body(local_images: set[str]) -> str:
+    """Just the ```mermaid ... ``` block (no surrounding markdown)."""
     forward, dashed_local, upstream_solid, upstream_dashed, external = build_full_graph(local_images)
 
     lines: list[str] = []
@@ -365,13 +370,19 @@ def emit_mermaid(local_images: set[str]) -> str:
         node_id, _ = _UPSTREAM_NODE_IDS.get(ref, (ref, ref))
         return node_id
 
-    # Solid FROM edges.
+    # Solid FROM edges. `forward` includes BOTH solid (FROM-with-content)
+    # and dashed (COPY-from overlay) deps so FG-059 reverse-lookup is
+    # correct; dedupe here so we don't emit both solid and dashed for
+    # the same edge pair.
+    dashed_pairs: set[tuple[str, str]] = {(src, dst) for src, dst in dashed_local}
     lines.append("")
     lines.append("    %% FROM edges (solid)")
     for src, dst in sorted(upstream_solid):
         lines.append(f"    {_upstream_id(src)} --> {dst}")
     for src in sorted(forward):
         for dst in sorted(forward[src]):
+            if (dst, src) in dashed_pairs:
+                continue
             lines.append(f"    {dst} --> {src}")
 
     # Dashed COPY --from edges.
@@ -395,6 +406,27 @@ def emit_mermaid(local_images: set[str]) -> str:
     lines.append("    classDef external   fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;")
     lines.append("```")
 
+    return "\n".join(lines) + "\n"
+
+
+def emit_mermaid(local_images: set[str]) -> str:
+    """Emit the hybrid layout: SVG image + collapsible mermaid source.
+
+    GitHub mobile app doesn't render mermaid code blocks, so the SVG is
+    the primary visual. The mermaid source lives inside a <details>
+    block so operators can still copy/edit the authoritative source.
+    """
+    body = emit_mermaid_body(local_images)
+    lines: list[str] = []
+    lines.append("<!-- Auto-generated; do NOT edit this block. Run `make dep-graph` to regenerate. -->")
+    lines.append("![Image dependency graph](image-dependency-graph.svg)")
+    lines.append("")
+    lines.append("<details>")
+    lines.append("<summary>mermaid source (editable truth — GitHub desktop renders this live; mobile shows the SVG above)</summary>")
+    lines.append("")
+    lines.append(body.rstrip("\n"))
+    lines.append("")
+    lines.append("</details>")
     return "\n".join(lines) + "\n"
 
 

@@ -23,11 +23,13 @@ python3 scripts/verify-dockerfile-conformance.py >/dev/null \
 pass "fleet conforms"
 
 # --- (3) mermaid emitter runs + output is well-formed -----------------------
-say "3. emitter outputs a mermaid fenced block covering every image"
+say "3. emitter outputs a hybrid SVG+mermaid block covering every image"
 out=$(python3 scripts/image_from_graph.py --emit=mermaid)
 echo "${out}" | grep -q '^```mermaid$' || fail 'emitter missing ```mermaid fence'
-echo "${out}" | tail -1 | grep -q '^```$' || fail 'emitter missing closing ``` fence'
+echo "${out}" | grep -q '^```$' || fail 'emitter missing closing ``` fence'
 echo "${out}" | grep -q 'graph TD' || fail "emitter missing 'graph TD' directive"
+echo "${out}" | grep -q '!\[Image dependency graph\]' || fail "emitter missing SVG image reference"
+echo "${out}" | grep -q '^<details>' || fail "emitter missing <details> wrapper"
 # Every local image dir appears as a node id.
 missing_nodes=""
 while read -r img; do
@@ -132,6 +134,32 @@ for cls in upstream prebuilder builder baseline slim scratch external; do
     || fail "classDef ${cls} missing from regenerated block"
 done
 pass "7 classDef entries present"
+
+# --- (13) hybrid layout: SVG image + collapsible mermaid source ------------
+say "13. hybrid layout: SVG image + <details> mermaid source"
+grep -q '!\[Image dependency graph\](image-dependency-graph.svg)' docs/image-dependency-graph.md \
+  || fail "markdown must embed the SVG via ![...](image-dependency-graph.svg)"
+grep -q '^<details>' docs/image-dependency-graph.md \
+  || fail "markdown must wrap the mermaid source in <details>"
+grep -q '^</details>' docs/image-dependency-graph.md \
+  || fail "markdown must close </details> after the mermaid source"
+pass "SVG embedded + mermaid source inside <details>"
+
+# --- (14) SVG exists, valid, and references the committed node set ---------
+say "14. docs/image-dependency-graph.svg exists and is a well-formed SVG"
+[[ -f docs/image-dependency-graph.svg ]] \
+  || fail 'docs/image-dependency-graph.svg missing — run make dep-graph'
+head -1 docs/image-dependency-graph.svg | grep -q '<svg' \
+  || fail "docs/image-dependency-graph.svg does not start with <svg"
+tail -1 docs/image-dependency-graph.svg | grep -q '</svg>' \
+  || fail "docs/image-dependency-graph.svg does not end with </svg>"
+pass "SVG exists, well-formed"
+
+# --- (15) scripts/mermaid-to-svg.sh present + executable -------------------
+say "15. scripts/mermaid-to-svg.sh present + shellcheck-clean"
+[[ -x scripts/mermaid-to-svg.sh ]] \
+  || fail "scripts/mermaid-to-svg.sh missing or not executable"
+pass "SVG rendering script present"
 
 echo
 echo "FG-064 acceptance: all sections passed."

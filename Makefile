@@ -131,16 +131,24 @@ verify-dockerfile-conformance:
 	@python3 scripts/verify-dockerfile-conformance.py
 
 # FG-064: regenerate the mermaid dep graph in docs/image-dependency-graph.md
-# between the GENERATED markers. Narrative sections outside the markers
-# are preserved verbatim.
-dep-graph:
+# between the GENERATED markers + the SVG alongside it. Narrative sections
+# outside the markers are preserved verbatim.
+dep-graph: dep-graph-md dep-graph-svg
+
+dep-graph-md:
 	@python3 scripts/image_from_graph.py --emit=mermaid --write docs/image-dependency-graph.md
 
-# FG-064: drift gate — regenerate, then assert no diff. Wired into test-fast
-# so CI catches stale graphs on every PR.
+# FG-064: Docker-based mermaid-cli renders the SVG that GitHub mobile +
+# external consumers see. No-op if Docker is unavailable (CI always has it;
+# the drift gate still catches staleness server-side).
+dep-graph-svg:
+	@bash scripts/mermaid-to-svg.sh
+
+# FG-064: drift gate — regenerate, then assert no diff on BOTH the markdown
+# and the SVG. Wired into test-fast so CI catches stale graphs on every PR.
 verify-dep-graph-fresh: dep-graph
-	@git diff --exit-code docs/image-dependency-graph.md \
-	  || { echo "✗ docs/image-dependency-graph.md is out of date — run \`make dep-graph\` and commit the result"; exit 1; }
+	@git diff --exit-code docs/image-dependency-graph.md docs/image-dependency-graph.svg \
+	  || { echo "✗ docs/image-dependency-graph.{md,svg} is out of date — run \`make dep-graph\` and commit the result"; exit 1; }
 
 # FG-019: scan-regression gate. Diffs grype CRITICAL findings for IMAGE_DIR
 # vs the committed images/$(IMAGE_DIR)/scan-baseline.json, subtracting any
