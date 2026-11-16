@@ -2,7 +2,7 @@
 
 spec_version: 1
 image: github-runner-noble
-version: "0.1"
+version: "0.2"
 
 promises:
   - id: runtime.gha-runner-binary
@@ -28,6 +28,12 @@ promises:
     caps: [image.github-runner-noble-pre-baked]
     tests:
       - images/github-runner-noble/tests/smoke_entrypoint_env_validation.sh
+
+  - id: runtime.runner-creds-dir-env
+    description: "/entrypoint.sh reads RUNNER_CREDS_DIR env var (default /home/runner). When set to a non-default path, the entrypoint mkdir-p's the target and symlinks .runner + .credentials + .credentials_rsaparams from /home/runner/ into RUNNER_CREDS_DIR before invoking config.sh / run.sh. Lets operators persist runner credentials in a narrow mounted volume without shadowing the runner binary tree under /home/runner/bin/ + /home/runner/externals/."
+    caps: [image.github-runner-creds-dir]
+    tests:
+      - images/github-runner-noble/tests/smoke_runner_creds_dir.sh
 
   - id: presence.shell
     description: /bin/bash + /bin/sh are present (slim contract — CI jobs assume shell is available).
