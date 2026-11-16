@@ -161,5 +161,50 @@ say "15. scripts/mermaid-to-svg.sh present + shellcheck-clean"
   || fail "scripts/mermaid-to-svg.sh missing or not executable"
 pass "SVG rendering script present"
 
+# --- (16) dep graph is at least as new (in git) as every Dockerfile + image.yaml ---
+# Uses git commit timestamps (stable across fresh clones). Dirty / untracked
+# files count as "now" so the test fires for local work-in-progress drift.
+# This is complementary to §10's content drift gate: it catches commits
+# where the content gate was bypassed (--no-verify) OR a Dockerfile edit
+# landed in a later commit than the last graph regen.
+say "16. dep graph is at least as new as every images/*/{Dockerfile,image.yaml}"
+_file_ts() {
+  local f="$1"
+  # Untracked → treat as "now".
+  if ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+    date -u +%s
+    return
+  fi
+  # Tracked but modified (staged or unstaged) → treat as "now".
+  if ! git diff --quiet HEAD -- "$f" 2>/dev/null; then
+    date -u +%s
+    return
+  fi
+  # Committed + clean → use last commit timestamp.
+  git log -1 --format=%ct -- "$f" 2>/dev/null || echo 0
+}
+graph_ts_md=$(_file_ts docs/image-dependency-graph.md)
+graph_ts_svg=$(_file_ts docs/image-dependency-graph.svg)
+# Pick the OLDER of the two artifacts (both must be at least as new as every input).
+if (( graph_ts_md <= graph_ts_svg )); then
+  graph_ts=${graph_ts_md}; older_artifact="docs/image-dependency-graph.md"
+else
+  graph_ts=${graph_ts_svg}; older_artifact="docs/image-dependency-graph.svg"
+fi
+offenders=()
+while IFS= read -r f; do
+  ts=$(_file_ts "$f")
+  if (( ts > graph_ts )); then
+    offenders+=("${f} (ts=${ts}, graph=${graph_ts})")
+  fi
+done < <(find images -type f \( -name Dockerfile -o -name image.yaml \) | sort)
+if (( ${#offenders[@]} > 0 )); then
+  echo "✗ ${#offenders[@]} input(s) newer than ${older_artifact}:" >&2
+  printf '    %s\n' "${offenders[@]}" >&2
+  echo "  → run \`make dep-graph\` and commit the regen" >&2
+  fail "dep graph is older than one or more Dockerfile/image.yaml"
+fi
+pass "dep graph is up-to-date relative to every Dockerfile + image.yaml"
+
 echo
 echo "FG-064 acceptance: all sections passed."
