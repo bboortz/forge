@@ -134,8 +134,8 @@ if [[ ${#AFFECTED[@]} -eq 0 ]]; then
   exit 0
 fi
 
-if [[ ${#AFFECTED[@]} -gt 4 ]]; then
-  say "full-run bailout — ${#AFFECTED[@]} images affected (cap is 4)"
+if [[ ${#AFFECTED[@]} -gt 7 ]]; then
+  say "full-run bailout — ${#AFFECTED[@]} images affected (cap is 7)"
   if [[ "${DRY_RUN}" == "1" ]]; then echo "DISPATCH=full reason=image-count count=${#AFFECTED[@]}"; exit 0; fi
   exec make check-strict
 fi

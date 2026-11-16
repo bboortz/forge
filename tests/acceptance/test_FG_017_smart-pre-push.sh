@@ -115,22 +115,23 @@ pass "images/beaconry-scout/* → scoped (count=1)"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
-# Section 7 — Dispatch: >4 images → full bailout
+# Section 7 — Dispatch: >7 images → full bailout
+# Cap raised 4 → 7 to accommodate FG-059's FROM-graph fan-out, which
+# routinely inflates the affected set when a shared base image is touched.
 # -----------------------------------------------------------------------------
-say "7. >4 images → full bailout"
-commit_touch ">4 images: synth" \
+say "7. >7 images → full bailout"
+commit_touch ">7 images: synth" \
   "images/beaconry-scout/image.yaml" \
   "images/beaconry-hub/image.yaml" \
   "images/beaconry-telegram-mock/image.yaml" \
   "images/python-slim-trixie/image.yaml" \
   "images/nginx-scratch-trixie/image.yaml"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
-# FG-059: fan-out via Dockerfile FROM-graph can inflate the count further
-# (python-slim-trixie → forge-builder-python-trixie → every scratch deriv).
-# The invariant that matters: >4 triggers the image-count bailout.
-grep -qE 'DISPATCH=full reason=image-count count=[5-9]|DISPATCH=full reason=image-count count=[0-9]{2,}' <<<"${out}" \
-  || { echo "  ✗ expected image-count bailout (count≥5); got: ${out}" >&2; exit 1; }
-pass "≥5 images → image-count bailout"
+# The invariant that matters: >7 triggers the image-count bailout. Any
+# count≥8 is valid; FG-059's fan-out inflates the raw 5 to well past that.
+grep -qE 'DISPATCH=full reason=image-count count=([8-9]|[0-9]{2,})' <<<"${out}" \
+  || { echo "  ✗ expected image-count bailout (count≥8); got: ${out}" >&2; exit 1; }
+pass "≥8 images → image-count bailout"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
