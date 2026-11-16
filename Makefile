@@ -123,6 +123,33 @@ verify-image-dirs:
 verify-no-upstream-drift:
 	@bash scripts/verify-no-upstream-drift.sh
 
+# FG-064: every images/*/Dockerfile follows a parser-friendly convention
+# (allowlisted ARG *_REF=, named stages, resolvable COPY --from=, no
+# intra-layer FROM edges) so scripts/image_from_graph.py can derive the
+# dep graph with zero drift.
+verify-dockerfile-conformance:
+	@python3 scripts/verify-dockerfile-conformance.py
+
+# FG-064: regenerate the mermaid dep graph in docs/image-dependency-graph.md
+# between the GENERATED markers + the SVG alongside it. Narrative sections
+# outside the markers are preserved verbatim.
+dep-graph: dep-graph-md dep-graph-svg
+
+dep-graph-md:
+	@python3 scripts/image_from_graph.py --emit=mermaid --write docs/image-dependency-graph.md
+
+# FG-064: Docker-based mermaid-cli renders the SVG that GitHub mobile +
+# external consumers see. No-op if Docker is unavailable (CI always has it;
+# the drift gate still catches staleness server-side).
+dep-graph-svg:
+	@bash scripts/mermaid-to-svg.sh
+
+# FG-064: drift gate — regenerate, then assert no diff on BOTH the markdown
+# and the SVG. Wired into test-fast so CI catches stale graphs on every PR.
+verify-dep-graph-fresh: dep-graph
+	@git diff --exit-code docs/image-dependency-graph.md docs/image-dependency-graph.svg \
+	  || { echo "✗ docs/image-dependency-graph.{md,svg} is out of date — run \`make dep-graph\` and commit the result"; exit 1; }
+
 # FG-019: scan-regression gate. Diffs grype CRITICAL findings for IMAGE_DIR
 # vs the committed images/$(IMAGE_DIR)/scan-baseline.json, subtracting any
 # waivers listed in PROMISES.yaml's absence.os-cves entry. Also invoked
@@ -176,7 +203,7 @@ test-acceptance:
 test-images:
 	@bash scripts/test-images.sh
 
-test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift
+test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift verify-dockerfile-conformance verify-dep-graph-fresh
 
 check: test-fast test-acceptance test-images
 

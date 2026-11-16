@@ -1,85 +1,461 @@
 #!/usr/bin/env python3
-# FG-059 — Emit the reverse-dependency graph derived from `images/*/Dockerfile`.
+# FG-059 — Emit the reverse-dependency graph derived from images/*/Dockerfile.
+# FG-064 — Add mermaid emitter for docs/image-dependency-graph.md (drift-gated).
 #
 # For every Dockerfile in images/*/:
 #   - `^ARG <NAME>_REF=ghcr.io/bboortz/<forge-image>[:@]...`  →  dep on <forge-image>
 #   - `^FROM ghcr.io/bboortz/<forge-image>[:@]...`           →  dep on <forge-image>
 #
-# Only edges where the referenced image exists under images/<forge-image>/
-# are kept (ignores stale external references or Docker Hub refs).
-#
-# Output shape (JSON, stdout):
-#   { "<image>": ["<images-that-FROM-it>", ...],  ... }
-#
-# Keys are the depended-upon image; values are the reverse set of dependents
-# (fan-out orientation — when <image> changes, every listed dependent is
-# transitively affected).
+# FG-064 adds:
+#   - Literal `^FROM <upstream>:<tag>` extraction (upstream Docker Hub anchors)
+#   - ARG-indirect FROMs: `FROM ${X}` resolves via ARG default
+#   - `COPY --from=<stage>` edge extraction (hc + scratch-base overlays)
+#   - Role classification + 5-layer mermaid subgraph emission
+#   - External-sourced images (image.yaml has `source:`) → fallback to
+#     image.yaml depends_on since the Dockerfile lives in a remote repo.
 #
 # Usage:
-#   scripts/image_from_graph.py            # full JSON to stdout
-#   scripts/image_from_graph.py --deps <image>  # one-line deps for <image> only
+#   scripts/image_from_graph.py                  # reverse-JSON (FG-059 default)
+#   scripts/image_from_graph.py --deps <image>   # one-line deps for <image>
+#   scripts/image_from_graph.py --emit=mermaid   # FG-064 mermaid block
+#   scripts/image_from_graph.py --emit=mermaid --write docs/image-dependency-graph.md
+#                                                # rewrite between GENERATED markers
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
 from pathlib import Path
 
+try:
+    import yaml  # type: ignore
+except ImportError:
+    yaml = None  # type: ignore
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IMAGES_DIR = REPO_ROOT / "images"
 
-# Match `ARG NAME_REF=ghcr.io/bboortz/<forge-image>[:@]...`
-# or   `FROM ghcr.io/bboortz/<forge-image>[:@]...`  (possibly with a comment after)
-# Allow leading whitespace (defensive, though Dockerfile ARGs typically start at col 0).
-_ARG_RE  = re.compile(r"^\s*ARG\s+[A-Z_]+_REF\s*=\s*ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*)[:@]")
-_FROM_RE = re.compile(r"^\s*FROM\s+ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*)[:@]")
+# Role classification — mirrors scripts/discover-images.sh.
+_PRE_BUILDERS = [
+    "debian-slim-sid",
+    "debian-slim-trixie",
+    "node-slim-trixie",
+    "python-slim-trixie",
+    "ubuntu-slim-noble",
+]
+_FORGE_BUILDERS = [
+    "forge-builder-go-trixie",
+    "forge-builder-node-trixie",
+    "forge-builder-python-trixie",
+]
+_BASELINE = ["scratch-base-trixie"]
+_UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet
+
+_UPSTREAM_ANCHORS = {
+    "debian:trixie-slim",
+    "debian:sid-slim",
+    "python:3.14-slim-trixie",
+    "ubuntu:24.04",
+    "node:24-trixie-slim",
+    "golang:1.27-trixie",
+    "postgres:18",
+}
+_HELPER_UPSTREAMS = {
+    "docker.io/anchore/syft:latest",
+    "anchore/syft:latest",
+}
+
+# Mermaid node ids for upstream nodes (image dir names reused for local images).
+_UPSTREAM_NODE_IDS = {
+    "debian:trixie-slim":      ("UP_DEBIAN_TRIXIE",   "debian:trixie-slim<br/>docker.io"),
+    "debian:sid-slim":         ("UP_DEBIAN_SID",      "debian:sid-slim<br/>docker.io"),
+    "python:3.14-slim-trixie": ("UP_PYTHON",          "python:3.14-slim-trixie<br/>docker.io"),
+    "ubuntu:24.04":            ("UP_UBUNTU",          "ubuntu:24.04<br/>docker.io"),
+    "node:24-trixie-slim":     ("UP_NODE",            "node:24-trixie-slim<br/>docker.io"),
+    "golang:1.27-trixie":      ("UP_GOLANG",          "golang:1.27-trixie<br/>docker.io"),
+    "postgres:18":             ("UP_POSTGRES",        "postgres:18<br/>docker.io"),
+    "docker.io/anchore/syft:latest": ("UP_SYFT",      "anchore/syft:latest<br/>docker.io"),
+    "anchore/syft:latest":           ("UP_SYFT",      "anchore/syft:latest<br/>docker.io"),
+    "hc":                       ("UP_HC",             "hc:0.1.0<br/>ghcr.io/bboortz<br/>(static Zig healthcheck)"),
+    "BEACONRY_SRC":             ("UP_BEACONRY",       "beaconry (source)<br/>github.com/bboortz/beaconry"),
+}
+
+_ARG_REF_RE = re.compile(r"^\s*ARG\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\S+)")
+_FROM_RE = re.compile(r"^\s*FROM\s+(\S+)(?:\s+AS\s+(\S+))?\s*$")
+_COPY_FROM_RE = re.compile(r"^\s*COPY\s+--from=([A-Za-z0-9_][A-Za-z0-9_-]*)\b")
+_ARG_SUBST_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
+_GHCR_REF_RE = re.compile(r"^ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
+_FORGE_LOCAL_REF_RE = re.compile(r"^forge-local/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
 
 
 def all_images() -> set[str]:
     return {p.name for p in IMAGES_DIR.iterdir() if p.is_dir() and (p / "image.yaml").is_file()}
 
 
-def parse_dockerfile_deps(dockerfile: Path, known: set[str]) -> set[str]:
-    """Return the set of forge-images this Dockerfile declares as a dep."""
-    deps: set[str] = set()
+_STAGE_HAS_CONTENT_CMDS = re.compile(r"^\s*(RUN|CMD|ENTRYPOINT|ADD|COPY|WORKDIR|USER|ENV|LABEL|EXPOSE|VOLUME|HEALTHCHECK|SHELL|STOPSIGNAL)\b")
+
+
+def _parse_dockerfile(df: Path) -> tuple[dict[str, str | None], list[tuple[str, str | None, bool]], list[str]]:
+    """Return (arg_defaults, from_entries, copy_from_stages).
+
+    arg_defaults: {ARG_NAME: default-string-or-None}
+    from_entries: list of (target, stage, has_content). has_content is True
+        if the stage has any RUN/CMD/etc. between its FROM and the next FROM
+        (OR it's the last FROM in the file — the runtime stage, which is
+        always considered "has_content" even for a bare FROM scratch).
+    copy_from_stages: list of stage names referenced by COPY --from=
+    """
+    arg_defaults: dict[str, str | None] = {}
+    raw_froms: list[tuple[int, str, str | None]] = []  # (lineno, target, stage)
+    copy_stages: list[str] = []
+    lines: list[str] = []
+
     try:
-        content = dockerfile.read_text()
+        content = df.read_text()
     except OSError:
-        return deps
-    for line in content.splitlines():
-        # Strip inline comments but keep leading whitespace for the anchor
-        # detection in the regex. Lines starting with `#` after optional
-        # leading whitespace don't match (pattern requires ARG/FROM keyword).
-        stripped = line.split("#", 1)[0].rstrip()
-        if not stripped:
+        return arg_defaults, [], copy_stages
+
+    for i, raw in enumerate(content.splitlines(), start=1):
+        line = raw.split("#", 1)[0].rstrip()
+        lines.append(line)
+        if not line:
             continue
-        m = _ARG_RE.match(stripped) or _FROM_RE.match(stripped)
-        if not m:
+        if m := _ARG_REF_RE.match(line):
+            arg_defaults[m.group(1)] = m.group(2)
             continue
-        candidate = m.group(1)
-        if candidate in known:
-            deps.add(candidate)
-    return deps
+        if m := re.match(r"^\s*ARG\s+([A-Za-z_][A-Za-z0-9_]*)\s*$", line):
+            arg_defaults[m.group(1)] = None
+            continue
+        if m := _FROM_RE.match(line):
+            raw_froms.append((i, m.group(1), m.group(2)))
+            continue
+        if m := _COPY_FROM_RE.match(line):
+            copy_stages.append(m.group(1))
+
+    # Determine has_content per stage. Last stage is always has_content=True
+    # (it's the runtime). Earlier stages are has_content=True iff any
+    # content-directive appears between this FROM's line and the next FROM.
+    froms: list[tuple[str, str | None, bool]] = []
+    for idx, (lineno, target, stage) in enumerate(raw_froms):
+        is_last = (idx == len(raw_froms) - 1)
+        next_lineno = raw_froms[idx + 1][0] if not is_last else len(lines) + 1
+        has_content = is_last  # runtime stage always counts
+        for j in range(lineno, next_lineno - 1):
+            if _STAGE_HAS_CONTENT_CMDS.match(lines[j]):
+                has_content = True
+                break
+        froms.append((target, stage, has_content))
+
+    return arg_defaults, froms, copy_stages
 
 
-def build_forward_graph() -> dict[str, set[str]]:
-    """Forward graph: image → {images it depends on}."""
-    images = all_images()
-    graph: dict[str, set[str]] = {img: set() for img in images}
-    for img in images:
-        dockerfile = IMAGES_DIR / img / "Dockerfile"
-        if not dockerfile.is_file():
+def _resolve_target(target: str, arg_defaults: dict[str, str | None], local_images: set[str]) -> tuple[str, str] | None:
+    """Resolve a FROM target to (kind, resolved-name).
+
+    kind: 'local' (resolved is an image dir), 'upstream' (resolved is the upstream tag),
+          'helper' (upstream helper like syft), 'scratch' (resolved is 'scratch'),
+          'unknown' otherwise.
+    """
+    if target == "scratch":
+        return ("scratch", "scratch")
+    if m := _ARG_SUBST_RE.match(target):
+        arg_name = m.group(1)
+        default = arg_defaults.get(arg_name)
+        if not default:
+            return None
+        return _resolve_target(default, arg_defaults, local_images)
+    if m := _GHCR_REF_RE.match(target):
+        tgt = m.group(1)
+        if tgt in local_images:
+            return ("local", tgt)
+        if tgt in _UPSTREAM_HELPERS:
+            return ("helper-local", tgt)
+        return None
+    if m := _FORGE_LOCAL_REF_RE.match(target):
+        tgt = m.group(1)
+        if tgt in local_images:
+            return ("local", tgt)
+        return None
+    if target in _UPSTREAM_ANCHORS:
+        return ("upstream", target)
+    if target in _HELPER_UPSTREAMS:
+        return ("helper-upstream", target)
+    return None
+
+
+def _load_image_yaml(image: str) -> dict:
+    if yaml is None:
+        return {}
+    p = IMAGES_DIR / image / "image.yaml"
+    if not p.is_file():
+        return {}
+    try:
+        return yaml.safe_load(p.read_text()) or {}
+    except Exception:
+        return {}
+
+
+def build_full_graph(local_images: set[str]):
+    """Return (forward, dashed_local, upstream_solid, upstream_dashed, external).
+
+    forward[image] = {local images this image FROMs with content (builder/runtime)}
+    dashed_local = list of (source-local, image) tuples where source is used ONLY
+        as a COPY --from= target (no content-directives in the stage)
+    upstream_solid = list of (upstream-ref, image) — FROM with content
+    upstream_dashed = list of (upstream-ref, image) — stage used only as COPY --from=
+    external = set of image dir names with image.yaml source: block
+    """
+    forward: dict[str, set[str]] = {img: set() for img in local_images}
+    dashed_local: list[tuple[str, str]] = []
+    upstream_solid: list[tuple[str, str]] = []
+    upstream_dashed: list[tuple[str, str]] = []
+    external: set[str] = set()
+
+    for img in sorted(local_images):
+        yml = _load_image_yaml(img)
+        if "source" in yml:
+            external.add(img)
+            # Externally-sourced: fall back to image.yaml depends_on.
+            for dep in yml.get("depends_on", []) or []:
+                if isinstance(dep, str) and dep in local_images:
+                    forward[img].add(dep)
+            # External-sourced images are drawn with a dashed edge from BEACONRY_SRC.
+            upstream_dashed.append(("BEACONRY_SRC", img))
             continue
-        deps = parse_dockerfile_deps(dockerfile, images)
-        # Self-loop guard: a Dockerfile shouldn't FROM itself. Treat as no edge.
-        deps.discard(img)
-        graph[img] = deps
-    return graph
+
+        df = IMAGES_DIR / img / "Dockerfile"
+        if not df.is_file():
+            continue
+        arg_defaults, froms, copy_stages = _parse_dockerfile(df)
+
+        # Map stage name → (resolved, has_content).
+        stage_to_resolved: dict[str, tuple[tuple[str, str], bool]] = {}
+        for target, stage, has_content in froms:
+            resolved = _resolve_target(target, arg_defaults, local_images)
+            if resolved is None:
+                continue
+            kind, name = resolved
+            if kind == "scratch":
+                pass  # no edge
+            elif has_content:
+                # Stage with content: solid edge (builder stage or runtime base).
+                if kind == "local" and name != img:
+                    forward[img].add(name)
+                elif kind in {"upstream", "helper-upstream", "helper-local"}:
+                    upstream_solid.append((name, img))
+            # Stage without content is copy-only; the edge is emitted via the
+            # COPY --from=<stage> loop below so we don't double-count.
+            if stage:
+                stage_to_resolved[stage] = (resolved, has_content)
+
+        # COPY --from=<stage> edges — only for stages WITHOUT content
+        # (those WITH content already produced a solid edge above).
+        # NOTE: for FG-059's reverse-dep lookup we ALSO add dashed-local
+        # deps into `forward` — a COPY-from overlay (scratch-base-trixie)
+        # still means "when X changes, Y must rebuild."
+        emitted_dashed: set[tuple[str, str]] = set()
+        for stage in copy_stages:
+            ent = stage_to_resolved.get(stage)
+            if not ent:
+                continue
+            (kind, name), has_content = ent
+            if has_content:
+                continue  # solid already emitted
+            if kind == "local" and name != img:
+                key = (name, img)
+                if key not in emitted_dashed:
+                    dashed_local.append(key)
+                    emitted_dashed.add(key)
+                forward[img].add(name)  # FG-059 fan-out must include overlays
+            elif kind in {"upstream", "helper-upstream", "helper-local"}:
+                key = (name, img)
+                if key not in emitted_dashed:
+                    upstream_dashed.append(key)
+                    emitted_dashed.add(key)
+
+    return forward, dashed_local, upstream_solid, upstream_dashed, external
+
+
+def _tier_of(image: str) -> str:
+    if image in _UPSTREAM_HELPERS:
+        return "upstream-helper"
+    if image in _PRE_BUILDERS:
+        return "L1"
+    if image in _FORGE_BUILDERS:
+        return "L2"
+    if image in _BASELINE:
+        return "L3"
+    return "L4"
+
+
+def _style_of(image: str, external: set[str]) -> str:
+    if image in _PRE_BUILDERS:
+        return "prebuilder"
+    if image in _FORGE_BUILDERS:
+        return "builder"
+    if image in _BASELINE:
+        return "baseline"
+    if image in external:
+        return "external"
+    # L4 split: slim vs scratch by name suffix (trixie-slim vs scratch-*)
+    if "scratch" in image:
+        return "scratch"
+    return "slim"
+
+
+def emit_mermaid_body(local_images: set[str]) -> str:
+    """Just the ```mermaid ... ``` block (no surrounding markdown)."""
+    forward, dashed_local, upstream_solid, upstream_dashed, external = build_full_graph(local_images)
+
+    lines: list[str] = []
+    lines.append("```mermaid")
+    lines.append("%% Auto-generated by scripts/image_from_graph.py --emit=mermaid.")
+    lines.append("%% Do NOT edit this block by hand; run `make dep-graph` to regenerate.")
+    lines.append("%% Legend: solid --> FROM (builder stage or runtime base);")
+    lines.append("%%         dashed -.-> COPY --from= (overlay / helper embed only).")
+    lines.append("%% Node colors: upstream (gray), pre-builder (orange), builder (blue),")
+    lines.append("%%              baseline (green), slim runtime (white), scratch runtime (yellow),")
+    lines.append("%%              external-sourced (purple).")
+    lines.append("graph TD")
+
+    # Discover upstream nodes actually referenced.
+    referenced_upstreams: set[str] = set()
+    for up, _dst in upstream_solid:
+        referenced_upstreams.add(up)
+    for up, _dst in upstream_dashed:
+        referenced_upstreams.add(up)
+
+    # L0 subgraph.
+    lines.append('    subgraph L0_upstream["Layer 0 — Upstream (external to Forge)"]')
+    for up in sorted(referenced_upstreams):
+        node_id, label = _UPSTREAM_NODE_IDS.get(up, (None, None))
+        if node_id is None:
+            continue
+        lines.append(f'        {node_id}["{label}"]:::upstream')
+    lines.append("    end")
+
+    # L1 subgraph (pre-builders).
+    lines.append('    subgraph L1_prebuilders["Layer 1 — Forge pre-builders (publish-pre-builders)"]')
+    for name in sorted(_PRE_BUILDERS):
+        if name in local_images:
+            lines.append(f"        {name}:::prebuilder")
+    lines.append("    end")
+
+    # L2 subgraph (builders).
+    lines.append('    subgraph L2_builders["Layer 2 — Forge builders (publish-builders — never runtime)"]')
+    for name in sorted(_FORGE_BUILDERS):
+        if name in local_images:
+            lines.append(f"        {name}:::builder")
+    lines.append("    end")
+
+    # L3 subgraph (baseline).
+    lines.append('    subgraph L3_baseline["Layer 3 — Forge baseline (publish-base — scratch overlay)"]')
+    for name in sorted(_BASELINE):
+        if name in local_images:
+            lines.append(f"        {name}:::baseline")
+    lines.append("    end")
+
+    # L4 subgraph (runtimes: slim + scratch + external).
+    lines.append('    subgraph L4_runtimes["Layer 4 — Runtimes (publish-base tail + publish-derivatives)"]')
+    non_l4_classified = set(_PRE_BUILDERS) | set(_FORGE_BUILDERS) | set(_BASELINE)
+    runtimes = sorted(img for img in local_images if img not in non_l4_classified)
+    for name in runtimes:
+        style = _style_of(name, external)
+        lines.append(f"        {name}:::{style}")
+    lines.append("    end")
+
+    def _upstream_id(ref: str) -> str:
+        node_id, _ = _UPSTREAM_NODE_IDS.get(ref, (ref, ref))
+        return node_id
+
+    # Solid FROM edges. `forward` includes BOTH solid (FROM-with-content)
+    # and dashed (COPY-from overlay) deps so FG-059 reverse-lookup is
+    # correct; dedupe here so we don't emit both solid and dashed for
+    # the same edge pair.
+    dashed_pairs: set[tuple[str, str]] = {(src, dst) for src, dst in dashed_local}
+    lines.append("")
+    lines.append("    %% FROM edges (solid)")
+    for src, dst in sorted(upstream_solid):
+        lines.append(f"    {_upstream_id(src)} --> {dst}")
+    for src in sorted(forward):
+        for dst in sorted(forward[src]):
+            if (dst, src) in dashed_pairs:
+                continue
+            lines.append(f"    {dst} --> {src}")
+
+    # Dashed COPY --from edges.
+    if dashed_local or upstream_dashed:
+        lines.append("")
+        lines.append("    %% COPY --from= edges (dashed)")
+        for src, dst in sorted(dashed_local):
+            lines.append(f"    {src} -.-> {dst}")
+        for src, dst in sorted(upstream_dashed):
+            lines.append(f"    {_upstream_id(src)} -.-> {dst}")
+
+    # Styling (verbatim palette — matches the current hand-maintained block).
+    lines.append("")
+    lines.append("    %% Styling")
+    lines.append("    classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;")
+    lines.append("    classDef prebuilder fill:#fed7aa,stroke:#c2410c,stroke-width:2px,color:#7c2d12;")
+    lines.append("    classDef builder    fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a;")
+    lines.append("    classDef baseline   fill:#bbf7d0,stroke:#166534,stroke-width:2px,color:#14532d;")
+    lines.append("    classDef slim       fill:#ffffff,stroke:#333,stroke-width:1px,color:#111;")
+    lines.append("    classDef scratch    fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#78350f;")
+    lines.append("    classDef external   fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;")
+    lines.append("```")
+
+    return "\n".join(lines) + "\n"
+
+
+def emit_mermaid(local_images: set[str]) -> str:
+    """Emit the hybrid layout: SVG image + collapsible mermaid source.
+
+    GitHub mobile app doesn't render mermaid code blocks, so the SVG is
+    the primary visual. The mermaid source lives inside a <details>
+    block so operators can still copy/edit the authoritative source.
+    """
+    body = emit_mermaid_body(local_images)
+    lines: list[str] = []
+    lines.append("<!-- Auto-generated; do NOT edit this block. Run `make dep-graph` to regenerate. -->")
+    lines.append("![Image dependency graph](image-dependency-graph.svg)")
+    lines.append("")
+    lines.append("<details>")
+    lines.append("<summary>mermaid source (editable truth — GitHub desktop renders this live; mobile shows the SVG above)</summary>")
+    lines.append("")
+    lines.append(body.rstrip("\n"))
+    lines.append("")
+    lines.append("</details>")
+    return "\n".join(lines) + "\n"
+
+
+MARKER_START = "<!-- GENERATED:dep-graph START — regenerate with `make dep-graph` -->"
+MARKER_END = "<!-- GENERATED:dep-graph END -->"
+
+
+def write_mermaid_into(path: Path, mermaid: str) -> None:
+    content = path.read_text()
+    if MARKER_START not in content or MARKER_END not in content:
+        sys.stderr.write(
+            f"{path}: missing GENERATED markers. Add\n"
+            f"  {MARKER_START}\n"
+            f"  <mermaid block>\n"
+            f"  {MARKER_END}\n"
+            f"around the mermaid block first.\n"
+        )
+        sys.exit(2)
+    pre, rest = content.split(MARKER_START, 1)
+    _old, post = rest.split(MARKER_END, 1)
+    new = f"{pre}{MARKER_START}\n{mermaid}{MARKER_END}{post}"
+    path.write_text(new)
+
+
+# ---------------------------------------------------------------------------
+# FG-059 — reverse-dep graph (unchanged default behavior).
 
 
 def reverse_graph(forward: dict[str, set[str]]) -> dict[str, set[str]]:
-    """{base image → {dependents that FROM it}}."""
     reverse: dict[str, set[str]] = {img: set() for img in forward}
     for src, targets in forward.items():
         for t in targets:
@@ -88,11 +464,6 @@ def reverse_graph(forward: dict[str, set[str]]) -> dict[str, set[str]]:
 
 
 def detect_cycles(forward: dict[str, set[str]]) -> list[list[str]]:
-    """DFS-based cycle detector. Returns list of cycles found (each as a node sequence).
-
-    Dockerfile FROMs cannot be cyclic in practice (base must exist first), but
-    a bug in the parser could create one — fail loudly rather than loop.
-    """
     WHITE, GRAY, BLACK = 0, 1, 2
     color = {n: WHITE for n in forward}
     cycles: list[list[str]] = []
@@ -103,7 +474,6 @@ def detect_cycles(forward: dict[str, set[str]]) -> list[list[str]]:
         stack.append(n)
         for m in sorted(forward.get(n, ())):
             if color.get(m, WHITE) == GRAY:
-                # Back-edge: extract the cycle
                 try:
                     i = stack.index(m)
                     cycles.append(stack[i:] + [m])
@@ -121,8 +491,24 @@ def detect_cycles(forward: dict[str, set[str]]) -> list[list[str]]:
 
 
 def main() -> int:
-    forward = build_forward_graph()
+    parser = argparse.ArgumentParser(description="Image dependency graph emitter (FG-059 + FG-064).")
+    parser.add_argument("--deps", metavar="IMAGE", help="Print one dep per line for IMAGE (reverse-graph)")
+    parser.add_argument("--emit", choices=["reverse-json", "mermaid"], default="reverse-json")
+    parser.add_argument("--write", metavar="FILE", help="With --emit=mermaid: rewrite FILE between GENERATED markers")
+    args = parser.parse_args()
 
+    local_images = all_images()
+
+    if args.emit == "mermaid":
+        mermaid = emit_mermaid(local_images)
+        if args.write:
+            write_mermaid_into(Path(args.write), mermaid)
+            return 0
+        sys.stdout.write(mermaid)
+        return 0
+
+    # Default: FG-059 reverse-JSON (back-compat).
+    forward, _dashed_l, _upstream_s, _upstream_d, _external = build_full_graph(local_images)
     cycles = detect_cycles(forward)
     if cycles:
         sys.stderr.write("image_from_graph: cycle(s) detected in Dockerfile FROM graph:\n")
@@ -132,10 +518,8 @@ def main() -> int:
 
     reverse = reverse_graph(forward)
 
-    if len(sys.argv) == 3 and sys.argv[1] == "--deps":
-        # Print one dep per line for a single image (easier for shell callers).
-        target = sys.argv[2]
-        for dep in sorted(reverse.get(target, ())):
+    if args.deps:
+        for dep in sorted(reverse.get(args.deps, ())):
             print(dep)
         return 0
 

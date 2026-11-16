@@ -54,6 +54,20 @@ repos:
         pass_filenames: false
         files: ^images/.*/(image\.yaml|Dockerfile)$
 
+      - id: verify-dockerfile-conformance
+        name: verify-dockerfile-conformance (FG-064)
+        language: system
+        entry: python3 scripts/verify-dockerfile-conformance.py
+        pass_filenames: false
+        files: ^images/.*/Dockerfile$
+
+      - id: dep-graph-fresh
+        name: dep-graph-fresh (FG-064)
+        language: system
+        entry: bash -c 'make dep-graph >/dev/null && git diff --exit-code docs/image-dependency-graph.md docs/image-dependency-graph.svg || { echo "✗ docs/image-dependency-graph.{md,svg} is out of date — run \`make dep-graph\` and \`git add\` the result"; exit 1; }'
+        pass_filenames: false
+        files: ^(images/.*/(Dockerfile|image\.yaml)|scripts/image_from_graph\.py|scripts/verify-dockerfile-conformance\.py|scripts/mermaid-to-svg\.sh|docs/image-dependency-graph\.(md|svg))$
+
       # FG-017: scope-aware pre-push. Typical 1-image PR is ~2-3 min (was ~15).
       # Lint stays full-repo (unscoped) so pre-push can't pass while CI fails
       # on an untouched file (homelab lesson). Full check-strict runs via
