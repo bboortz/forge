@@ -91,13 +91,17 @@ pass "scratch-base → full bailout"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
-# Section 5 — Dispatch: scripts/ change → full bailout
+# Section 5 — Dispatch: core scripts/ change → full bailout
+# FG-059 extended the scripts classification: core scripts trigger a full run
+# with reason=tooling-core; non-core scripts fall through to the scoped path.
+# scripts/build-image.sh is a core script.
 # -----------------------------------------------------------------------------
-say "5. scripts/ change → full bailout"
+say "5. core scripts/ change → full bailout"
 commit_touch "scripts: synth" "scripts/build-image.sh"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
-grep -q 'DISPATCH=full reason=tooling-or-baseline' <<<"${out}" || { echo "  ✗ expected scripts bailout; got: ${out}" >&2; exit 1; }
-pass "scripts/*.sh → full bailout"
+grep -qE 'DISPATCH=full reason=tooling-(or-baseline|core)' <<<"${out}" \
+  || { echo "  ✗ expected scripts bailout (tooling-core or tooling-or-baseline); got: ${out}" >&2; exit 1; }
+pass "scripts/build-image.sh → full bailout"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
@@ -111,18 +115,23 @@ pass "images/beaconry-scout/* → scoped (count=1)"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------
-# Section 7 — Dispatch: >4 images → full bailout
+# Section 7 — Dispatch: >7 images → full bailout
+# Cap raised 4 → 7 to accommodate FG-059's FROM-graph fan-out, which
+# routinely inflates the affected set when a shared base image is touched.
 # -----------------------------------------------------------------------------
-say "7. >4 images → full bailout"
-commit_touch ">4 images: synth" \
+say "7. >7 images → full bailout"
+commit_touch ">7 images: synth" \
   "images/beaconry-scout/image.yaml" \
   "images/beaconry-hub/image.yaml" \
   "images/beaconry-telegram-mock/image.yaml" \
   "images/python-slim-trixie/image.yaml" \
   "images/nginx-scratch-trixie/image.yaml"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
-grep -q 'DISPATCH=full reason=image-count count=5' <<<"${out}" || { echo "  ✗ expected count=5 bailout; got: ${out}" >&2; exit 1; }
-pass "5 images → image-count bailout"
+# The invariant that matters: >7 triggers the image-count bailout. Any
+# count≥8 is valid; FG-059's fan-out inflates the raw 5 to well past that.
+grep -qE 'DISPATCH=full reason=image-count count=([8-9]|[0-9]{2,})' <<<"${out}" \
+  || { echo "  ✗ expected image-count bailout (count≥8); got: ${out}" >&2; exit 1; }
+pass "≥8 images → image-count bailout"
 git reset --hard "${BASE_SHA}" >/dev/null
 
 # -----------------------------------------------------------------------------

@@ -73,12 +73,50 @@ if [[ -z "${NON_DOC}" ]]; then
 fi
 
 # ── (2) Full-run bailouts ─────────────────────────────────────────────────────
-# Tooling, Makefile, pre-commit config, workflows, or baseline → full run.
-FULL_RE='^(scripts/|Makefile$|\.pre-commit-config\.yaml$|\.github/workflows/|images/scratch-base-trixie/)'
+# FG-059: split the former blanket `^scripts/` into (a) core scripts that
+# actually affect every image's build and (b) image-helper scripts that
+# fall through to the normal affected-images path. The implicit assumption
+# for "scoped non-core script change" is that any image needing the helper
+# script's new behavior exercises it in its smoke suite, which runs as
+# part of the normal flow when that image is in AFFECTED (via its dir).
+_CORE_SCRIPTS=(
+  scripts/build-image.sh
+  scripts/affected_images.py
+  scripts/smart-check.sh
+  scripts/_image_yaml.sh
+  scripts/discover-images.sh
+  scripts/stamp-image.sh
+  scripts/scan-regression.py
+  scripts/verify-no-upstream-drift.sh
+  scripts/verify-traceability.sh
+  scripts/verify-contracts.py
+  scripts/contracts-semver-check.py
+  scripts/install-tool-from-docker.sh
+  scripts/image_from_graph.py
+  scripts/scan-baseline-update.py
+  scripts/smoke-server.sh
+)
+
+# Always-full triggers: Makefile, pre-commit, workflow, scratch-base dir.
+FULL_RE='^(Makefile$|\.pre-commit-config\.yaml$|\.github/workflows/|images/scratch-base-trixie/)'
 BAILOUT_HIT=$(echo "${CHANGED}" | grep -E "${FULL_RE}" | head -1 || true)
 if [[ -n "${BAILOUT_HIT}" ]]; then
   say "full-run bailout — ${BAILOUT_HIT} touched"
   if [[ "${DRY_RUN}" == "1" ]]; then echo "DISPATCH=full reason=tooling-or-baseline path=${BAILOUT_HIT}"; exit 0; fi
+  exec make check-strict
+fi
+
+# Core-script triggers: a core script affects every image — full-run.
+CORE_HIT=""
+for s in "${_CORE_SCRIPTS[@]}"; do
+  if echo "${CHANGED}" | grep -qxF "${s}"; then
+    CORE_HIT="${s}"
+    break
+  fi
+done
+if [[ -n "${CORE_HIT}" ]]; then
+  say "full-run bailout — core script ${CORE_HIT} touched"
+  if [[ "${DRY_RUN}" == "1" ]]; then echo "DISPATCH=full reason=tooling-core path=${CORE_HIT}"; exit 0; fi
   exec make check-strict
 fi
 
@@ -96,8 +134,8 @@ if [[ ${#AFFECTED[@]} -eq 0 ]]; then
   exit 0
 fi
 
-if [[ ${#AFFECTED[@]} -gt 4 ]]; then
-  say "full-run bailout — ${#AFFECTED[@]} images affected (cap is 4)"
+if [[ ${#AFFECTED[@]} -gt 7 ]]; then
+  say "full-run bailout — ${#AFFECTED[@]} images affected (cap is 7)"
   if [[ "${DRY_RUN}" == "1" ]]; then echo "DISPATCH=full reason=image-count count=${#AFFECTED[@]}"; exit 0; fi
   exec make check-strict
 fi
