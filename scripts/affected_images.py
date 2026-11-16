@@ -130,10 +130,16 @@ def dependents_of(graph: dict[str, set[str]], image: str) -> set[str]:
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        sys.stderr.write("usage: affected_images.py <BASE_REF>\n")
+    # FG-060: --classify emits `direct:<img>` / `fanout:<img>` prefixes.
+    classify = False
+    args = sys.argv[1:]
+    if "--classify" in args:
+        classify = True
+        args.remove("--classify")
+    if not args:
+        sys.stderr.write("usage: affected_images.py [--classify] <BASE_REF>\n")
         return 2
-    base = sys.argv[1]
+    base = args[0]
 
     changed = git_diff_names(base)
     if not changed:
@@ -183,8 +189,18 @@ def main() -> int:
             break
         pending = next_round
 
-    for name in sorted(affected):
-        print(name)
+    if classify:
+        # FG-060: tag each entry so smart-check can split DIRECT (serial) vs
+        # FANOUT (parallel). Directly-changed images build first so fan-out
+        # consumers can FROM their forge-local/<repo>:<tag> locally.
+        for name in sorted(affected):
+            if name in direct:
+                print(f"direct:{name}")
+            else:
+                print(f"fanout:{name}")
+    else:
+        for name in sorted(affected):
+            print(name)
     return 0
 
 

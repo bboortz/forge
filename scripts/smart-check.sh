@@ -120,8 +120,20 @@ if [[ -n "${CORE_HIT}" ]]; then
   exec make check-strict
 fi
 
-# Compute affected image set (direct + EXPECTATIONS fan-out).
-mapfile -t AFFECTED < <(python3 scripts/affected_images.py "${BASE}")
+# Compute classified affected image set.
+# FG-060: --classify tags each entry with direct: or fanout: so we can
+# serialize the direct phase (fan-out children FROM them) then
+# parallelize the fan-out phase via xargs -P.
+mapfile -t CLASSIFIED < <(python3 scripts/affected_images.py --classify "${BASE}")
+DIRECT=()
+FANOUT=()
+for _line in "${CLASSIFIED[@]}"; do
+  case "${_line}" in
+    direct:*) DIRECT+=("${_line#direct:}") ;;
+    fanout:*) FANOUT+=("${_line#fanout:}") ;;
+  esac
+done
+AFFECTED=("${DIRECT[@]}" "${FANOUT[@]}")
 
 if [[ ${#AFFECTED[@]} -eq 0 ]]; then
   # Non-doc diff touching nothing image-related (e.g. tests/acceptance/* or
@@ -141,53 +153,40 @@ if [[ ${#AFFECTED[@]} -gt 7 ]]; then
 fi
 
 # ── (3) Scoped run ────────────────────────────────────────────────────────────
-say "scoped run — ${#AFFECTED[@]} image(s): ${AFFECTED[*]}"
+# FG-060: parallelism for the fan-out phase. Default cap = max(1, nproc/4)
+# so a 16-core workstation uses 4 parallel builds; a 4-core laptop uses 1
+# (= serial, same as pre-FG-060). Override via FORGE_PARALLEL=N env.
+_NPROC=$(nproc 2>/dev/null || echo 4)
+_DEFAULT_CAP=$(( _NPROC / 4 ))
+[[ "${_DEFAULT_CAP}" -lt 1 ]] && _DEFAULT_CAP=1
+FANOUT_CAP="${FORGE_PARALLEL:-${_DEFAULT_CAP}}"
+
+say "scoped run — ${#AFFECTED[@]} image(s) total (direct=${#DIRECT[@]}, fanout=${#FANOUT[@]}, parallelism=${FANOUT_CAP})"
+say "  direct: ${DIRECT[*]:-<none>}"
+say "  fanout: ${FANOUT[*]:-<none>}"
 if [[ "${DRY_RUN}" == "1" ]]; then
-  echo "DISPATCH=scoped count=${#AFFECTED[@]} images=${AFFECTED[*]}"
+  echo "DISPATCH=scoped count=${#AFFECTED[@]} direct_count=${#DIRECT[@]} fanout_count=${#FANOUT[@]} FANOUT_PARALLEL=${FANOUT_CAP} images=${AFFECTED[*]}"
   exit 0
 fi
 
 # 1) test-fast (full-repo lint + all verify-*; never scoped — see FG-017 C).
 make test-fast
 
-# 2) Per-image: optional wipe → build → smoke → acceptance (deduped).
-# shellcheck source=scripts/_image_yaml.sh disable=SC1091
-. scripts/_image_yaml.sh
-for img in "${AFFECTED[@]}"; do
-  iy="images/${img}/image.yaml"
-  [[ -f "${iy}" ]] || { warn "missing ${iy}, skipping"; continue; }
-  tag=$(image_yaml_get "${iy}" tag)
-  repo=$(image_yaml_repo "${iy}")
-  if [[ "${FORGE_SKIP_WIPE:-0}" != "1" ]]; then
-    say "docker rmi forge-local/${repo}:${tag} (cold-cache rebuild for ${img})"
-    docker rmi "forge-local/${repo}:${tag}" >/dev/null 2>&1 || true
-  fi
-  bash scripts/build-image.sh "${img}"
-  bash scripts/test-images.sh "${img}"
-  # FG-019: scan-regression gate. Reuses the just-built image; grype diff vs
-  # images/${img}/scan-baseline.json; fails on any new CRITICAL CVE not
-  # waivered in PROMISES.yaml absence.os-cves.waivers. Skips cleanly when
-  # grype isn't installed (local dev); CI always has it.
-  if command -v grype >/dev/null 2>&1; then
-    python3 scripts/scan-regression.py "${img}"
-  else
-    warn "grype not installed — skipping scan-regression for ${img} (install via: make tools)"
-  fi
-  # Find the matching acceptance test (slug-based).
-  shopt -s nullglob
-  accept_tests=(tests/acceptance/test_FG_*_"${img#*-}"*.sh)
-  # Also match "<image>-" prefix slug variants (e.g. python-scratch-trixie).
-  if [[ ${#accept_tests[@]} -eq 0 ]]; then
-    accept_tests=(tests/acceptance/test_FG_*"${img}"*.sh)
-  fi
-  shopt -u nullglob
-  for t in "${accept_tests[@]}"; do
-    say "acceptance: ${t}"
-    _FORGE_IN_CHECK=1 bash "${t}"
-  done
+# 2) DIRECT phase — serial. Fan-out children FROM these locally, so their
+#    `forge-local/<repo>:<tag>` must exist before the fan-out phase starts.
+for img in "${DIRECT[@]}"; do
+  bash scripts/smart-check-image.sh "${img}"
 done
 
-# 3) verify-contracts always — cheap, catches graph regressions even in a
+# 3) FANOUT phase — parallel. Each worker is independent; log lines
+#    prefixed with [<image>] so output stays attributable.
+if [[ ${#FANOUT[@]} -gt 0 ]]; then
+  say "starting fan-out phase: ${#FANOUT[@]} image(s), parallelism=${FANOUT_CAP}"
+  printf '%s\n' "${FANOUT[@]}" \
+    | xargs -r -n1 -P "${FANOUT_CAP}" bash scripts/smart-check-image.sh
+fi
+
+# 4) verify-contracts always — cheap, catches graph regressions even in a
 #    scoped run.
 python3 scripts/verify-contracts.py
 
