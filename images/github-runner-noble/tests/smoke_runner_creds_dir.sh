@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 # Smoke — /entrypoint.sh honors RUNNER_CREDS_DIR env var (FG-063).
 #
-# Two sub-cases:
+# Four sub-cases:
 #  (a) Default (env unset): no symlinks are created in /home/runner —
 #      behavior identical to pre-FG-063.
-#  (b) Non-default (env=/runner-creds): three credential symlinks are
-#      created in /home/runner pointing into /runner-creds, BEFORE
-#      the entrypoint short-circuits on the missing GITHUB_ORG check.
+#  (b) Non-default + FRESH empty creds dir (first-start): NO symlinks
+#      are pre-created. Pre-creating dangling symlinks for
+#      .credentials / .credentials_rsaparams crashes Runner.Listener
+#      configure's LoadDefaultUserAgents() path (regression test for
+#      the fresh-volume crash).
+#  (c) Non-default + pre-populated creds dir (restart case): symlinks
+#      are created for every file that exists in the creds dir.
+#      REG_FILE check short-circuits config.sh.
+#  (d) Non-default + partially-populated creds dir (.runner present,
+#      .credentials_rsaparams absent): the GHE-only rsaparams file
+#      does NOT get a dangling symlink; .runner + .credentials do.
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-github-runner-noble}"
@@ -15,21 +23,11 @@ REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
 # -----------------------------------------------------------------------------
-# (a) Default: RUNNER_CREDS_DIR unset. Entrypoint fails on missing GITHUB_ORG
-# BUT must NOT have created any symlinks in /home/runner (the default-path
-# branch is a no-op). Validate by overriding entrypoint to `bash -c "..."`
-# that runs the real entrypoint AND then prints the readlink of the three
-# dotfiles afterwards.
+# (a) Default: RUNNER_CREDS_DIR unset. No symlinks created.
 set +e
-# shellcheck disable=SC2016  # inner "$(...)" must be expanded inside the container, not here
+# shellcheck disable=SC2016  # inner "$(...)" must be expanded inside the container
 default_out=$(timeout 15 docker run --rm --entrypoint=bash "${IMAGE}" -c \
   '/entrypoint.sh 2>&1 || true
-   printf "SENTINEL_%s=%s\n" dot_runner "$(readlink -m /home/runner/.runner 2>/dev/null || echo NOSYMLINK)"
-   printf "SENTINEL_%s=%s\n" dot_creds  "$(readlink -m /home/runner/.credentials 2>/dev/null || echo NOSYMLINK)"
-   printf "SENTINEL_%s=%s\n" dot_rsa    "$(readlink -m /home/runner/.credentials_rsaparams 2>/dev/null || echo NOSYMLINK)"
-   # Also confirm they are not symlinks via -L (readlink -m resolves and
-   # returns the path even if the file does not exist, so we also test
-   # -L which is true only for actual symlinks).
    for f in .runner .credentials .credentials_rsaparams; do
      if [[ -L "/home/runner/${f}" ]]; then
        echo "SENTINEL_islink_${f}=YES"
@@ -47,18 +45,53 @@ done
 echo "  ✓ (a) default RUNNER_CREDS_DIR: no symlinks created in /home/runner"
 
 # -----------------------------------------------------------------------------
-# (b) Non-default: RUNNER_CREDS_DIR=/runner-creds. The entrypoint should
-# mkdir the target + create three symlinks in /home/runner pointing at
-# /runner-creds/<dotfile>, THEN proceed to the GITHUB_ORG check (which
-# will fail with its normal error because GITHUB_ORG is unset).
-host_dir="$(mktemp -d /tmp/forge-fg063-XXXXXX)"
+# (b) Non-default + FRESH empty creds dir. Expect NO symlinks (fixed the
+# dangling-symlink crash: Runner.Listener configure follows a dangling
+# .credentials symlink and throws FileNotFoundException).
+host_dir_fresh="$(mktemp -d /tmp/forge-fg063-fresh-XXXXXX)"
 # shellcheck disable=SC2064
-trap "rm -rf '${host_dir}'" EXIT
+trap "rm -rf '${host_dir_fresh}'" EXIT
 set +e
-# shellcheck disable=SC2016  # inner "$(...)" must be expanded inside the container, not here
-nondef_out=$(timeout 15 docker run --rm \
+# shellcheck disable=SC2016
+fresh_out=$(timeout 15 docker run --rm \
   -e RUNNER_CREDS_DIR=/runner-creds \
-  -v "${host_dir}:/runner-creds" \
+  -v "${host_dir_fresh}:/runner-creds" \
+  --entrypoint=bash "${IMAGE}" -c \
+  '/entrypoint.sh 2>&1 || true
+   for f in .runner .credentials .credentials_rsaparams; do
+     if [[ -L "/home/runner/${f}" ]]; then
+       echo "SENTINEL_islink_${f}=YES"
+     else
+       echo "SENTINEL_islink_${f}=NO"
+     fi
+   done' 2>&1)
+fresh_rc=$?
+set -e
+[[ ${fresh_rc} -eq 0 ]] || { echo "  ✗ (b) fresh-volume docker run itself failed (rc=${fresh_rc}):" >&2; echo "${fresh_out}" >&2; exit 1; }
+for f in .runner .credentials .credentials_rsaparams; do
+  echo "${fresh_out}" | grep -q "SENTINEL_islink_${f}=NO" \
+    || { echo "  ✗ (b) fresh-volume: /home/runner/${f} was a (dangling) symlink — must not be pre-created on first start" >&2; echo "${fresh_out}" >&2; exit 1; }
+done
+# Entrypoint must still have emitted the GITHUB_ORG error (fell through
+# the symlink block + hit the env check).
+echo "${fresh_out}" | grep -q 'GITHUB_ORG' \
+  || { echo "  ✗ (b) fresh-volume: entrypoint did not reach the GITHUB_ORG env-missing error" >&2; echo "${fresh_out}" >&2; exit 1; }
+echo "  ✓ (b) RUNNER_CREDS_DIR=/runner-creds + fresh volume: NO dangling symlinks pre-created (regression test)"
+
+# -----------------------------------------------------------------------------
+# (c) Non-default + pre-populated creds dir. All three credential files
+# present → all three symlinked → REG_FILE check short-circuits config.sh.
+host_dir_populated="$(mktemp -d /tmp/forge-fg063-populated-XXXXXX)"
+# shellcheck disable=SC2064
+trap "rm -rf '${host_dir_fresh}' '${host_dir_populated}'" EXIT
+for f in .runner .credentials .credentials_rsaparams; do
+  echo "fake-${f}-contents" > "${host_dir_populated}/${f}"
+done
+set +e
+# shellcheck disable=SC2016
+pop_out=$(timeout 15 docker run --rm \
+  -e RUNNER_CREDS_DIR=/runner-creds \
+  -v "${host_dir_populated}:/runner-creds" \
   --entrypoint=bash "${IMAGE}" -c \
   '/entrypoint.sh 2>&1 || true
    for f in .runner .credentials .credentials_rsaparams; do
@@ -69,15 +102,49 @@ nondef_out=$(timeout 15 docker run --rm \
        echo "SENTINEL_${f}=NOT_A_SYMLINK"
      fi
    done' 2>&1)
-nondef_rc=$?
+pop_rc=$?
 set -e
-[[ ${nondef_rc} -eq 0 ]] || { echo "  ✗ (b) non-default-case docker run itself failed (rc=${nondef_rc}):" >&2; echo "${nondef_out}" >&2; exit 1; }
+[[ ${pop_rc} -eq 0 ]] || { echo "  ✗ (c) populated-volume docker run itself failed (rc=${pop_rc}):" >&2; echo "${pop_out}" >&2; exit 1; }
 for f in .runner .credentials .credentials_rsaparams; do
-  echo "${nondef_out}" | grep -q "SENTINEL_${f}=/runner-creds/${f}" \
-    || { echo "  ✗ (b) non-default-case: /home/runner/${f} is not a symlink → /runner-creds/${f}" >&2; echo "${nondef_out}" >&2; exit 1; }
+  echo "${pop_out}" | grep -q "SENTINEL_${f}=/runner-creds/${f}" \
+    || { echo "  ✗ (c) populated-volume: /home/runner/${f} is not a symlink → /runner-creds/${f}" >&2; echo "${pop_out}" >&2; exit 1; }
 done
-# Entrypoint must still have emitted the standard GITHUB_ORG error — proves
-# the symlink block ran BEFORE the env check short-circuit.
-echo "${nondef_out}" | grep -q 'GITHUB_ORG' \
-  || { echo "  ✗ (b) entrypoint did not reach / emit the GITHUB_ORG env-missing error" >&2; echo "${nondef_out}" >&2; exit 1; }
-echo "  ✓ (b) RUNNER_CREDS_DIR=/runner-creds: three symlinks created + GITHUB_ORG check still fires"
+# REG_FILE check should have fired: "Runner already registered ..., skipping config.sh"
+echo "${pop_out}" | grep -q 'Runner already registered' \
+  || { echo "  ✗ (c) populated-volume: entrypoint did not short-circuit config.sh" >&2; echo "${pop_out}" >&2; exit 1; }
+echo "  ✓ (c) RUNNER_CREDS_DIR=/runner-creds + pre-populated: three symlinks created + config.sh short-circuited"
+
+# -----------------------------------------------------------------------------
+# (d) Non-default + partial creds dir. .runner + .credentials present,
+# .credentials_rsaparams absent (github.com deploys don't use RSA).
+# Expect: .runner + .credentials symlinked; .credentials_rsaparams NOT
+# a symlink (would be dangling).
+host_dir_partial="$(mktemp -d /tmp/forge-fg063-partial-XXXXXX)"
+# shellcheck disable=SC2064
+trap "rm -rf '${host_dir_fresh}' '${host_dir_populated}' '${host_dir_partial}'" EXIT
+echo "fake-runner" > "${host_dir_partial}/.runner"
+echo "fake-creds"  > "${host_dir_partial}/.credentials"
+set +e
+# shellcheck disable=SC2016
+part_out=$(timeout 15 docker run --rm \
+  -e RUNNER_CREDS_DIR=/runner-creds \
+  -v "${host_dir_partial}:/runner-creds" \
+  --entrypoint=bash "${IMAGE}" -c \
+  '/entrypoint.sh 2>&1 || true
+   for f in .runner .credentials .credentials_rsaparams; do
+     if [[ -L "/home/runner/${f}" ]]; then
+       echo "SENTINEL_islink_${f}=YES"
+     else
+       echo "SENTINEL_islink_${f}=NO"
+     fi
+   done' 2>&1)
+part_rc=$?
+set -e
+[[ ${part_rc} -eq 0 ]] || { echo "  ✗ (d) partial-volume docker run itself failed (rc=${part_rc}):" >&2; echo "${part_out}" >&2; exit 1; }
+echo "${part_out}" | grep -q 'SENTINEL_islink_.runner=YES' \
+  || { echo "  ✗ (d) partial-volume: /home/runner/.runner must be a symlink" >&2; echo "${part_out}" >&2; exit 1; }
+echo "${part_out}" | grep -q 'SENTINEL_islink_.credentials=YES' \
+  || { echo "  ✗ (d) partial-volume: /home/runner/.credentials must be a symlink" >&2; echo "${part_out}" >&2; exit 1; }
+echo "${part_out}" | grep -q 'SENTINEL_islink_.credentials_rsaparams=NO' \
+  || { echo "  ✗ (d) partial-volume: /home/runner/.credentials_rsaparams must NOT be a (dangling) symlink" >&2; echo "${part_out}" >&2; exit 1; }
+echo "  ✓ (d) RUNNER_CREDS_DIR=/runner-creds + partial creds: only existing files symlinked (no dangling rsaparams)"
