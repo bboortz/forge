@@ -110,7 +110,11 @@ git reset --hard "${BASE_SHA}" >/dev/null
 say "6. single-image diff → scoped dispatch"
 commit_touch "scout: synth" "images/beaconry-scout/image.yaml"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
-grep -q 'DISPATCH=scoped count=1 images=beaconry-scout' <<<"${out}" || { echo "  ✗ expected scoped scout; got: ${out}" >&2; exit 1; }
+# FG-060 extended the DISPATCH line with direct_count/fanout_count/FANOUT_PARALLEL
+# between "count=" and "images=". Match on the two anchor pieces instead.
+grep -q 'DISPATCH=scoped count=1 ' <<<"${out}" \
+  && grep -q 'images=beaconry-scout' <<<"${out}" \
+  || { echo "  ✗ expected scoped scout (count=1 + images=beaconry-scout); got: ${out}" >&2; exit 1; }
 pass "images/beaconry-scout/* → scoped (count=1)"
 git reset --hard "${BASE_SHA}" >/dev/null
 
