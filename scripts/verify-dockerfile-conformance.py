@@ -43,6 +43,7 @@ IMAGES_DIR = REPO_ROOT / "images"
 _PRE_BUILDERS = {
     "debian-slim-sid",
     "debian-slim-trixie",
+    "go-slim-trixie",
     "node-slim-trixie",
     "python-slim-trixie",
     "ubuntu-slim-noble",
@@ -70,11 +71,13 @@ _KNOWN_REF_ARGS = {
     "PYTHON_SLIM_REF",           # python-slim-trixie
     "UBUNTU_SLIM_NOBLE_REF",     # ubuntu-slim-noble
     "NODE_SLIM_REF",             # node-slim-trixie
+    "GO_SLIM_REF",               # go-slim-trixie (FG-065)
     "HC_REF",                    # ghcr.io/bboortz/hc (healthcheck embed)
 }
 
 # Upstream Docker Hub tags allowed as literal `FROM` or as the default of
-# a non-_REF ARG (dedicated-toolchain exemption).
+# a non-_REF ARG. These may only appear in the specific images allowed to
+# consume them (see _UPSTREAM_FROM_ALLOWED_BY_IMAGE).
 _UPSTREAM_ALLOWLIST = {
     "debian:trixie-slim",
     "debian:sid-slim",
@@ -83,6 +86,14 @@ _UPSTREAM_ALLOWLIST = {
     "node:24-trixie-slim",
     "golang:1.27-trixie",
     "postgres:18",
+}
+
+# FG-065 Rule 8: literal `FROM <upstream>` is ALLOWED only in these images.
+# Pre-builders are auto-allowed (each one exists exactly to consume its
+# upstream). postgres-slim-trixie is a documented exemption — rebuilding
+# postgres from source is too big (memory/docker-standard.md).
+_UPSTREAM_FROM_RUNTIME_EXEMPTIONS = {
+    "postgres-slim-trixie": "postgres:18",
 }
 
 # Upstream helpers (not language bases; tools pulled as a stage).
@@ -97,6 +108,9 @@ _COPY_FROM_RE = re.compile(r"^\s*COPY\s+--from=([A-Za-z0-9_][A-Za-z0-9_-]*)\b")
 _ARG_SUBST_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
 _GHCR_REF_RE = re.compile(r"^ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
 _FORGE_LOCAL_REF_RE = re.compile(r"^forge-local/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
+# FG-065 Rule 9: Docker Hub / ghcr-library URL grep. Catches binary/HTTP pulls
+# in RUN/COPY/ADD lines that would sneak past FROM linting.
+_DOCKER_HUB_URL_RE = re.compile(r"\b(docker\.io|hub\.docker\.com|registry-1\.docker\.io|ghcr\.io/library)\b")
 
 
 def _local_images() -> set[str]:
@@ -253,6 +267,101 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
                 f"Layered dep-graph (FG-064) requires downward-only edges."
             )
 
+    # Rule 7 (FG-065): forge-builder-<lang>-trixie's runtime (last) FROM MUST
+    # resolve to a forge-rooted image, not an upstream. Builder-stage copy-
+    # sources (syft, hc) are allowed earlier — this rule only checks the
+    # last FROM, which is the "runtime" / default stage of the builder.
+    if image_name.startswith("forge-builder-") and froms:
+        # froms[-1] = (lineno, target, stage) per the parser above.
+        _ln, last_target, _last_stage = froms[-1]
+        resolved_kind: str | None = None
+        if last_target != "scratch":
+            if m := _ARG_SUBST_RE.match(last_target):
+                default = arg_defaults.get(m.group(1))
+                if default:
+                    resolved_kind, _ = _classify_arg_default(default, local_images)
+            else:
+                resolved_kind, _ = _classify_arg_default(last_target, local_images)
+        if resolved_kind in {"upstream", "helper-upstream"}:
+            errors.append(
+                f"{rel}: builder image's last FROM resolves to an upstream "
+                f"({last_target}) — must FROM a forge-rooted pre-builder instead "
+                f"(FG-065 arch.language-family-image-pair invariant: every "
+                f"forge-builder-<lang>-trixie dogfoods its sibling <lang>-slim-"
+                f"trixie pre-builder)."
+            )
+
+    # Rule 8 (FG-065): literal `FROM <upstream>` (any line, not just the last)
+    # is ONLY allowed in pre-builder images + the explicit runtime-exemption
+    # allowlist. Every other image must FROM a forge-rooted base. This is
+    # the generalization of Rule 7 — it catches upstream FROMs in slim
+    # runtimes, scratch runtimes, dual-builder intermediate stages, etc.
+    #
+    # Pre-builders are auto-exempt (they EXIST to consume their upstream).
+    # postgres-slim-trixie is an explicit runtime exemption (rebuilding
+    # postgres from source is too big — memory/docker-standard.md).
+    if image_name not in _PRE_BUILDERS:
+        allowed_literal = _UPSTREAM_FROM_RUNTIME_EXEMPTIONS.get(image_name)
+        for lineno, target, _stage in froms:
+            if target in _UPSTREAM_ALLOWLIST and target != allowed_literal:
+                errors.append(
+                    f"{rel}:{lineno}: literal FROM {target} is not allowed in "
+                    f"non-pre-builder image '{image_name}'. Allowed patterns: "
+                    f"(a) FROM a forge-rooted pre-builder via "
+                    f"ARG <X>_REF=ghcr.io/bboortz/<X>:<tag>; "
+                    f"(b) scratch; (c) explicit runtime exemption "
+                    f"(currently only {sorted(_UPSTREAM_FROM_RUNTIME_EXEMPTIONS)}). "
+                    f"FG-065 invariant: forge images FROM forge images, upstreams "
+                    f"are consumed exactly once (by their pre-builder)."
+                )
+
+    # Rule 9 (FG-065): no RUN / COPY / ADD line pulls binaries from Docker Hub
+    # or ghcr.io/library/ via HTTP. Those bypass FROM-level linting (FROM gets
+    # Rules 2+3+7+8; HTTP pulls in RUN would silently sneak upstream bits in).
+    # FROM + ARG lines are skipped — they have their own checks.
+    for i, raw in enumerate(content.splitlines(), start=1):
+        line = raw.split("#", 1)[0].rstrip()
+        if not line:
+            continue
+        stripped = line.lstrip()
+        if stripped.startswith(("FROM ", "ARG ", "LABEL ")):
+            continue
+        if _DOCKER_HUB_URL_RE.search(line):
+            errors.append(
+                f"{rel}:{i}: line references a Docker Hub URL "
+                f"({line.strip()!r}). HTTP pulls from docker.io / "
+                f"hub.docker.com / registry-1.docker.io / ghcr.io/library "
+                f"in RUN/COPY/ADD lines bypass FROM-level linting. "
+                f"Use a forge-rooted base (ARG <X>_REF=ghcr.io/bboortz/...) "
+                f"or pull via a FROM stage + COPY --from= (the hc/syft helper "
+                f"pattern) instead of a direct HTTP fetch."
+            )
+
+    return errors
+
+
+def _check_language_family_invariant(local_images: set[str]) -> list[str]:
+    """FG-065 arch.language-family-image-pair invariant.
+
+    Every `forge-builder-<lang>-trixie/` image must have a sibling
+    `<lang>-slim-trixie/` pre-builder. Enforces that new language
+    families land as paired images (builder + pre-builder; builder
+    dogfoods pre-builder).
+    """
+    errors: list[str] = []
+    for img in sorted(local_images):
+        m = re.match(r"^forge-builder-([a-z0-9]+)-trixie$", img)
+        if not m:
+            continue
+        lang = m.group(1)
+        sibling = f"{lang}-slim-trixie"
+        if sibling not in local_images:
+            errors.append(
+                f"images/{img}/: missing sibling pre-builder images/{sibling}/ "
+                f"(FG-065 arch.language-family-image-pair invariant — "
+                f"every forge-builder-<lang>-trixie must have a <lang>-slim-"
+                f"trixie pre-builder that it dogfoods)"
+            )
     return errors
 
 
@@ -261,6 +370,7 @@ def main() -> int:
     all_errors: list[str] = []
     for df in sorted(IMAGES_DIR.glob("*/Dockerfile")):
         all_errors.extend(_check_file(df, local_images))
+    all_errors.extend(_check_language_family_invariant(local_images))
 
     if all_errors:
         sys.stderr.write("verify-dockerfile-conformance: FAIL\n")
@@ -269,7 +379,7 @@ def main() -> int:
         return 1
 
     n = sum(1 for _ in IMAGES_DIR.glob("*/Dockerfile"))
-    print(f"verify-dockerfile-conformance: ok ({n} Dockerfile(s) conform to FG-064).")
+    print(f"verify-dockerfile-conformance: ok ({n} Dockerfile(s) conform to FG-064; FG-065 language-pair invariant satisfied).")
     return 0
 
 

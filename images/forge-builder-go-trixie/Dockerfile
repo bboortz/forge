@@ -2,18 +2,26 @@
 #
 # FG-046: shared builder-base image for every Forge-native from-Go-source
 # image. Sibling to FG-025's forge-builder-python-trixie (Debian-base + syft).
+# FG-065: migrated from `FROM golang:1.27-trixie` directly to the new
+# `go-slim-trixie` pre-builder (dogfood — same shape as FG-042's
+# forge-builder-python-trixie → python-slim-trixie). Closes the last
+# remaining "dedicated-toolchain exemption" and satisfies the new
+# `arch.language-family-image-pair` invariant.
+#
 # Pre-bakes:
 #   - apt-get upgrade applied (trixie-security included)
 #   - ca-certificates
 #   - git + curl + jq (for upstream release resolution + source clone)
 #   - syft (dpkg + go module cataloger)
-#   - Go toolchain from golang:X-trixie (currently 1.27 — the newest
+#   - Go toolchain from go-slim-trixie (currently 1.27 — the newest
 #     Debian-trixie-based official Go image)
 #
-# Daily cron (build.yml) rebuilds this first; derivatives pull it as a
-# FROM reference. Bumping the Go major version is a single `GO_BASE` ARG
-# update + a rebuild — all from-Go-source derivatives inherit the new
-# stdlib without each needing their own Dockerfile change.
+# Daily cron (build.yml) rebuilds `go-slim-trixie` first (publish-pre-
+# builders tier) → this image rebuilds in publish-builders tier → every
+# downstream Go-source derivative picks up the fresh toolchain within 24h.
+# Bumping the Go major version is a single `golang:X-trixie` update in
+# `go-slim-trixie/Dockerfile` — all forge-rooted consumers inherit via
+# the chain.
 #
 # Why this exists: Debian trixie's Go toolchain (go1.24.x) accumulates
 # stdlib CVEs over its release lifetime. Downstream Debian-packaged Go
@@ -22,7 +30,7 @@
 # their toolchain and rebuilds — which can lag by months. Building from
 # source against a newer Go eliminates the lag.
 
-ARG GO_BASE=golang:1.27-trixie
+ARG GO_SLIM_REF=ghcr.io/bboortz/go-slim-trixie:latest
 # syft via Docker Hub (not GitHub releases CDN — FG-025 observed GH flap).
 ARG SYFT_SRC=docker.io/anchore/syft:latest
 
@@ -30,7 +38,7 @@ ARG SYFT_SRC=docker.io/anchore/syft:latest
 FROM ${SYFT_SRC} AS syft-src
 
 # --- Stage 1: builder base (Go + Debian) -------------------------------------
-FROM ${GO_BASE}
+FROM ${GO_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

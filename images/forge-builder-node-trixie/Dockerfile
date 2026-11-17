@@ -28,12 +28,20 @@
 # says 24.21.0) and prometheus v2.53 (compatible). Uptime-kuma's vite SPA
 # build is Node-20+ compatible, works on 24 fine.
 #
-# Daily cron (build.yml) rebuilds this first; derivatives pull it as a
-# FROM reference. Bumping the Node major version is a single `NODE_BASE`
-# ARG update + a rebuild — all from-Node-source derivatives inherit the
-# new runtime without each needing their own Dockerfile change.
+# FG-065: migrated from `FROM node:24-trixie-slim` directly to the new
+# `node-slim-trixie` pre-builder (dogfood — same shape as FG-042's
+# forge-builder-python-trixie → python-slim-trixie and FG-065's
+# forge-builder-go-trixie → go-slim-trixie). Satisfies the new
+# `arch.language-family-image-pair` invariant.
+#
+# Daily cron (build.yml) rebuilds `node-slim-trixie` first (publish-pre-
+# builders tier) → this image rebuilds in publish-builders tier → every
+# downstream Node-source derivative picks up the fresh runtime within 24h.
+# Bumping the Node major version is a single `node:X-trixie-slim` update
+# in `node-slim-trixie/Dockerfile` — all forge-rooted consumers inherit
+# via the chain.
 
-ARG NODE_BASE=node:24-trixie-slim
+ARG NODE_SLIM_REF=ghcr.io/bboortz/node-slim-trixie:latest
 # syft via Docker Hub (same precedent as forge-builder-go-trixie).
 ARG SYFT_SRC=docker.io/anchore/syft:latest
 
@@ -41,7 +49,7 @@ ARG SYFT_SRC=docker.io/anchore/syft:latest
 FROM ${SYFT_SRC} AS syft-src
 
 # --- Stage 1: builder base (Node + Debian) -----------------------------------
-FROM ${NODE_BASE}
+FROM ${NODE_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

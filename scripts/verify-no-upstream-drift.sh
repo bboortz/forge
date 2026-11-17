@@ -35,15 +35,16 @@ _UPSTREAM_ANCHORS=(
   'python:3\.14-slim-trixie'
   'ubuntu:24\.04'
   'node:24-trixie-slim'
+  'golang:1\.27-trixie'
 )
 # How many Dockerfiles SHOULD FROM each anchor (= how many pre-builders
-# each anchor should feed into). FG-061 adds node-slim-trixie as the
-# 5th pre-builder using a LITERAL `FROM node:24-trixie-slim` line.
-# forge-builder-node-trixie also uses this base but via ARG-indirect
-# (`FROM ${NODE_BASE}`), which the grep below doesn't match — that's
-# the dedicated-toolchain exemption, same pattern as forge-builder-
-# go-trixie with `golang:1.27-trixie`.
-_EXPECTED=5
+# each anchor should feed into). FG-065 adds go-slim-trixie as the 6th
+# pre-builder using a LITERAL `FROM golang:1.27-trixie` line + flips
+# forge-builder-{go,node}-trixie to dogfood their respective pre-builders
+# via `FROM ${GO_SLIM_REF}` / `FROM ${NODE_SLIM_REF}` (ARG-indirect, so
+# the grep below doesn't match — one literal match per pre-builder; the
+# "dedicated-toolchain exemption" is retired entirely per FG-065).
+_EXPECTED=6
 
 # Build a single alternation for grep (|-separated).
 _ANCHOR_RE="$(IFS='|'; echo "${_UPSTREAM_ANCHORS[*]}")"
@@ -57,12 +58,12 @@ if [[ "${hits}" -ne "${_EXPECTED}" ]]; then
   grep -lE "^FROM (${_ANCHOR_RE})" images/*/Dockerfile 2>/dev/null \
     | sed 's/^/  /' >&2
   echo >&2
-  echo "FG-042 invariant: upstream Docker Hub anchors must be consumed" >&2
-  echo "by exactly one forge pre-builder (debian-slim-trixie, debian-" >&2
-  echo "slim-sid, python-slim-trixie, ubuntu-slim-noble, node-slim-" >&2
-  echo "trixie). If you need a new slim image rooted on any of those" >&2
-  echo "upstreams, FROM the forge pre-builder instead of the upstream" >&2
-  echo "Docker Hub tag." >&2
+  echo "FG-042 invariant (extended by FG-065): upstream Docker Hub" >&2
+  echo "anchors must be consumed by exactly one forge pre-builder" >&2
+  echo "(debian-slim-trixie, debian-slim-sid, go-slim-trixie, node-" >&2
+  echo "slim-trixie, python-slim-trixie, ubuntu-slim-noble). If you" >&2
+  echo "need a new slim image rooted on any of those upstreams, FROM" >&2
+  echo "the forge pre-builder instead of the upstream Docker Hub tag." >&2
   exit 1
 fi
 

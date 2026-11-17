@@ -29,7 +29,31 @@ Debian trixie remains the default. Debian sid is accepted **case-by-case** when 
 - Default is still Debian trixie. Reach for sid only when a specific trixie package is stuck unfixed AND sid's version is ABI-compatible with the downstream consumer.
 - Document the reason in the consumer image's story + reference FG-058's pre-builder.
 - Rolling-release means scan-baseline.json drifts more than trixie's. Accept nonzero CRITICALs; daily cron re-resolves.
-- Chain-depth invariant (FG-042) still applies: downstream images FROM `debian-slim-sid`, not `debian:sid-slim` directly. Enforced by `scripts/verify-no-upstream-drift.sh` (`_EXPECTED=4`; `debian:sid-slim` added to `_UPSTREAM_ANCHORS`).
+- Chain-depth invariant (FG-042) still applies: downstream images FROM `debian-slim-sid`, not `debian:sid-slim` directly. Enforced by `scripts/verify-no-upstream-drift.sh` (`_EXPECTED=6` as of FG-065; `debian:sid-slim` added to `_UPSTREAM_ANCHORS`).
+
+## Language family image pairs (FG-065, 2026-11-17)
+
+**Invariant**: every programming language family in the Forge fleet ships **two co-published images**:
+
+- **`<lang>-slim-trixie`** — forge-rooted slim runtime pre-builder. FROMs the canonical upstream for that language (e.g. `golang:1.27-trixie`, `node:24-trixie-slim`, `python:3.14-slim-trixie`) + `apt-get upgrade` + `ca-certificates` + `dumb-init`. Sits in `publish-pre-builders` CI tier. Consumed by (a) downstream slim runtimes that need the language's runtime surface, and (b) the corresponding toolchain builder (dogfood).
+- **`forge-builder-<lang>-trixie`** — forge-rooted toolchain builder. FROMs the `<lang>-slim-trixie` pre-builder (never upstream directly) + installs the language toolchain surface needed to build from source (git, curl, jq, make/g++, syft, corepack for Node, etc.). Sits in `publish-builders` CI tier. Consumed only at builder-stage by scratch / slim derivatives.
+
+**Current satisfying families** (post-FG-065):
+
+| Language | Pre-builder | Builder | Dogfooded? |
+|----------|------------|---------|-----------|
+| Python | `python-slim-trixie` (FG-001) | `forge-builder-python-trixie` (FG-025) | ✅ FG-042 |
+| Node | `node-slim-trixie` (FG-061) | `forge-builder-node-trixie` (FG-048) | ✅ FG-065 |
+| Go | `go-slim-trixie` (FG-065) | `forge-builder-go-trixie` (FG-046) | ✅ FG-065 |
+
+The **"dedicated-toolchain exemption"** that previously allowed `forge-builder-{go,node}-trixie` to FROM upstream directly is RETIRED by FG-065. No builder bypasses a pre-builder.
+
+**Enforcement**: `scripts/verify-dockerfile-conformance.py` Rules 7 + 8 + 9:
+- Rule 7: every `forge-builder-<lang>-trixie`'s last FROM must resolve to a forge-rooted image.
+- Rule 8: literal `FROM <upstream>` is allowed only in pre-builder images + the explicit `_UPSTREAM_FROM_RUNTIME_EXEMPTIONS` allowlist (currently just `postgres-slim-trixie` → `postgres:18`).
+- Rule 9: no `RUN` / `COPY` / `ADD` line references `docker.io` / `hub.docker.com` / `registry-1.docker.io` / `ghcr.io/library` (catches HTTP binary pulls that bypass FROM linting).
+
+**Policy for future language families** (Rust, Zig, Ruby, Java, …): land as a sibling pair in one PR. New `<lang>-slim-trixie/` + new `forge-builder-<lang>-trixie/`; builder FROMs pre-builder. `_EXPECTED` in the drift guard += 1. `_PRE_BUILDERS` + `_KNOWN_REF_ARGS` grow by one entry each. No dedicated-toolchain exemptions.
 
 ## sid pinning — faster than waiting for backports
 

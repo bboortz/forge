@@ -41,6 +41,7 @@ IMAGES_DIR = REPO_ROOT / "images"
 _PRE_BUILDERS = [
     "debian-slim-sid",
     "debian-slim-trixie",
+    "go-slim-trixie",
     "node-slim-trixie",
     "python-slim-trixie",
     "ubuntu-slim-noble",

@@ -34,11 +34,12 @@ for s in images/forge-builder-node-trixie/tests/smoke_*.sh; do
 done
 pass "all smoke tests green"
 
-say "4. image.yaml invariants: tag=0.1, no depends_on (externally-rooted builder)"
+say "4. image.yaml invariants: tag=0.1, depends_on=[node-slim-trixie] (FG-065 dogfood)"
 [[ "$tag" == "0.1" ]] || fail "image.yaml tag = '${tag}' (want 0.1)"
-if grep -qE '^depends_on:' images/forge-builder-node-trixie/image.yaml; then
-  fail "image.yaml should NOT have depends_on (builder base, FROMs upstream node:24-trixie-slim)"
-fi
+grep -qE '^depends_on:' images/forge-builder-node-trixie/image.yaml \
+  || fail "image.yaml MUST have depends_on after FG-065 (dogfoods node-slim-trixie)"
+grep -q 'node-slim-trixie' images/forge-builder-node-trixie/image.yaml \
+  || fail "image.yaml depends_on must list node-slim-trixie (FG-065 dogfood)"
 pass "image.yaml correct"
 
 echo
