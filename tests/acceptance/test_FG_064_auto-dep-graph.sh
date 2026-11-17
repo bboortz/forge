@@ -45,10 +45,14 @@ while read -r img; do
 done < <(
   for d in images/*/; do
     if [[ -f "${d}image.yaml" ]]; then
-      echo "${d#images/}" | sed 's|/$||'
+      _rel=${d#images/}
+      echo "${_rel%/}"
     else
       for sub in "${d}"*/; do
-        [[ -f "${sub}image.yaml" ]] && echo "${sub#images/}" | sed 's|/$||'
+        if [[ -f "${sub}image.yaml" ]]; then
+          _rel=${sub#images/}
+          echo "${_rel%/}"
+        fi
       done
     fi
   done | sort
