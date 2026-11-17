@@ -119,6 +119,16 @@ if [[ -d "${_NODE_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" node-slim-trixie
 fi
 
+# FG-065: go-slim-trixie is the Go toolchain pre-builder. Build on
+# demand when the Dockerfile declares GO_SLIM_REF (e.g. forge-builder-
+# go-trixie dogfoods it).
+_GO_SLIM_DIR="${ROOT}/images/go-slim-trixie"
+if [[ -d "${_GO_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "GO_SLIM_REF" "${SRC}/Dockerfile"; then
+  echo "→ pre-builder dependency: go-slim-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" go-slim-trixie
+fi
+
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
 TAG=$(image_yaml_get   "${SRC}/image.yaml" tag)
 [[ -n "${TAG}" ]] || { echo "${SRC}/image.yaml missing required 'tag:' field" >&2; exit 1; }
@@ -242,6 +252,18 @@ if ! docker image inspect "${NODE_SLIM_REF}" >/dev/null 2>&1; then
   NODE_SLIM_REF="ghcr.io/bboortz/node-slim-trixie:${_NODE_SLIM_TAG}"
 fi
 
+# FG-065: GO_SLIM_REF — Forge-rooted Go toolchain pre-builder.
+_GO_SLIM_YAML="${ROOT}/images/go-slim-trixie/image.yaml"
+if [[ -f "${_GO_SLIM_YAML}" ]]; then
+  _GO_SLIM_TAG=$(image_yaml_get "${_GO_SLIM_YAML}" tag)
+else
+  _GO_SLIM_TAG="latest"
+fi
+GO_SLIM_REF="${REGISTRY}/go-slim-trixie:${_GO_SLIM_TAG}"
+if ! docker image inspect "${GO_SLIM_REF}" >/dev/null 2>&1; then
+  GO_SLIM_REF="ghcr.io/bboortz/go-slim-trixie:${_GO_SLIM_TAG}"
+fi
+
 # FG-031: resolve HC_REF the same way for images whose Dockerfile declares
 # ARG HC_REF (healthy-scratch-trixie + any image embedding /hc per FG-031).
 # Prefer forge-local/hc:0.1.0 if present (set up for local dev); else fall
@@ -286,6 +308,10 @@ if [[ "${UBUNTU_SLIM_NOBLE_REF}" == forge-local/* ]]; then
 fi
 # FG-061: same guard for NODE_SLIM_REF.
 if [[ "${NODE_SLIM_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-065: same guard for GO_SLIM_REF.
+if [[ "${GO_SLIM_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-031: same guard for HC_REF — forge-local/hc:0.1.0 isn't a real registry.
@@ -429,6 +455,12 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${NODE_SLIM_REF}" == forge-local/* ]] \
    && grep -q "NODE_SLIM_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-065: same for GO_SLIM_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${GO_SLIM_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "GO_SLIM_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -460,6 +492,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}" \
   --build-arg UBUNTU_SLIM_NOBLE_REF="${UBUNTU_SLIM_NOBLE_REF}" \
   --build-arg NODE_SLIM_REF="${NODE_SLIM_REF}" \
+  --build-arg GO_SLIM_REF="${GO_SLIM_REF}" \
   --build-arg HC_REF="${HC_REF}" \
   --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   "${EXTRA_LABELS[@]}" \

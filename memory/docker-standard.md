@@ -2,24 +2,33 @@
 
 ## Chain depth ≤ 5 (FG-042 invariant)
 
-Current deepest trust chain: `debian:trixie-slim` (Docker Hub) → `python:3.14-slim-trixie` (Docker Hub) → `python-slim-trixie` (forge) → `forge-builder-python-trixie` (forge) → `scratch-base-trixie` (forge) → **5 hops to a scratch runtime like `python-scratch-trixie`**. That's the ceiling.
+Deepest trust chains post-FG-065 (Python AND Go both at the cap):
+
+- Python: `debian:trixie-slim` → `python:3.14-slim-trixie` → `python-slim-trixie` → `forge-builder-python-trixie` → `scratch-base-trixie` → **5 hops** to a scratch runtime (e.g. `python-scratch-trixie`).
+- Go:     `debian:trixie-slim` → `golang:1.27-trixie` → `go-slim-trixie` → `forge-builder-go-trixie` → `scratch-base-trixie` → **5 hops** to a scratch runtime (e.g. `node-exporter-scratch-trixie`).
+- Node:   `debian:trixie-slim` → `node:24-trixie-slim` → `node-slim-trixie` → `forge-builder-node-trixie` → dual-builder scratch → **4 hops** to a scratch runtime (e.g. `prometheus-scratch-trixie`'s Node UI-builder stage; the Go chain via SBT reaches 5).
+
+That's the ceiling.
 
 Every added Forge pre-builder / builder / baseline tier deepens the chain for its downstream. Keep the cap at 5 unless a story explicitly justifies going deeper. Each extra layer is +~1 min of daily-cron time + an extra single-point-of-failure between the operator and the upstream distro.
 
 If you find yourself adding a 6th tier, first ask: can this collapse into an existing tier? E.g. the three builder siblings (`forge-builder-python-trixie`, `forge-builder-go-trixie`, `forge-builder-node-trixie`) are each justified by their distinct upstream toolchain (python / go / node); do NOT add e.g. `forge-builder-rust-python-trixie` — add the Rust bits to an existing builder.
 
-## Upstream Docker Hub anchor consumption (FG-042 invariant)
+## Upstream Docker Hub anchor consumption (FG-042 + FG-065 invariant)
 
-Every Docker Hub upstream used as a `FROM` line must be consumed by **exactly one** Forge image — the forge-rooted pre-builder for that family. Downstream slim / scratch images FROM the forge image, not the upstream directly. Two reasons:
+Every Docker Hub upstream used as a `FROM` line must be consumed by **exactly one** Forge image — the forge-rooted pre-builder for that family. Downstream slim / scratch images (including builders) FROM the forge image, not the upstream directly. Two reasons:
 
 1. **Version drift prevention**: bumping an upstream version is a one-Dockerfile change (in the pre-builder) that propagates atomically; without this rule it's a multi-Dockerfile code-review-discipline task.
 2. **Scanner / auditor surface reduction**: Beaconry + grype track one forge-signed base per family instead of multiple parallel-pulled upstream digests.
 
-Enforced by `scripts/verify-no-upstream-drift.sh` (wired into `make test-fast` + `make check`). Current pre-builders: `debian-slim-trixie`, `python-slim-trixie`. Adding a new one: edit `_UPSTREAM_ANCHORS` in the script + bump `_EXPECTED` to match the new pre-builder count.
+Enforced by `scripts/verify-no-upstream-drift.sh` (counts literal `^FROM <allowlisted upstream>` lines) + `scripts/verify-dockerfile-conformance.py` Rules 7+8+9 (per-image forge-over-upstream check, FG-065). Both wired into `make test-fast` + `make check`.
 
-Exempt from this rule:
-- **Dedicated-toolchain builder bases** (`forge-builder-go-trixie` FROMs `golang:1.27-trixie`): the upstream image provides a specific version pin we can't easily recreate ourselves (Debian's apt-shipped Go is too old). Keep on upstream; document in the story.
-- **Externally-maintained runtimes** (`postgres-slim-trixie` FROMs `postgres:18`): rebuilding from source is far bigger than the drift risk justifies.
+Current pre-builders (6): `debian-slim-trixie`, `debian-slim-sid`, `go-slim-trixie`, `node-slim-trixie`, `python-slim-trixie`, `ubuntu-slim-noble`. Adding a new one: edit `_UPSTREAM_ANCHORS` in the script + bump `_EXPECTED`; also update `_PRE_BUILDERS` in `discover-images.sh` + `verify-dockerfile-conformance.py` + `image_from_graph.py`; add the `<X>_REF` to `_KNOWN_REF_ARGS`.
+
+Exempt from this rule (post-FG-065):
+- **Externally-maintained runtimes** (`postgres-slim-trixie` FROMs `postgres:18`): rebuilding from source is far bigger than the drift risk justifies. Explicitly allowlisted in `verify-dockerfile-conformance.py`'s `_UPSTREAM_FROM_RUNTIME_EXEMPTIONS`.
+
+The "dedicated-toolchain builder bases" exemption (FROMing `golang:1.27-trixie` / `node:24-trixie-slim` directly in the two forge-builders) was RETIRED by FG-065 — both forge-builders now dogfood their respective `<lang>-slim-trixie` pre-builders per the `arch.language-family-image-pair` invariant (see `memory/design-decisions.md`).
 
 ## Two-stage Dockerfile template (scratch runtime)
 

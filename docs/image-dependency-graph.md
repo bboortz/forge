@@ -49,6 +49,7 @@ graph TD
     subgraph L1_prebuilders["Layer 1 — Forge pre-builders (publish-pre-builders)"]
         debian-slim-sid:::prebuilder
         debian-slim-trixie:::prebuilder
+        go-slim-trixie:::prebuilder
         node-slim-trixie:::prebuilder
         python-slim-trixie:::prebuilder
         ubuntu-slim-noble:::prebuilder
@@ -85,8 +86,7 @@ graph TD
     %% FROM edges (solid)
     UP_DEBIAN_SID --> debian-slim-sid
     UP_DEBIAN_TRIXIE --> debian-slim-trixie
-    UP_GOLANG --> forge-builder-go-trixie
-    UP_NODE --> forge-builder-node-trixie
+    UP_GOLANG --> go-slim-trixie
     UP_NODE --> node-slim-trixie
     UP_POSTGRES --> postgres-slim-trixie
     UP_PYTHON --> python-slim-trixie
@@ -98,6 +98,8 @@ graph TD
     python-scratch-trixie --> beaconry-telegram-mock
     debian-slim-trixie --> cadvisor-slim-trixie
     forge-builder-go-trixie --> cadvisor-slim-trixie
+    go-slim-trixie --> forge-builder-go-trixie
+    node-slim-trixie --> forge-builder-node-trixie
     python-slim-trixie --> forge-builder-python-trixie
     ubuntu-slim-noble --> github-runner-noble
     forge-builder-python-trixie --> healthy-scratch-trixie

@@ -22,15 +22,20 @@ permissions:
 
 jobs:
 
-  # FG-025 + FG-042 + FG-046 + FG-048 + FG-051 + FG-058 + FG-061: four-tier publish.
+  # FG-025 + FG-042 + FG-046 + FG-048 + FG-051 + FG-058 + FG-061 + FG-065: four-tier publish.
   # 1. pre-builders (debian-slim-trixie + debian-slim-sid + python-slim-trixie
-  #    + ubuntu-slim-noble + node-slim-trixie) — forge-rooted slim bases that
-  #    forge-builder-python-trixie + cadvisor-slim + ipmi-exporter-slim +
-  #    github-runner-noble + uptime-kuma-slim FROM. Publish first so downstream
-  #    has a resolvable forge-signed FROM.
+  #    + ubuntu-slim-noble + node-slim-trixie + go-slim-trixie) — forge-rooted
+  #    slim bases that forge-builder-python-trixie + cadvisor-slim + ipmi-
+  #    exporter-slim + github-runner-noble + uptime-kuma-slim +
+  #    forge-builder-{go,node}-trixie FROM. Publish first so downstream has a
+  #    resolvable forge-signed FROM.
   #    debian-slim-sid has zero consumers today; it's escape-hatch infra.
   #    node-slim-trixie is FG-061's Node runtime base; uptime-kuma-slim-trixie
   #    runtime migrates onto it (prev FROMed node:24-trixie-slim directly).
+  #    go-slim-trixie is FG-065's Go toolchain base; forge-builder-go-trixie
+  #    dogfoods it (satisfying the FG-065 arch.language-family-image-pair
+  #    invariant — every language ships a <lang>-slim-trixie + forge-builder-
+  #    <lang>-trixie pair, with the builder dogfooding the pre-builder).
   # 2. builders (forge-builder-python-trixie + forge-builder-go-trixie +
   #    forge-builder-node-trixie) — shared builder-stage images.
   #    forge-builder-python-trixie FROMs python-slim-trixie (dogfood) so needs
@@ -64,11 +69,12 @@ jobs:
             echo "derivatives=$(bash scripts/discover-images.sh derivatives --filter "${FILTER}" | jq -c .)"
           } >> "$GITHUB_OUTPUT"
 
-  # FG-042 + FG-051 + FG-058 + FG-061: pre-builders tier — forge-rooted slim bases
-  # (debian-slim-trixie, debian-slim-sid, python-slim-trixie, ubuntu-slim-noble,
-  # node-slim-trixie). Must publish BEFORE publish-builders because
-  # forge-builder-python-trixie now FROMs python-slim-trixie (dogfood) and
-  # downstream runtime images FROM the Debian + Ubuntu + Node pre-builders.
+  # FG-042 + FG-051 + FG-058 + FG-061 + FG-065: pre-builders tier — forge-rooted
+  # slim bases (debian-slim-trixie, debian-slim-sid, go-slim-trixie,
+  # node-slim-trixie, python-slim-trixie, ubuntu-slim-noble). Must publish BEFORE
+  # publish-builders because all three forge-builder-*-trixie images now dogfood
+  # their respective pre-builders (FG-042 python, FG-065 node + go) and downstream
+  # runtime images FROM the Debian + Ubuntu + Node pre-builders.
   publish-pre-builders:
     name: Publish ${{ matrix.image_dir }}
     needs: discover

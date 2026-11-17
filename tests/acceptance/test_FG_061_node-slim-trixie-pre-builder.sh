@@ -26,22 +26,22 @@ grep -qE '^FROM node:24-trixie-slim' images/node-slim-trixie/Dockerfile \
   || fail "node-slim-trixie Dockerfile must FROM node:24-trixie-slim"
 pass "FROM node:24-trixie-slim present"
 
-say "3. verify-no-upstream-drift: _EXPECTED=5 and node:24-trixie-slim in anchors"
+say "3. verify-no-upstream-drift: node:24-trixie-slim in anchors + guard clean"
+# FG-065 bumped _EXPECTED 5 → 6 (added go-slim-trixie). Here we only assert
+# node:24-trixie-slim is still tracked + the guard is green — the exact
+# count is FG-065's concern.
 grep -q "'node:24-trixie-slim'" scripts/verify-no-upstream-drift.sh \
   || fail "scripts/verify-no-upstream-drift.sh does not list 'node:24-trixie-slim' in _UPSTREAM_ANCHORS"
-grep -qE '^_EXPECTED=5$' scripts/verify-no-upstream-drift.sh \
-  || fail "scripts/verify-no-upstream-drift.sh _EXPECTED must be 5"
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails — mismatch between _EXPECTED and FROM-grep count"
-pass "upstream-drift invariant satisfied (5 pre-builder anchors)"
+pass "upstream-drift invariant satisfied"
 
 say "4. discover-images.sh pre-builders mode returns node-slim-trixie"
+# Membership assertion only — exact count is FG-065's concern (now 6).
 out=$(bash scripts/discover-images.sh pre-builders)
 echo "${out}" | jq -e '.include | map(.image_dir) | contains(["node-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing node-slim-trixie"
-got=$(echo "${out}" | jq '.include | length')
-[[ "$got" -eq 5 ]] || fail "pre-builders tier returned ${got} entries (want 5)"
-pass "5 pre-builders including node-slim-trixie"
+pass "pre-builders tier includes node-slim-trixie"
 
 say "5. uptime-kuma-slim-trixie runtime FROMs \${NODE_SLIM_REF}"
 # Previous FG-048c state: runtime stage FROMed node:24-trixie-slim via
