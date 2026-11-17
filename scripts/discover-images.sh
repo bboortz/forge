@@ -59,6 +59,16 @@ done
 # FG-058 adds debian-slim-sid as an escape-hatch pre-builder for CVEs
 # that trixie leaves unfixed but sid patches at the same SONAME.
 _PRE_BUILDERS=(debian-slim-trixie debian-slim-sid go-slim-trixie python-slim-trixie ubuntu-slim-noble node-slim-trixie)
+
+# FG-066: forge mirror tier. Members live under `images/mirror/<name>/`
+# and are classified as "mirrors" (new tier) regardless of depends_on
+# shape. Published in the new publish-mirrors CI tier (parallel with
+# publish-pre-builders). Shape enforced by verify-dockerfile-
+# conformance.py Rule 10 (zero-mod).
+_is_mirror() {
+  local name="$1"
+  [[ "${name}" == mirror/* ]]
+}
 _is_pre_builder() {
   local name="$1"
   for b in "${_PRE_BUILDERS[@]}"; do
@@ -85,6 +95,18 @@ ROOT="$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/_image_yaml.sh disable=SC1091
 . "${ROOT}/scripts/_image_yaml.sh"
 
+# FG-066: compute the canonical image name from an image.yaml path.
+# Flat `images/<name>/image.yaml` → `<name>`; nested (one level deeper)
+# `images/<tier>/<name>/image.yaml` → `<tier>/<name>`. Only one level
+# of nesting is supported today (mirror/).
+_rel_name() {
+  local yml="$1"
+  local dir
+  dir=$(dirname "${yml}")
+  # Strip "${ROOT}/images/" prefix.
+  printf '%s\n' "${dir#"${ROOT}/images/"}"
+}
+
 # FG-057: resolve `--filter` into a space-separated set of image dir names.
 # For `all`, leave FILTER_SET empty (meaning "match everything downstream").
 # Otherwise: split on commas, expand each token as a shell glob against
@@ -93,9 +115,12 @@ ROOT="$(git rev-parse --show-toplevel)"
 FILTER_SET=""
 if [[ "${FILTER}" != "all" ]]; then
   _all_dirs=()
-  while IFS= read -r -d '' dir; do
-    _all_dirs+=("$(basename "${dir}")")
-  done < <(find "${ROOT}/images" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+  # FG-066: walk 2 levels deep so nested `images/mirror/<name>/` dirs
+  # surface as `mirror/<name>` (their canonical name throughout the
+  # tooling + GHCR repo path).
+  while IFS= read -r -d '' yml; do
+    _all_dirs+=("$(_rel_name "${yml}")")
+  done < <(find "${ROOT}/images" -mindepth 2 -maxdepth 3 -name image.yaml -print0 | sort -z)
 
   _matched=()
   IFS=',' read -r -a _tokens <<<"${FILTER}"
@@ -128,32 +153,33 @@ _in_filter_set() {
 }
 
 entries=()
-while IFS= read -r -d '' dir; do
-  test -f "${dir}/image.yaml" || continue
-  name=$(basename "${dir}")
-  repo=$(image_yaml_repo "${dir}/image.yaml")
-  tag=$(image_yaml_get   "${dir}/image.yaml" tag)
+while IFS= read -r -d '' yml; do
+  dir=$(dirname "${yml}")
+  name=$(_rel_name "${yml}")
+  repo=$(image_yaml_repo "${yml}")
+  tag=$(image_yaml_get   "${yml}" tag)
 
-  # Count deps — determines tier.
+  # Count deps — used for base/derivatives discrimination.
   dep_count=0
   while IFS= read -r _dep; do
     [[ -n "${_dep}" ]] && dep_count=$((dep_count + 1))
-  done < <(image_yaml_depends "${dir}/image.yaml")
+  done < <(image_yaml_depends "${yml}")
 
   case "${MODE}" in
-    pre-builders) _is_pre_builder "${name}" || continue ;;
-    builders)     _is_builder "${name}" || continue ;;
-    base)         { [[ ${dep_count} -eq 0 ]] && ! _is_pre_builder "${name}" && ! _is_builder "${name}"; } || continue ;;
-    derivatives)  [[ ${dep_count} -gt 0 ]] || continue ;;
+    mirrors)      _is_mirror "${name}" || continue ;;
+    pre-builders) { ! _is_mirror "${name}" && _is_pre_builder "${name}"; } || continue ;;
+    builders)     { ! _is_mirror "${name}" && _is_builder "${name}"; } || continue ;;
+    base)         { [[ ${dep_count} -eq 0 ]] && ! _is_mirror "${name}" && ! _is_pre_builder "${name}" && ! _is_builder "${name}"; } || continue ;;
+    derivatives)  { [[ ${dep_count} -gt 0 ]] && ! _is_mirror "${name}"; } || continue ;;
     all)          ;;
-    *) echo "unknown mode: ${MODE} (pre-builders|builders|base|derivatives|all)" >&2; exit 2 ;;
+    *) echo "unknown mode: ${MODE} (mirrors|pre-builders|builders|base|derivatives|all)" >&2; exit 2 ;;
   esac
 
   # FG-057: post-tier filter.
   _in_filter_set "${name}" || continue
 
   entries+=("$(printf '{"image_dir":"%s","repo":"%s","tag":"%s"}' "${name}" "${repo}" "${tag}")")
-done < <(find "${ROOT}/images" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+done < <(find "${ROOT}/images" -mindepth 2 -maxdepth 3 -name image.yaml -print0 | sort -z)
 
 joined=$(IFS=,; echo "${entries[*]:-}")
 printf '{"include":[%s]}\n' "${joined}"

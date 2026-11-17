@@ -259,12 +259,37 @@ def resolve_test_path(raw: str) -> Path:
 
 
 def discover_smoke_tests() -> set[Path]:
-    """Every executable images/*/tests/*.sh — the set picked up by test-images."""
+    """Every executable images/*/tests/*.sh — the set picked up by test-images.
+    FG-066: also walks one level deeper so images/mirror/*/tests/*.sh is included."""
     out: set[Path] = set()
     for p in IMAGES_DIR.glob("*/tests/*.sh"):
         if p.is_file() and os.access(p, os.X_OK):
             out.add(p.resolve())
+    for p in IMAGES_DIR.glob("*/*/tests/*.sh"):
+        if p.is_file() and os.access(p, os.X_OK):
+            out.add(p.resolve())
     return out
+
+
+def _canonical_name(p: Path) -> str:
+    """FG-066: `<tier>/<name>` for nested image dirs; `<name>` for flat."""
+    rel = p.relative_to(IMAGES_DIR)
+    return rel.as_posix()
+
+
+def _image_dirs() -> list[Path]:
+    """FG-066: flat + 1-nested image dirs (images/<name>/ and images/<tier>/<name>/)."""
+    out: list[Path] = []
+    for p in IMAGES_DIR.iterdir():
+        if not p.is_dir():
+            continue
+        if (p / "image.yaml").is_file() or (p / "PROMISES.yaml").is_file():
+            out.append(p)
+            continue
+        for sub in p.iterdir():
+            if sub.is_dir() and ((sub / "image.yaml").is_file() or (sub / "PROMISES.yaml").is_file()):
+                out.append(sub)
+    return sorted(out)
 
 
 def main() -> int:
@@ -275,15 +300,26 @@ def main() -> int:
     errors: list[str] = []
 
     # 1. Load every PROMISES.yaml — one per image.
-    promise_files = sorted(IMAGES_DIR.glob("*/PROMISES.yaml"))
-    image_dirs = sorted(p for p in IMAGES_DIR.iterdir() if p.is_dir())
-    image_names = {p.name for p in image_dirs}
+    # FG-066: walk flat + 1-nested so images/mirror/<name>/PROMISES.yaml is found.
+    promise_files = sorted(list(IMAGES_DIR.glob("*/PROMISES.yaml")) + list(IMAGES_DIR.glob("*/*/PROMISES.yaml")))
+    image_dirs = _image_dirs()
+    # Canonical image name per FG-066: flat uses dir basename; nested uses
+    # `<tier>/<name>` (e.g. mirror/syft). Promise files keyed by PROMISES.yaml's
+    # declared `image:` field (per FG-010) — NOT by the directory path — so
+    # a dep in EXPECTATIONS referring to `image: syft` (the name in
+    # mirror/syft/PROMISES.yaml) resolves correctly regardless of the dir path.
+    image_names = {_canonical_name(p) for p in image_dirs}
     images_with_promises: dict[str, ImagePromises] = {}
     for pf in promise_files:
         ip = load_promises(pf, errors)
         if ip is None:
             continue
-        images_with_promises[pf.parent.name] = ip
+        # Index by the PROMISES-declared image name (ip.image) AND by the
+        # canonical directory path, so consumers can refer to either form.
+        images_with_promises[ip.image] = ip
+        canon = _canonical_name(pf.parent)
+        if canon != ip.image:
+            images_with_promises[canon] = ip
 
     missing = image_names - set(images_with_promises)
     for m in sorted(missing):
@@ -309,13 +345,14 @@ def main() -> int:
                     err(errors, f"{ip.source_file}: promise {promise.id!r} references non-executable test {t}")
 
     # 4. Load every EXPECTATIONS.yaml — only on images that depend on another Forge image.
-    expectation_files = sorted(IMAGES_DIR.glob("*/EXPECTATIONS.yaml"))
+    # FG-066: walk flat + 1-nested for images/mirror/<name>/EXPECTATIONS.yaml.
+    expectation_files = sorted(list(IMAGES_DIR.glob("*/EXPECTATIONS.yaml")) + list(IMAGES_DIR.glob("*/*/EXPECTATIONS.yaml")))
     images_with_expectations: dict[str, ImageExpectations] = {}
     for ef in expectation_files:
         ie = load_expectations(ef, errors)
         if ie is None:
             continue
-        images_with_expectations[ef.parent.name] = ie
+        images_with_expectations[_canonical_name(ef.parent)] = ie
 
     # Images that have depends_on: in image.yaml but no EXPECTATIONS.yaml are errors.
     for d in image_dirs:
@@ -333,8 +370,9 @@ def main() -> int:
             if in_deps and line.strip().startswith("-"):
                 has_deps = True
                 break
-        if has_deps and d.name not in images_with_expectations:
-            err(errors, f"images/{d.name}/EXPECTATIONS.yaml: missing but image.yaml declares depends_on")
+        canon = _canonical_name(d)
+        if has_deps and canon not in images_with_expectations:
+            err(errors, f"images/{canon}/EXPECTATIONS.yaml: missing but image.yaml declares depends_on")
 
     # 5. Validate every expectation against its dependency's promises.
     for img, ie in images_with_expectations.items():

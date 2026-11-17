@@ -18,3 +18,4 @@ platforms:
   - linux/amd64
 depends_on:
   - node-slim-trixie
+  - mirror/syft

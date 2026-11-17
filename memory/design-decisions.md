@@ -55,6 +55,29 @@ The **"dedicated-toolchain exemption"** that previously allowed `forge-builder-{
 
 **Policy for future language families** (Rust, Zig, Ruby, Java, …): land as a sibling pair in one PR. New `<lang>-slim-trixie/` + new `forge-builder-<lang>-trixie/`; builder FROMs pre-builder. `_EXPECTED` in the drift guard += 1. `_PRE_BUILDERS` + `_KNOWN_REF_ARGS` grow by one entry each. No dedicated-toolchain exemptions.
 
+## Forge mirror tier (FG-066, 2026-11-17)
+
+**Invariant**: `images/mirror/<name>/` is a reserved directory for **forge-signed zero-mod passthroughs** of external upstream tool images. GHCR repo is `ghcr.io/bboortz/mirror/<name>:<tag>`.
+
+**Shape rules** (enforced by `scripts/verify-dockerfile-conformance.py` **Rule 10**):
+
+- Dockerfile may contain ONLY: `FROM`, `ARG`, `LABEL`, `COPY --from=<stage>` directives.
+- Forbidden: `RUN`, `ENV` (other than labels), `WORKDIR`, `CMD`, `USER`, `ADD`, `EXPOSE`, `HEALTHCHECK`, `VOLUME`, `SHELL`, `STOPSIGNAL`, `ONBUILD`, `ENTRYPOINT`.
+- The only differences from upstream are the forge OCI label metadata + the cosign signature over the forge-built digest.
+
+**Consumption**: mirrors are consumed ONLY via `COPY --from=<stage>` (never as FROM parents of runtimes). Downstream Dockerfiles declare `ARG <TOOL>_REF=ghcr.io/bboortz/mirror/<tool>:<tag>` + `FROM ${<TOOL>_REF} AS <tool>-src` + `COPY --from=<tool>-src ...`.
+
+**CI tier**: `publish-mirrors` runs in parallel with `publish-pre-builders` (no mutual dependency); both block `publish-builders`. The 4-tier publish ordering from FG-042/FG-061/FG-065 grows to **5 tiers**.
+
+**Current members** (post-FG-066):
+- `mirror/syft` — passthrough of `anchore/syft:latest`; consumed by all three forge-builders.
+
+**Candidates NOT in `mirror/`**:
+- `hc` (`ghcr.io/bboortz/hc:<ver>`): forge-owned binary, not a mirror of an external image. Stays at its current path.
+- `postgres-slim-trixie`: an actual runtime with `apt-upgrade` on top (not zero-mod). Stays in `_UPSTREAM_FROM_RUNTIME_EXEMPTIONS`.
+
+**Policy for future mirrors** (Rust/Zig/Ruby/Java toolchains? grype? hadolint? terraform? cosign-cli?): land as a new `images/mirror/<name>/` dir following the Rule 10 shape. Add to `_FORGE_MIRRORS` in both `verify-dockerfile-conformance.py` and `image_from_graph.py`. Register the new `<NAME>_REF` ARG in `_KNOWN_REF_ARGS`. Downstream consumers' Dockerfiles flip `FROM upstream` to `FROM ${<NAME>_REF}`. Existing `publish-mirrors` CI tier picks up the new matrix entry automatically via `scripts/discover-images.sh mirrors`.
+
 ## sid pinning — faster than waiting for backports
 
 When a CVE fix lands in Debian `sid` but has not yet been backported to `trixie`, Forge pulls that specific package from `sid` while the rest of the image stays on `trixie`. Mechanism: `/etc/apt/preferences.d/` pin files committed in `images/<name>/sid-pins/`, enabled during the builder stage.

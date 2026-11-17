@@ -59,6 +59,8 @@ syft <image>:<tag> -o cyclonedx-json > sbom.json
 
 Output format is CycloneDX JSON (not SPDX, not syft-native). Rationale: CycloneDX is the format Beaconry's hub expects on ingest, and matches most downstream tooling.
 
+**FG-066 — syft is now forge-signed via `mirror/syft`**. Previously the three forge-builders (`forge-builder-{python,go,node}-trixie`) pulled syft directly from Docker Hub via `FROM docker.io/anchore/syft:latest AS syft-src`. FG-066 introduces `ghcr.io/bboortz/mirror/syft:<tag>` as a zero-mod forge-signed mirror; all three builders now `FROM ${SYFT_REF} AS syft-src`. The builders' SBOM-generation path is now forge-signed end-to-end. `_HELPER_UPSTREAM_ALLOWLIST` in `verify-dockerfile-conformance.py` is emptied — no remaining Docker Hub helper pulls in any forge image outside the 6 pre-builders.
+
 ## cosign — keyless signing via GHA OIDC
 
 Inside `.github/workflows/build.yml` (daily cron and merge-to-main publish):

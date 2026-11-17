@@ -1,0 +1,40 @@
+# FG-010 contract for mirror/syft (FG-066).
+#
+# Zero-mod forge-signed mirror of anchore/syft. Promises reflect the
+# unmodified upstream behavior — this image is a passthrough, so every
+# promise here is really "the same as upstream, plus forge-signed."
+
+spec_version: 1
+image: syft
+version: "0.1"
+
+promises:
+  - id: files.syft-binary
+    description: "/syft binary present + executable. Reports a version string on `syft version` (identical to anchore/syft:latest at the mirror-build time)."
+    caps: [build.mirror-syft]
+    tests:
+      - images/mirror/syft/tests/smoke_syft_runs.sh
+
+  - id: files.cyclonedx-cataloger
+    description: syft's CycloneDX cataloger is present. `syft scan` against any small OCI image produces a parseable CycloneDX JSON document.
+    caps: [build.mirror-syft]
+    tests:
+      - images/mirror/syft/tests/smoke_syft_scan_cyclonedx.sh
+
+  - id: shape.zero-mod
+    description: "Image contents are bit-identical to upstream anchore/syft except for forge OCI label metadata. No RUN / ENV (other than labels) / WORKDIR / CMD / USER / ADD / APT / EXPOSE in the Dockerfile — arch.forge-mirror-image invariant."
+    caps: [arch.forge-mirror-image]
+    tests:
+      - images/mirror/syft/tests/smoke_size.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ upstream anchore/syft:latest × 1.1 (10% headroom only for forge label layer metadata — should be well under).
+    caps: [test.size-budget]
+    tests:
+      - images/mirror/syft/tests/smoke_size.sh
+
+  - id: scan.nonzero-accepted
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — syft is a ~70MB static Go binary with vendored deps; it carries Go stdlib CVE surface. Build-time utility only; never runs in any Forge runtime image. PR scan-regression gate fails only on new CRITICALs beyond baseline."
+    caps: [scan.regression-gate]
+    tests:
+      - images/mirror/syft/tests/smoke_syft_runs.sh

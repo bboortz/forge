@@ -15,3 +15,4 @@ platforms:
   - linux/amd64
 depends_on:
   - go-slim-trixie
+  - mirror/syft

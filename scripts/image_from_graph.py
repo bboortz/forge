@@ -53,6 +53,8 @@ _FORGE_BUILDERS = [
 ]
 _BASELINE = ["scratch-base-trixie"]
 _UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet
+# FG-066: forge mirror tier — zero-mod passthroughs under images/mirror/<name>/.
+_FORGE_MIRRORS = ["mirror/syft"]
 
 _UPSTREAM_ANCHORS = {
     "debian:trixie-slim",
@@ -87,12 +89,25 @@ _ARG_REF_RE = re.compile(r"^\s*ARG\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\S+)")
 _FROM_RE = re.compile(r"^\s*FROM\s+(\S+)(?:\s+AS\s+(\S+))?\s*$")
 _COPY_FROM_RE = re.compile(r"^\s*COPY\s+--from=([A-Za-z0-9_][A-Za-z0-9_-]*)\b")
 _ARG_SUBST_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
-_GHCR_REF_RE = re.compile(r"^ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
-_FORGE_LOCAL_REF_RE = re.compile(r"^forge-local/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
+# FG-066: allow nested paths (`mirror/<name>`) in ghcr.io / forge-local refs.
+_GHCR_REF_RE = re.compile(r"^ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?):[a-zA-Z0-9._-]+$")
+_FORGE_LOCAL_REF_RE = re.compile(r"^forge-local/([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?):[a-zA-Z0-9._-]+$")
 
 
 def all_images() -> set[str]:
-    return {p.name for p in IMAGES_DIR.iterdir() if p.is_dir() and (p / "image.yaml").is_file()}
+    # FG-066: walk 2 levels deep so nested `images/mirror/<name>/` dirs
+    # surface as `mirror/<name>` canonically.
+    out: set[str] = set()
+    for p in IMAGES_DIR.iterdir():
+        if not p.is_dir():
+            continue
+        if (p / "image.yaml").is_file():
+            out.add(p.name)
+            continue
+        for sub in p.iterdir():
+            if sub.is_dir() and (sub / "image.yaml").is_file():
+                out.add(f"{p.name}/{sub.name}")
+    return out
 
 
 _STAGE_HAS_CONTENT_CMDS = re.compile(r"^\s*(RUN|CMD|ENTRYPOINT|ADD|COPY|WORKDIR|USER|ENV|LABEL|EXPOSE|VOLUME|HEALTHCHECK|SHELL|STOPSIGNAL)\b")
@@ -282,6 +297,8 @@ def build_full_graph(local_images: set[str]):
 def _tier_of(image: str) -> str:
     if image in _UPSTREAM_HELPERS:
         return "upstream-helper"
+    if image in _FORGE_MIRRORS:
+        return "L0_5"
     if image in _PRE_BUILDERS:
         return "L1"
     if image in _FORGE_BUILDERS:
@@ -337,6 +354,16 @@ def emit_mermaid_body(local_images: set[str]) -> str:
         lines.append(f'        {node_id}["{label}"]:::upstream')
     lines.append("    end")
 
+    # L0.5 subgraph (FG-066 — forge mirrors, zero-mod passthroughs).
+    lines.append('    subgraph L0_5_mirrors["Layer 0.5 — Forge mirrors (zero-mod upstream passthroughs; publish-mirrors tier)"]')
+    for name in sorted(_FORGE_MIRRORS):
+        if name in local_images:
+            # Node id can't contain "/"; use the leaf name with a mirror_ prefix for id,
+            # but display the full canonical name as the label.
+            node_id = "mirror_" + name.split("/", 1)[1].replace("-", "_")
+            lines.append(f'        {node_id}["{name}"]:::mirror')
+    lines.append("    end")
+
     # L1 subgraph (pre-builders).
     lines.append('    subgraph L1_prebuilders["Layer 1 — Forge pre-builders (publish-pre-builders)"]')
     for name in sorted(_PRE_BUILDERS):
@@ -360,7 +387,7 @@ def emit_mermaid_body(local_images: set[str]) -> str:
 
     # L4 subgraph (runtimes: slim + scratch + external).
     lines.append('    subgraph L4_runtimes["Layer 4 — Runtimes (publish-base tail + publish-derivatives)"]')
-    non_l4_classified = set(_PRE_BUILDERS) | set(_FORGE_BUILDERS) | set(_BASELINE)
+    non_l4_classified = set(_PRE_BUILDERS) | set(_FORGE_BUILDERS) | set(_BASELINE) | set(_FORGE_MIRRORS)
     runtimes = sorted(img for img in local_images if img not in non_l4_classified)
     for name in runtimes:
         style = _style_of(name, external)
@@ -371,6 +398,12 @@ def emit_mermaid_body(local_images: set[str]) -> str:
         node_id, _ = _UPSTREAM_NODE_IDS.get(ref, (ref, ref))
         return node_id
 
+    def _local_id(name: str) -> str:
+        # Mermaid node ids can't contain '/'; mirror/<leaf> → mirror_<leaf>.
+        if "/" in name:
+            return "mirror_" + name.split("/", 1)[1].replace("-", "_")
+        return name
+
     # Solid FROM edges. `forward` includes BOTH solid (FROM-with-content)
     # and dashed (COPY-from overlay) deps so FG-059 reverse-lookup is
     # correct; dedupe here so we don't emit both solid and dashed for
@@ -379,21 +412,21 @@ def emit_mermaid_body(local_images: set[str]) -> str:
     lines.append("")
     lines.append("    %% FROM edges (solid)")
     for src, dst in sorted(upstream_solid):
-        lines.append(f"    {_upstream_id(src)} --> {dst}")
+        lines.append(f"    {_upstream_id(src)} --> {_local_id(dst)}")
     for src in sorted(forward):
         for dst in sorted(forward[src]):
             if (dst, src) in dashed_pairs:
                 continue
-            lines.append(f"    {dst} --> {src}")
+            lines.append(f"    {_local_id(dst)} --> {_local_id(src)}")
 
     # Dashed COPY --from edges.
     if dashed_local or upstream_dashed:
         lines.append("")
         lines.append("    %% COPY --from= edges (dashed)")
         for src, dst in sorted(dashed_local):
-            lines.append(f"    {src} -.-> {dst}")
+            lines.append(f"    {_local_id(src)} -.-> {_local_id(dst)}")
         for src, dst in sorted(upstream_dashed):
-            lines.append(f"    {_upstream_id(src)} -.-> {dst}")
+            lines.append(f"    {_upstream_id(src)} -.-> {_local_id(dst)}")
 
     # Styling (verbatim palette — matches the current hand-maintained block).
     lines.append("")
@@ -405,6 +438,7 @@ def emit_mermaid_body(local_images: set[str]) -> str:
     lines.append("    classDef slim       fill:#ffffff,stroke:#333,stroke-width:1px,color:#111;")
     lines.append("    classDef scratch    fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#78350f;")
     lines.append("    classDef external   fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;")
+    lines.append("    classDef mirror     fill:#99f6e4,stroke:#0f766e,stroke-width:2px,color:#134e4a;")
     lines.append("```")
 
     return "\n".join(lines) + "\n"
