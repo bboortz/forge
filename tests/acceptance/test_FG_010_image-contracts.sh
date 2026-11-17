@@ -26,16 +26,31 @@ say "1. current PROMISES/EXPECTATIONS graph is consistent"
 python3 "${VERIFY}" >/dev/null
 pass "verify-contracts: ok"
 
+# FG-066: walk flat + 1-nested (images/mirror/<name>/). Tier containers
+# (dirs with no image.yaml but nested image dirs) are skipped.
+_img_dirs=()
+for d in images/*/; do
+  if [[ -f "${d}image.yaml" ]]; then
+    _img_dirs+=("${d}")
+  else
+    for sub in "${d}"*/; do
+      [[ -f "${sub}image.yaml" ]] && _img_dirs+=("${sub}")
+    done
+  fi
+done
+
 # Every image has a PROMISES.yaml
-for img in images/*/; do
-  name=$(basename "${img}")
+for img in "${_img_dirs[@]}"; do
+  name=${img#images/}
+  name=${name%/}
   [[ -f "${img}/PROMISES.yaml" ]] || { echo "✗ ${name} missing PROMISES.yaml" >&2; exit 1; }
 done
 pass "every image has PROMISES.yaml"
 
 # Every image that declares depends_on has EXPECTATIONS.yaml
-for img in images/*/; do
-  name=$(basename "${img}")
+for img in "${_img_dirs[@]}"; do
+  name=${img#images/}
+  name=${name%/}
   if grep -q '^depends_on:' "${img}/image.yaml" 2>/dev/null; then
     if grep -A5 '^depends_on:' "${img}/image.yaml" | grep -q '^\s*-'; then
       [[ -f "${img}/EXPECTATIONS.yaml" ]] || { echo "✗ ${name} depends on another image but has no EXPECTATIONS.yaml" >&2; exit 1; }
@@ -53,11 +68,12 @@ python3 - <<'PY'
 import sys, pathlib, yaml
 root = pathlib.Path('.').resolve()
 promises = {}
-for p in (root / 'images').glob('*/PROMISES.yaml'):
+# FG-066: walk flat + 1-nested so images/mirror/<name>/PROMISES.yaml is included.
+for p in list((root / 'images').glob('*/PROMISES.yaml')) + list((root / 'images').glob('*/*/PROMISES.yaml')):
     data = yaml.safe_load(p.read_text())
     promises[data['image']] = {pr['id'] for pr in data.get('promises', [])}
 errs = []
-for p in (root / 'images').glob('*/EXPECTATIONS.yaml'):
+for p in list((root / 'images').glob('*/EXPECTATIONS.yaml')) + list((root / 'images').glob('*/*/EXPECTATIONS.yaml')):
     data = yaml.safe_load(p.read_text())
     img = data['image']
     for dep in data.get('dependencies', []):
