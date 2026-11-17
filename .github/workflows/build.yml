@@ -50,6 +50,7 @@ jobs:
     # FG-038: 5-min cap (typical 10s — discover-images.sh over images/).
     timeout-minutes: 5
     outputs:
+      mirrors: ${{ steps.disc.outputs.mirrors }}
       pre_builders: ${{ steps.disc.outputs.pre_builders }}
       builders: ${{ steps.disc.outputs.builders }}
       base: ${{ steps.disc.outputs.base }}
@@ -63,11 +64,81 @@ jobs:
           FILTER: ${{ inputs.images || 'all' }}
         run: |
           {
+            echo "mirrors=$(bash scripts/discover-images.sh mirrors --filter "${FILTER}" | jq -c .)"
             echo "pre_builders=$(bash scripts/discover-images.sh pre-builders --filter "${FILTER}" | jq -c .)"
             echo "builders=$(bash scripts/discover-images.sh builders --filter "${FILTER}" | jq -c .)"
             echo "base=$(bash scripts/discover-images.sh base --filter "${FILTER}" | jq -c .)"
             echo "derivatives=$(bash scripts/discover-images.sh derivatives --filter "${FILTER}" | jq -c .)"
           } >> "$GITHUB_OUTPUT"
+
+  # FG-066: publish-mirrors tier — zero-mod forge-signed passthroughs of
+  # external tool images (first member: mirror/syft). Runs in PARALLEL
+  # with publish-pre-builders (no mutual dependency). Both block
+  # publish-builders because the builders FROM their respective pre-
+  # builders AND COPY --from=mirror/syft for the syft binary.
+  publish-mirrors:
+    name: Publish ${{ matrix.image_dir }}
+    needs: discover
+    if: ${{ !cancelled() && fromJSON(needs.discover.outputs.mirrors).include[0] != null }}
+    runs-on: ubuntu-latest
+    # FG-038: 10-min cap per mirror. Typical < 1 min (pure passthrough + labels).
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.mirrors) }}
+    env:
+      REGISTRY: ghcr.io/bboortz
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Current UTC day (for grype DB cache key)
+        id: dt
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - name: Cache grype DB
+        uses: actions/cache@v4
+        timeout-minutes: 3
+        continue-on-error: true
+        with:
+          path: ~/.cache/grype
+          key: grype-db-${{ runner.os }}-${{ steps.dt.outputs.day }}
+          restore-keys: |
+            grype-db-${{ runner.os }}-
+      - name: Install syft + grype + cosign (v2.6.5 pinned — review by 2027-05-17)
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
+          bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype "$HOME/.local/bin/grype"
+          bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.6.5 /ko-app/cosign "$HOME/.local/bin/cosign"
+          chmod +x "$HOME/.local/bin/cosign"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Login to GHCR for cache pull/push
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build + push
+        env:
+          FORGE_CACHE_FROM_PREFIX: ghcr.io/bboortz
+          FORGE_CACHE_PUSH: "1"
+        run: |
+          bash scripts/build-image.sh "${{ matrix.image_dir }}"
+          docker tag "${REGISTRY}/${{ matrix.repo }}:${{ matrix.tag }}" "${REGISTRY}/${{ matrix.repo }}:latest"
+          docker push "${REGISTRY}/${{ matrix.repo }}:${{ matrix.tag }}"
+          docker push "${REGISTRY}/${{ matrix.repo }}:latest"
+      - name: Scan + sign + attest
+        run: |
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${REGISTRY}/${{ matrix.repo }}:${{ matrix.tag }}" | awk -F@ '{print $2}')
+          REF_BY_DIGEST="${REGISTRY}/${{ matrix.repo }}@${DIGEST}"
+          cosign sign --yes "${REF_BY_DIGEST}"
+          syft scan "${REF_BY_DIGEST}" -o cyclonedx-json > /tmp/sbom.json
+          grype "${REF_BY_DIGEST}" -o json > /tmp/scan.json || true
+          cosign attest --yes --predicate /tmp/sbom.json --type cyclonedx "${REF_BY_DIGEST}"
+          cosign attest --yes --predicate /tmp/scan.json --type vuln "${REF_BY_DIGEST}"
 
   # FG-042 + FG-051 + FG-058 + FG-061 + FG-065: pre-builders tier — forge-rooted
   # slim bases (debian-slim-trixie, debian-slim-sid, go-slim-trixie,
@@ -183,11 +254,13 @@ jobs:
 
   publish-builders:
     name: Publish ${{ matrix.image_dir }}
-    needs: [discover, publish-pre-builders]
+    needs: [discover, publish-pre-builders, publish-mirrors]
     # FG-057: run if this tier has content AND the upstream tier either
     # ran successfully (standard cron) OR was intentionally skipped by
     # the filter (so an empty pre-builders tier doesn't cascade-skip us).
-    if: ${{ !cancelled() && fromJSON(needs.discover.outputs.builders).include[0] != null && (needs.publish-pre-builders.result == 'success' || needs.publish-pre-builders.result == 'skipped') }}
+    # FG-066: publish-mirrors is a parallel sibling — same success-or-
+    # skipped gate so the chain doesn't cascade-skip from an empty mirrors tier.
+    if: ${{ !cancelled() && fromJSON(needs.discover.outputs.builders).include[0] != null && (needs.publish-pre-builders.result == 'success' || needs.publish-pre-builders.result == 'skipped') && (needs.publish-mirrors.result == 'success' || needs.publish-mirrors.result == 'skipped') }}
     runs-on: ubuntu-latest
     # FG-038: 10-min cap per builder image. Typical 3-5 min (apt-upgrade
     # + syft install + push). ~2× worst-case typical.

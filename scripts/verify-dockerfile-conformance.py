@@ -48,6 +48,12 @@ _PRE_BUILDERS = {
     "python-slim-trixie",
     "ubuntu-slim-noble",
 }
+# FG-066: forge mirror tier. Members under `images/mirror/<name>/` are
+# zero-mod forge-signed passthroughs of external upstream tool images.
+# Shape enforced by Rule 10 below.
+_FORGE_MIRRORS = {
+    "mirror/syft",
+}
 _FORGE_BUILDERS = {
     "forge-builder-go-trixie",
     "forge-builder-node-trixie",
@@ -72,6 +78,7 @@ _KNOWN_REF_ARGS = {
     "UBUNTU_SLIM_NOBLE_REF",     # ubuntu-slim-noble
     "NODE_SLIM_REF",             # node-slim-trixie
     "GO_SLIM_REF",               # go-slim-trixie (FG-065)
+    "SYFT_REF",                  # mirror/syft (FG-066)
     "HC_REF",                    # ghcr.io/bboortz/hc (healthcheck embed)
 }
 
@@ -97,29 +104,46 @@ _UPSTREAM_FROM_RUNTIME_EXEMPTIONS = {
 }
 
 # Upstream helpers (not language bases; tools pulled as a stage).
-_HELPER_UPSTREAM_ALLOWLIST = {
-    "docker.io/anchore/syft:latest",
-    "anchore/syft:latest",
-}
+# FG-066 emptied this — syft was the only entry; it's now forge-signed
+# via `mirror/syft` per the arch.forge-mirror-image invariant. Kept
+# as an empty set so future helpers (if any genuinely-unavoidable
+# upstream helper appears) can land here before being mirrored.
+_HELPER_UPSTREAM_ALLOWLIST: set[str] = set()
 
 _ARG_RE = re.compile(r"^\s*ARG\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*=\s*(\S+))?\s*$")
 _FROM_RE = re.compile(r"^\s*FROM\s+(\S+)(?:\s+AS\s+(\S+))?\s*$")
 _COPY_FROM_RE = re.compile(r"^\s*COPY\s+--from=([A-Za-z0-9_][A-Za-z0-9_-]*)\b")
 _ARG_SUBST_RE = re.compile(r"^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$")
-_GHCR_REF_RE = re.compile(r"^ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
-_FORGE_LOCAL_REF_RE = re.compile(r"^forge-local/([a-z0-9][a-z0-9-]*):[a-zA-Z0-9._-]+$")
+# FG-066: allow nested repo paths (`mirror/<name>`) in ghcr.io / forge-local refs.
+_GHCR_REF_RE = re.compile(r"^ghcr\.io/bboortz/([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?):[a-zA-Z0-9._-]+$")
+_FORGE_LOCAL_REF_RE = re.compile(r"^forge-local/([a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?):[a-zA-Z0-9._-]+$")
 # FG-065 Rule 9: Docker Hub / ghcr-library URL grep. Catches binary/HTTP pulls
 # in RUN/COPY/ADD lines that would sneak past FROM linting.
 _DOCKER_HUB_URL_RE = re.compile(r"\b(docker\.io|hub\.docker\.com|registry-1\.docker\.io|ghcr\.io/library)\b")
 
 
 def _local_images() -> set[str]:
-    return {p.name for p in IMAGES_DIR.iterdir() if p.is_dir() and (p / "image.yaml").is_file()}
+    # FG-066: walk 2 levels deep so nested `images/mirror/<name>/` dirs
+    # surface as `mirror/<name>` (canonical form through the tooling).
+    out: set[str] = set()
+    for p in IMAGES_DIR.iterdir():
+        if not p.is_dir():
+            continue
+        if (p / "image.yaml").is_file():
+            out.add(p.name)
+            continue
+        # One level of nesting (mirror/<name>, future tiers/<name>).
+        for sub in p.iterdir():
+            if sub.is_dir() and (sub / "image.yaml").is_file():
+                out.add(f"{p.name}/{sub.name}")
+    return out
 
 
 def _tier_of(image: str) -> str:
     if image in _UPSTREAM_HELPERS:
         return "upstream-helper"
+    if image in _FORGE_MIRRORS:
+        return "mirror"
     if image in _PRE_BUILDERS:
         return "pre-builder"
     if image in _FORGE_BUILDERS:
@@ -160,7 +184,11 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
     except OSError as exc:
         return [f"{df}: read failed: {exc}"]
 
-    image_name = df.parent.name
+    # FG-066: canonical image name is the full path under images/ (so
+    # nested mirror/<name> paths survive). Flat: `<dir>`. Nested:
+    # `<tier>/<dir>`.
+    _rel_parent = df.parent.relative_to(IMAGES_DIR).as_posix()
+    image_name = _rel_parent
     my_tier = _tier_of(image_name)
     rel = df.relative_to(REPO_ROOT).as_posix()
 
@@ -230,6 +258,11 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
                 edge_targets.add(resolved)
             continue
         # Literal FROM — must be in the upstream allowlist (or a helper).
+        # FG-066: mirror/* images are EXEMPT from this rule — they exist
+        # precisely to re-publish an arbitrary upstream tool image under
+        # forge signature. Rule 10 below enforces mirror-tier zero-mod.
+        if my_tier == "mirror":
+            continue
         if target not in _UPSTREAM_ALLOWLIST and target not in _HELPER_UPSTREAM_ALLOWLIST:
             errors.append(
                 f"{rel}:{lineno}: literal FROM {target} is not in the "
@@ -315,6 +348,37 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
                     f"are consumed exactly once (by their pre-builder)."
                 )
 
+    # Rule 10 (FG-066): mirror/* Dockerfiles are zero-mod passthroughs.
+    # Allowed directives: FROM, ARG, LABEL, COPY --from=<stage>. Every
+    # other directive (RUN / ENV / WORKDIR / CMD / USER / ADD / EXPOSE /
+    # HEALTHCHECK / VOLUME / SHELL / STOPSIGNAL / ONBUILD / ENTRYPOINT)
+    # is a lint failure — arch.forge-mirror-image invariant.
+    if my_tier == "mirror":
+        _MIRROR_ALLOWED_DIRECTIVES = {"FROM", "ARG", "LABEL", "COPY"}
+        for i, raw in enumerate(content.splitlines(), start=1):
+            line = raw.split("#", 1)[0].rstrip()
+            if not line or line.startswith(("#", " ", "\t")):
+                continue
+            # Line continuations (lines that are a continuation of a
+            # previous directive starting with <space>|<tab>) — skip.
+            directive = line.split(None, 1)[0].upper()
+            if directive in _MIRROR_ALLOWED_DIRECTIVES:
+                # Extra constraint for COPY: only `COPY --from=<stage>` form.
+                if directive == "COPY" and "--from=" not in line:
+                    errors.append(
+                        f"{rel}:{i}: mirror image uses `COPY` without `--from=` — "
+                        f"only COPY --from=<stage> (passthrough of upstream artifacts) "
+                        f"is allowed in mirror/* (arch.forge-mirror-image invariant; "
+                        f"use a pre-builder tier if you need to add operator-defined files)."
+                    )
+                continue
+            errors.append(
+                f"{rel}:{i}: directive `{directive}` is not allowed in a mirror "
+                f"image (arch.forge-mirror-image invariant — mirrors are zero-mod "
+                f"passthroughs; allowed directives: {sorted(_MIRROR_ALLOWED_DIRECTIVES)}. "
+                f"Use a pre-builder tier if you need to add behavior)."
+            )
+
     # Rule 9 (FG-065): no RUN / COPY / ADD line pulls binaries from Docker Hub
     # or ghcr.io/library/ via HTTP. Those bypass FROM-level linting (FROM gets
     # Rules 2+3+7+8; HTTP pulls in RUN would silently sneak upstream bits in).
@@ -365,10 +429,26 @@ def _check_language_family_invariant(local_images: set[str]) -> list[str]:
     return errors
 
 
+def _all_dockerfiles() -> list[Path]:
+    # FG-066: walk flat + 1-nested so images/mirror/<name>/Dockerfile is found.
+    out: list[Path] = []
+    for p in sorted(IMAGES_DIR.iterdir()):
+        if not p.is_dir():
+            continue
+        df = p / "Dockerfile"
+        if df.is_file():
+            out.append(df)
+            continue
+        for sub in sorted(p.iterdir()):
+            if sub.is_dir() and (sub / "Dockerfile").is_file():
+                out.append(sub / "Dockerfile")
+    return out
+
+
 def main() -> int:
     local_images = _local_images()
     all_errors: list[str] = []
-    for df in sorted(IMAGES_DIR.glob("*/Dockerfile")):
+    for df in _all_dockerfiles():
         all_errors.extend(_check_file(df, local_images))
     all_errors.extend(_check_language_family_invariant(local_images))
 
@@ -378,8 +458,8 @@ def main() -> int:
             sys.stderr.write(f"  ✗ {e}\n")
         return 1
 
-    n = sum(1 for _ in IMAGES_DIR.glob("*/Dockerfile"))
-    print(f"verify-dockerfile-conformance: ok ({n} Dockerfile(s) conform to FG-064; FG-065 language-pair invariant satisfied).")
+    n = len(_all_dockerfiles())
+    print(f"verify-dockerfile-conformance: ok ({n} Dockerfile(s) conform to FG-064; FG-065 language-pair invariant + FG-066 mirror-tier invariant satisfied).")
     return 0
 
 

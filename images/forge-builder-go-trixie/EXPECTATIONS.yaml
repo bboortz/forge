@@ -23,3 +23,16 @@ dependencies:
         reason: Builder runs its own `apt-get upgrade` on top; starting from an already-fresh pre-builder means less churn + faster builds on cold cache.
         preflight:
           - images/forge-builder-go-trixie/tests/smoke_no_apt_cache.sh
+
+  - image: syft
+    version: ">=0.1"
+    expectations:
+      - promise: files.syft-binary
+        reason: The /syft binary is COPYed from this mirror stage into /usr/local/bin/syft of the builder runtime.
+        preflight:
+          - images/forge-builder-go-trixie/tests/smoke_has_syft.sh
+
+      - promise: shape.zero-mod
+        reason: mirror/syft must be a zero-mod passthrough — any downstream builder expects the exact upstream syft behavior, not a modified derivative.
+        preflight:
+          - images/forge-builder-go-trixie/tests/smoke_has_syft.sh

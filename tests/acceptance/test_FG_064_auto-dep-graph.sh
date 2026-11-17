@@ -30,14 +30,33 @@ echo "${out}" | grep -q '^```$' || fail 'emitter missing closing ``` fence'
 echo "${out}" | grep -q 'graph TD' || fail "emitter missing 'graph TD' directive"
 echo "${out}" | grep -q '!\[Image dependency graph\]' || fail "emitter missing SVG image reference"
 echo "${out}" | grep -q '^<details>' || fail "emitter missing <details> wrapper"
-# Every local image dir appears as a node id.
+# Every local image appears as a node id. FG-066: walk flat + 1-nested
+# (images/mirror/<name>/); tier containers (dirs with no image.yaml) are
+# skipped. Nested names (e.g. mirror/syft) get their '/' translated to '_'
+# in mermaid node ids, so match on the translated form too.
 missing_nodes=""
 while read -r img; do
   [[ -n "$img" ]] || continue
-  if ! echo "${out}" | grep -qE "^[[:space:]]*${img}:::|${img} -->|${img} -\\.->|--> ${img}|-\\.-> ${img}"; then
+  # Translate `mirror/syft` → `mirror_syft` for mermaid id matching.
+  id_variant="${img//\//_}"
+  if ! echo "${out}" | grep -qE "^[[:space:]]*(${img}|${id_variant}):::|(${img}|${id_variant}) -->|(${img}|${id_variant}) -\\.->|--> (${img}|${id_variant})|-\\.-> (${img}|${id_variant})"; then
     missing_nodes="${missing_nodes} ${img}"
   fi
-done < <(find images -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+done < <(
+  for d in images/*/; do
+    if [[ -f "${d}image.yaml" ]]; then
+      _rel=${d#images/}
+      echo "${_rel%/}"
+    else
+      for sub in "${d}"*/; do
+        if [[ -f "${sub}image.yaml" ]]; then
+          _rel=${sub#images/}
+          echo "${_rel%/}"
+        fi
+      done
+    fi
+  done | sort
+)
 [[ -z "${missing_nodes}" ]] || fail "emitter missing nodes:${missing_nodes}"
 pass "emitter output is well-formed + covers every image"
 

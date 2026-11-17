@@ -3,6 +3,12 @@
 # instead of python:3.14-slim-trixie, eliminating the per-image repetition
 # of apt-get update / upgrade / syft install. Daily cron rebuilds this
 # first; derivatives pull it as a FROM reference.
+#
+# FG-042: dogfoods python-slim-trixie (instead of python:3.14-slim-trixie upstream).
+# FG-066: syft sourced via mirror/syft (previously docker.io/anchore/syft).
 tag: "0.1"
 platforms:
   - linux/amd64
+depends_on:
+  - python-slim-trixie
+  - mirror/syft

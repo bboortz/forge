@@ -60,9 +60,11 @@ say "5. build.yml has 4-tier publish ordering"
 if ! grep -q "^  publish-pre-builders:" .github/workflows/build.yml; then
   fail "build.yml missing publish-pre-builders job"
 fi
-# publish-builders must need publish-pre-builders
+# publish-builders must need publish-pre-builders. FG-066 added publish-mirrors
+# as a parallel sibling; it's an additional needs: entry, so match membership
+# rather than exact string.
 if ! grep -A 2 "^  publish-builders:" .github/workflows/build.yml \
-     | grep -q "needs: \[discover, publish-pre-builders\]"; then
+     | grep -q "needs:.*publish-pre-builders"; then
   fail "publish-builders doesn't need publish-pre-builders"
 fi
 pass "4-tier chain: discover → pre-builders → builders → base → derivatives"

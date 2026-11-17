@@ -25,15 +25,28 @@ fi
 # -----------------------------------------------------------------------------
 say "1. every image has scan-baseline.json"
 missing=0
+# FG-066: walk flat + 1-nested (images/mirror/<name>/). Tier containers
+# (dirs with no image.yaml but with nested image dirs) are skipped.
+_img_dirs=()
 for d in images/*/; do
-  name=$(basename "${d}")
+  if [[ -f "${d}image.yaml" ]]; then
+    _img_dirs+=("${d}")
+  else
+    for sub in "${d}"*/; do
+      [[ -f "${sub}image.yaml" ]] && _img_dirs+=("${sub}")
+    done
+  fi
+done
+for d in "${_img_dirs[@]}"; do
+  name=${d#images/}
+  name=${name%/}
   if [[ ! -f "${d}scan-baseline.json" ]]; then
     echo "  ✗ ${name}/scan-baseline.json missing" >&2
     missing=$((missing + 1))
   fi
 done
 [[ ${missing} -eq 0 ]] || exit 1
-pass "all $(find images -maxdepth 1 -mindepth 1 -type d | wc -l) images have scan-baseline.json"
+pass "all ${#_img_dirs[@]} images have scan-baseline.json"
 
 # -----------------------------------------------------------------------------
 # Section 2 — scan-regression against unchanged image passes

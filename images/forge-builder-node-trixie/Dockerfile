@@ -42,11 +42,11 @@
 # via the chain.
 
 ARG NODE_SLIM_REF=ghcr.io/bboortz/node-slim-trixie:latest
-# syft via Docker Hub (same precedent as forge-builder-go-trixie).
-ARG SYFT_SRC=docker.io/anchore/syft:latest
+# FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
+ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:latest
 
-# --- Stage 0: syft source (Docker Hub) ---------------------------------------
-FROM ${SYFT_SRC} AS syft-src
+# --- Stage 0: syft source (forge mirror) -------------------------------------
+FROM ${SYFT_REF} AS syft-src
 
 # --- Stage 1: builder base (Node + Debian) -----------------------------------
 FROM ${NODE_SLIM_REF}

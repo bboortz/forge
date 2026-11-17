@@ -22,13 +22,13 @@
 # ghcr.io/bboortz/python-slim-trixie:latest in CI. See
 # scripts/build-image.sh PYTHON_SLIM_REF resolution.
 ARG PYTHON_SLIM_REF=ghcr.io/bboortz/python-slim-trixie:latest
-# syft is pulled from Docker Hub rather than GitHub release CDN
-# (observed 2026-11-08: GitHub's releases/download/* flapped 504s for
-# ~6 min at a time; Docker Hub is a separate CDN and stayed up).
-ARG SYFT_SRC=docker.io/anchore/syft:latest
+# FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
+# arch.forge-mirror-image invariant: mirror/* consumed via COPY --from=
+# only; see docs/CAPABILITIES.md for the forge-mirror-image contract.
+ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:latest
 
-# --- Stage 0: syft source (Docker Hub) ---------------------------------------
-FROM ${SYFT_SRC} AS syft-src
+# --- Stage 0: syft source (forge mirror) -------------------------------------
+FROM ${SYFT_REF} AS syft-src
 
 # --- Stage 1: builder base (python-slim-trixie dogfood per FG-042) ----------
 FROM ${PYTHON_SLIM_REF}

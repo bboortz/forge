@@ -1,0 +1,13 @@
+# FG-066: forge-signed zero-mod mirror of anchore/syft.
+#
+# `repo:` is explicit because the image dir is nested
+# (`images/mirror/syft/`) — the default-repo helper takes basename
+# which would collapse to `syft`. Explicit repo preserves the
+# nesting under ghcr.io/bboortz/mirror/syft.
+#
+# Published in the new publish-mirrors CI tier (parallel with
+# publish-pre-builders, both block publish-builders).
+tag: "latest"
+repo: mirror/syft
+platforms:
+  - linux/amd64

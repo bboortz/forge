@@ -31,11 +31,11 @@
 # source against a newer Go eliminates the lag.
 
 ARG GO_SLIM_REF=ghcr.io/bboortz/go-slim-trixie:latest
-# syft via Docker Hub (not GitHub releases CDN — FG-025 observed GH flap).
-ARG SYFT_SRC=docker.io/anchore/syft:latest
+# FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
+ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:latest
 
-# --- Stage 0: syft source (Docker Hub) ---------------------------------------
-FROM ${SYFT_SRC} AS syft-src
+# --- Stage 0: syft source (forge mirror) -------------------------------------
+FROM ${SYFT_REF} AS syft-src
 
 # --- Stage 1: builder base (Go + Debian) -------------------------------------
 FROM ${GO_SLIM_REF}

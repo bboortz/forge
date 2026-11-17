@@ -506,8 +506,8 @@ Forge owns the Debian + Python + Ubuntu + Node + Go slim bases consumed by every
 `ghcr.io/bboortz/forge-builder-go-trixie:0.1` is a published builder-base image mirroring FG-025's `forge-builder-python-trixie` shape but for Go source builds. FROMs `go-slim-trixie` (dogfood, FG-065 — previously `FROM golang:1.27-trixie` upstream directly) + `apt-get upgrade` + CA certificates + syft + git + curl + jq. PROMISES: `files.go-toolchain` (Go >= 1.27), `files.syft-binary`, `files.ca-certificates`, `files.release-resolve-tools` (git + curl + jq), `apt.freshly-upgraded`, `apt.no-cache`. Daily cron rebuilds `go-slim-trixie` first (publish-pre-builders tier) → this image (publish-builders tier) → every from-Go-source derivative within 24h. Bumping the Go major version is a single `golang:X-trixie` update in `go-slim-trixie/Dockerfile` — all derivatives inherit via the chain. Enables FG-046's one-swing migration of 5 Forge-native Go images off Debian's lagging go1.24.x toolchain.
 
 - **Delivered by**: FG-046
-- **Extended by**: FG-065 (dogfoods `go-slim-trixie` instead of FROMing `golang:1.27-trixie` directly; satisfies `arch.language-family-image-pair` invariant)
-- **Covered by**: `tests/acceptance/test_FG_046a_forge-builder-go-trixie.sh`, `tests/acceptance/test_FG_065_forge-builder-dogfood-symmetry.sh`, `images/forge-builder-go-trixie/tests/smoke_*.sh`
+- **Extended by**: FG-065 (dogfoods `go-slim-trixie` instead of FROMing `golang:1.27-trixie` directly; satisfies `arch.language-family-image-pair` invariant); FG-066 (syft via `mirror/syft` instead of `docker.io/anchore/syft`)
+- **Covered by**: `tests/acceptance/test_FG_046a_forge-builder-go-trixie.sh`, `tests/acceptance/test_FG_065_forge-builder-dogfood-symmetry.sh`, `tests/acceptance/test_FG_066_forge-mirror-tier-syft.sh`, `images/forge-builder-go-trixie/tests/smoke_*.sh`
 
 ### build.from-go-source
 
@@ -565,8 +565,8 @@ Build-time pattern for Forge images that track an upstream project's latest GitH
 `ghcr.io/bboortz/forge-builder-node-trixie:0.1` is a published builder-base image mirroring FG-046's `forge-builder-go-trixie` shape but for Node builds. FROMs `node-slim-trixie` (dogfood, FG-065 — previously `FROM node:24-trixie-slim` upstream directly) + `apt-get upgrade` + CA certificates + syft + git + curl + jq + make/g++/python3 (native-module rebuild safety-net) + dumb-init + `corepack enable` (npm / pnpm / yarn shims resolve on first invocation from the consumer's `packageManager` field). Daily cron rebuilds `node-slim-trixie` first (publish-pre-builders tier) → this image (publish-builders tier) → every Node-source derivative within 24h. Consumers: prometheus-scratch-trixie (dual-builder: Node UI + Go binary via -tags builtinassets), alertmanager-scratch-trixie (dual-builder: Elm + Mantine UIs + Go binary), and uptime-kuma-slim-trixie (builder stage).
 
 - **Delivered by**: FG-048
-- **Extended by**: FG-065 (dogfoods `node-slim-trixie` instead of FROMing `node:24-trixie-slim` directly; satisfies `arch.language-family-image-pair` invariant)
-- **Covered by**: `tests/acceptance/test_FG_048a_forge-builder-node-trixie.sh`, `tests/acceptance/test_FG_065_forge-builder-dogfood-symmetry.sh`, `images/forge-builder-node-trixie/tests/smoke_*.sh`
+- **Extended by**: FG-065 (dogfoods `node-slim-trixie` instead of FROMing `node:24-trixie-slim` directly; satisfies `arch.language-family-image-pair` invariant); FG-066 (syft via `mirror/syft` instead of `docker.io/anchore/syft`)
+- **Covered by**: `tests/acceptance/test_FG_048a_forge-builder-node-trixie.sh`, `tests/acceptance/test_FG_065_forge-builder-dogfood-symmetry.sh`, `tests/acceptance/test_FG_066_forge-mirror-tier-syft.sh`, `images/forge-builder-node-trixie/tests/smoke_*.sh`
 
 ### build.from-node-and-go-source
 
@@ -625,3 +625,24 @@ Forge-rooted Node 24 LTS runtime slim pre-builder. `node-slim-trixie` FROMs `nod
 
 - **Delivered by**: FG-061
 - **Covered by**: `tests/acceptance/test_FG_061_node-slim-trixie-pre-builder.sh`, `images/node-slim-trixie/tests/smoke_*.sh`
+
+### arch.forge-mirror-image
+
+Architectural invariant (FG-066): `images/mirror/<name>/` is a reserved directory for **forge-signed zero-mod passthroughs** of external upstream tool images. GHCR repo is `ghcr.io/bboortz/mirror/<name>:<tag>`. Dockerfile content is restricted to `FROM`, `ARG`, `LABEL`, and `COPY --from=<stage>` — any `RUN`/`ENV`/`WORKDIR`/`CMD`/`USER`/`ADD`/`EXPOSE`/`HEALTHCHECK`/`VOLUME`/`SHELL`/`STOPSIGNAL`/`ONBUILD`/`ENTRYPOINT` is a lint failure. Enforced by `scripts/verify-dockerfile-conformance.py` **Rule 10**. First member: `mirror/syft` (FG-066). Future members (`mirror/grype`, `mirror/hadolint`, `mirror/terraform`, `mirror/cosign-cli`, …) land per-case and reuse this pattern + the dedicated `publish-mirrors` CI tier. Mirrors are consumed ONLY via `COPY --from=<stage>` (never as FROM parents of runtimes). The only difference from upstream is the forge OCI label metadata + the cosign signature over the forge-built digest.
+
+- **Delivered by**: FG-066
+- **Covered by**: `tests/acceptance/test_FG_066_forge-mirror-tier-syft.sh`, `scripts/verify-dockerfile-conformance.py` (Rule 10)
+
+### build.mirror-tier
+
+New daily-cron CI publish tier `publish-mirrors` — runs **in parallel with** `publish-pre-builders` (no mutual dependency); both block `publish-builders`. The 4-tier publish ordering from FG-042/FG-061/FG-065 grows to **5 tiers**: `{publish-mirrors ∥ publish-pre-builders}` → `publish-builders` → `publish-base` → `publish-derivatives`. Matrix populated from `scripts/discover-images.sh mirrors` which lists every member of the `images/mirror/*/` directory.
+
+- **Delivered by**: FG-066
+- **Covered by**: `tests/acceptance/test_FG_066_forge-mirror-tier-syft.sh`, `.github/workflows/build.yml`
+
+### build.mirror-syft
+
+`ghcr.io/bboortz/mirror/syft:<tag>` is a forge-signed zero-mod mirror of `anchore/syft`. Dockerfile is `FROM anchore/syft:latest` + 5 `LABEL` + 2 `ARG` lines — nothing else. Consumed via `COPY --from=syft-src /syft /usr/local/bin/syft` by all three forge-builders (`forge-builder-python-trixie`, `forge-builder-go-trixie`, `forge-builder-node-trixie`). Replaces the previous `_HELPER_UPSTREAM_ALLOWLIST` exemption that allowed `docker.io/anchore/syft:latest` as a literal upstream FROM in builder Dockerfiles. After FG-066, zero forge-published image pulls syft from Docker Hub.
+
+- **Delivered by**: FG-066
+- **Covered by**: `tests/acceptance/test_FG_066_forge-mirror-tier-syft.sh`, `images/mirror/syft/tests/smoke_*.sh`

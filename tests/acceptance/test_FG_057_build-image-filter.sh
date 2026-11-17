@@ -23,13 +23,16 @@ include_dirs() {
 say "1. filter=all (default — cron behaviour unchanged)"
 out=$(bash scripts/discover-images.sh all --filter all)
 n=$(echo "${out}" | count_include)
-images_total=$(find images -mindepth 1 -maxdepth 1 -type d -name '*-*' | wc -l)
+# FG-066: walk flat + 1-nested (images/mirror/<name>/) so the tier-container
+# `images/mirror/` doesn't count but `images/mirror/syft/` does. Count via
+# the image.yaml files, which land one per image regardless of nesting.
+images_total=$(find images -mindepth 2 -maxdepth 3 -name image.yaml | wc -l)
 [[ "${n}" -eq "${images_total}" ]] \
   || fail "filter=all returned ${n} entries, want ${images_total} (= dir count)"
 pass "filter=all returns all ${n} images"
 
 say "2. filter=all split by tier equals all images"
-for mode in pre-builders builders base derivatives; do
+for mode in mirrors pre-builders builders base derivatives; do
   bash scripts/discover-images.sh "${mode}" --filter all >/dev/null \
     || fail "mode=${mode} --filter=all failed"
 done

@@ -36,15 +36,18 @@ Images are grouped by role:
 graph TD
     subgraph L0_upstream["Layer 0 — Upstream (external to Forge)"]
         UP_BEACONRY["beaconry (source)<br/>github.com/bboortz/beaconry"]:::upstream
+        UP_SYFT["anchore/syft:latest<br/>docker.io"]:::upstream
         UP_DEBIAN_SID["debian:sid-slim<br/>docker.io"]:::upstream
         UP_DEBIAN_TRIXIE["debian:trixie-slim<br/>docker.io"]:::upstream
-        UP_SYFT["anchore/syft:latest<br/>docker.io"]:::upstream
         UP_GOLANG["golang:1.27-trixie<br/>docker.io"]:::upstream
         UP_HC["hc:0.1.0<br/>ghcr.io/bboortz<br/>(static Zig healthcheck)"]:::upstream
         UP_NODE["node:24-trixie-slim<br/>docker.io"]:::upstream
         UP_POSTGRES["postgres:18<br/>docker.io"]:::upstream
         UP_PYTHON["python:3.14-slim-trixie<br/>docker.io"]:::upstream
         UP_UBUNTU["ubuntu:24.04<br/>docker.io"]:::upstream
+    end
+    subgraph L0_5_mirrors["Layer 0.5 — Forge mirrors (zero-mod upstream passthroughs; publish-mirrors tier)"]
+        mirror_syft["mirror/syft"]:::mirror
     end
     subgraph L1_prebuilders["Layer 1 — Forge pre-builders (publish-pre-builders)"]
         debian-slim-sid:::prebuilder
@@ -84,6 +87,7 @@ graph TD
     end
 
     %% FROM edges (solid)
+    UP_SYFT --> mirror_syft
     UP_DEBIAN_SID --> debian-slim-sid
     UP_DEBIAN_TRIXIE --> debian-slim-trixie
     UP_GOLANG --> go-slim-trixie
@@ -121,6 +125,9 @@ graph TD
     node-slim-trixie --> uptime-kuma-slim-trixie
 
     %% COPY --from= edges (dashed)
+    mirror_syft -.-> forge-builder-go-trixie
+    mirror_syft -.-> forge-builder-node-trixie
+    mirror_syft -.-> forge-builder-python-trixie
     scratch-base-trixie -.-> alertmanager-scratch-trixie
     scratch-base-trixie -.-> ipmi-exporter-scratch-trixie
     scratch-base-trixie -.-> mosquitto-scratch-trixie
@@ -133,9 +140,6 @@ graph TD
     UP_BEACONRY -.-> beaconry-hub
     UP_BEACONRY -.-> beaconry-scout
     UP_BEACONRY -.-> beaconry-telegram-mock
-    UP_SYFT -.-> forge-builder-go-trixie
-    UP_SYFT -.-> forge-builder-node-trixie
-    UP_SYFT -.-> forge-builder-python-trixie
     UP_HC -.-> alertmanager-scratch-trixie
     UP_HC -.-> cadvisor-slim-trixie
     UP_HC -.-> healthy-scratch-trixie
@@ -155,6 +159,7 @@ graph TD
     classDef slim       fill:#ffffff,stroke:#333,stroke-width:1px,color:#111;
     classDef scratch    fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#78350f;
     classDef external   fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;
+    classDef mirror     fill:#99f6e4,stroke:#0f766e,stroke-width:2px,color:#134e4a;
 ```
 
 </details>

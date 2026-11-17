@@ -52,6 +52,10 @@ _FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-python-trixie"
 case "${IMAGE_DIR}" in
   forge-builder-python-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie)
     _needs_forge_builder=0 ;;
+  mirror/*)
+    # FG-066: mirror images are zero-mod passthroughs; never need the
+    # forge-builder-python-trixie builder stage.
+    _needs_forge_builder=0 ;;
   *)
     _needs_forge_builder=1 ;;
 esac
@@ -127,6 +131,15 @@ if [[ -d "${_GO_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "GO_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: go-slim-trixie"
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" go-slim-trixie
+fi
+
+# FG-066: mirror/syft is the forge-signed syft mirror. Build on demand
+# when the Dockerfile declares SYFT_REF (e.g. all 3 forge-builders).
+_MIRROR_SYFT_DIR="${ROOT}/images/mirror/syft"
+if [[ -d "${_MIRROR_SYFT_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "SYFT_REF" "${SRC}/Dockerfile"; then
+  echo "→ mirror dependency: mirror/syft"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" mirror/syft
 fi
 
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
@@ -264,6 +277,20 @@ if ! docker image inspect "${GO_SLIM_REF}" >/dev/null 2>&1; then
   GO_SLIM_REF="ghcr.io/bboortz/go-slim-trixie:${_GO_SLIM_TAG}"
 fi
 
+# FG-066: SYFT_REF — Forge-signed mirror of anchore/syft. Nested repo
+# path under ghcr.io/bboortz/mirror/syft; mirror shape enforced by
+# verify-dockerfile-conformance.py Rule 10.
+_SYFT_YAML="${ROOT}/images/mirror/syft/image.yaml"
+if [[ -f "${_SYFT_YAML}" ]]; then
+  _SYFT_TAG=$(image_yaml_get "${_SYFT_YAML}" tag)
+else
+  _SYFT_TAG="latest"
+fi
+SYFT_REF="${REGISTRY}/mirror/syft:${_SYFT_TAG}"
+if ! docker image inspect "${SYFT_REF}" >/dev/null 2>&1; then
+  SYFT_REF="ghcr.io/bboortz/mirror/syft:${_SYFT_TAG}"
+fi
+
 # FG-031: resolve HC_REF the same way for images whose Dockerfile declares
 # ARG HC_REF (healthy-scratch-trixie + any image embedding /hc per FG-031).
 # Prefer forge-local/hc:0.1.0 if present (set up for local dev); else fall
@@ -312,6 +339,10 @@ if [[ "${NODE_SLIM_REF}" == forge-local/* ]]; then
 fi
 # FG-065: same guard for GO_SLIM_REF.
 if [[ "${GO_SLIM_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-066: same guard for SYFT_REF.
+if [[ "${SYFT_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-031: same guard for HC_REF — forge-local/hc:0.1.0 isn't a real registry.
@@ -461,6 +492,12 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${GO_SLIM_REF}" == forge-local/* ]] \
    && grep -q "GO_SLIM_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-066: same for SYFT_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${SYFT_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "SYFT_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -493,6 +530,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg UBUNTU_SLIM_NOBLE_REF="${UBUNTU_SLIM_NOBLE_REF}" \
   --build-arg NODE_SLIM_REF="${NODE_SLIM_REF}" \
   --build-arg GO_SLIM_REF="${GO_SLIM_REF}" \
+  --build-arg SYFT_REF="${SYFT_REF}" \
   --build-arg HC_REF="${HC_REF}" \
   --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   "${EXTRA_LABELS[@]}" \
@@ -503,5 +541,5 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
 
 # FG-023: record stamp of the inputs that produced this image so a
 # subsequent invocation with identical inputs can skip docker build.
-mkdir -p "${ROOT}/.make/stamps"
+mkdir -p "$(dirname "${STAMP_FILE}")"
 bash "${ROOT}/scripts/stamp-image.sh" "${IMAGE_DIR}" > "${STAMP_FILE}"
