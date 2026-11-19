@@ -2,7 +2,7 @@
 # Smoke — image size ≤ debian-slim-trixie base × 6.0.
 # Unlike other pre-builders (which are a thin apt-upgrade on top of an
 # already-complete language upstream), zig-slim-trixie installs the Zig
-# toolchain on top of plain Debian. Zig 0.14's x86_64-linux tarball is
+# toolchain on top of plain Debian. Zig 0.17's x86_64-linux tarball is
 # ~325 MB uncompressed (toolchain + stdlib + lld + libc headers for all
 # cross-compile targets Zig supports). Budget captures Debian ~82 MB +
 # Zig ~325 MB + headroom for future minor bumps.

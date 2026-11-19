@@ -1,12 +1,12 @@
 # FG-010 contract for zig-slim-trixie (FG-072).
 #
-# Forge-rooted Zig 0.14 toolchain slim base. FROMs debian-slim-trixie
+# Forge-rooted Zig 0.17 toolchain slim base. FROMs debian-slim-trixie
 # (forge pre-builder) + installs Zig from the official ziglang.org
 # tarball with SHA256 verification. Mirrors go-slim-trixie's shape.
 
 spec_version: 1
 image: zig-slim-trixie
-version: "0.1"
+version: "0.2.0"
 
 promises:
   - id: runtime.zig-toolchain
@@ -47,7 +47,7 @@ promises:
       - images/zig-slim-trixie/tests/smoke_has_shell.sh
 
   - id: shape.size-budget
-    description: Image size ≤ debian-slim-trixie base × 6.0 (base ~82 MB + Zig 0.14 toolchain ~325 MB; budget covers Debian + Zig + stdlib + headroom for future Zig minor bumps).
+    description: Image size ≤ debian-slim-trixie base × 6.0 (base ~82 MB + Zig 0.17 toolchain ~325 MB; budget covers Debian + Zig + stdlib + headroom for future Zig minor bumps).
     caps: [test.size-budget]
     tests:
       - images/zig-slim-trixie/tests/smoke_size.sh

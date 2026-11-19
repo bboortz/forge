@@ -16,7 +16,7 @@ if [[ ${rc} -ne 0 ]]; then
   echo "${out}" >&2
   exit 1
 fi
-# Zig is pre-1.0; version strings look like "0.14.1" or "0.15.0-dev.<n>+<sha>".
+# Zig is pre-1.0; version strings look like "0.17.1" or "0.18.0-dev.<n>+<sha>".
 case "${out}" in
   0.*) echo "  ✓ zig version = ${out}" ;;
   *) echo "  ✗ expected 0.*, got: ${out}" >&2; exit 1 ;;
