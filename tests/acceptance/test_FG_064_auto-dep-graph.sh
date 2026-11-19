@@ -186,7 +186,20 @@ pass "SVG rendering script present"
 # This is complementary to §10's content drift gate: it catches commits
 # where the content gate was bypassed (--no-verify) OR a Dockerfile edit
 # landed in a later commit than the last graph regen.
+#
+# Short-circuit (FG-072 follow-up): if the generator produces IDENTICAL
+# output to the committed graph, the Dockerfile change didn't affect
+# topology (e.g. a pure ARG default / LABEL / RUN-step edit like a
+# version bump) and §16 would otherwise fire a false positive. §10
+# already asserts content-drift freshness.
 say "16. dep graph is at least as new as every images/*/{Dockerfile,image.yaml}"
+_tmpgraph=$(mktemp -d)
+trap 'rm -rf "${_tmpgraph}"' EXIT
+python3 scripts/image_from_graph.py --emit=mermaid > "${_tmpgraph}/gen.md"
+# Build a temp fresh markdown with the same marker block for a diff.
+if diff -q "${_tmpgraph}/gen.md" <(awk '/<!-- GENERATED:dep-graph START/{found=1;next} found && /<!-- GENERATED:dep-graph END/{exit} found' docs/image-dependency-graph.md) >/dev/null 2>&1; then
+  pass "dep graph generator output matches committed .md (no topology diff to check)"
+else
 _file_ts() {
   local f="$1"
   # Untracked → treat as "now".
@@ -224,6 +237,7 @@ if (( ${#offenders[@]} > 0 )); then
   fail "dep graph is older than one or more Dockerfile/image.yaml"
 fi
 pass "dep graph is up-to-date relative to every Dockerfile + image.yaml"
+fi
 
 echo
 echo "FG-064 acceptance: all sections passed."
