@@ -67,14 +67,17 @@ grep -q 'node-slim-trixie' images/forge-builder-node-trixie/image.yaml \
   || fail "forge-builder-node-trixie/image.yaml must list node-slim-trixie in depends_on"
 pass "depends_on wiring present"
 
-# --- (6) pre-builder count 5 → 6 -----------------------------------------
-say "6. discover-images.sh pre-builders returns 6 entries including go-slim-trixie"
+# --- (6) pre-builder count 5 → 6+ ----------------------------------------
+# FG-065 added go-slim-trixie as the 6th pre-builder. Later FGs (e.g.
+# FG-072 Zig) may grow the tier further — assert ≥6 + go-slim-trixie
+# membership so this test stays stable under future additions.
+say "6. discover-images.sh pre-builders returns ≥6 entries including go-slim-trixie"
 out=$(bash scripts/discover-images.sh pre-builders)
 got=$(echo "${out}" | jq '.include | length')
-[[ "${got}" -eq 6 ]] || fail "pre-builders tier returned ${got} entries (want 6)"
+[[ "${got}" -ge 6 ]] || fail "pre-builders tier returned ${got} entries (want ≥6)"
 echo "${out}" | jq -e '.include | map(.image_dir) | contains(["go-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing go-slim-trixie"
-pass "6 pre-builders including go-slim-trixie"
+pass "${got} pre-builders including go-slim-trixie"
 
 # --- (7) verify-no-upstream-drift ---------------------------------------
 say "7. verify-no-upstream-drift: _EXPECTED=6 and golang:1.27-trixie anchored"

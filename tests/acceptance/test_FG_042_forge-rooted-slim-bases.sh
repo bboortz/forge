@@ -69,19 +69,20 @@ if ! grep -A 2 "^  publish-builders:" .github/workflows/build.yml \
 fi
 pass "4-tier chain: discover → pre-builders → builders → base → derivatives"
 
-say "6. discover-images.sh pre-builders mode returns the 6 pre-builders"
+say "6. discover-images.sh pre-builders mode contains the FG-042-era pre-builders"
 # FG-051 added ubuntu-slim-noble. FG-058 added debian-slim-sid.
 # FG-061 added node-slim-trixie. FG-065 added go-slim-trixie + flipped
 # both forge-builders to dogfood their respective pre-builders.
+# FG-072 added zig-slim-trixie. Later FGs may grow the tier further —
+# assert ≥6 + membership of the FG-042-era + FG-051/58/61/65 cohort so
+# this test stays stable under additions.
 out=$(bash scripts/discover-images.sh pre-builders)
-expected_count=6
 got=$(echo "${out}" | jq '.include | length')
-[[ "${got}" == "${expected_count}" ]] \
-  || fail "pre-builders mode returned ${got} entries (want ${expected_count}); output: ${out}"
-# Order is alphabetical (per find | sort).
-echo "${out}" | jq -e '.include | map(.image_dir) | . == ["debian-slim-sid", "debian-slim-trixie", "go-slim-trixie", "node-slim-trixie", "python-slim-trixie", "ubuntu-slim-noble"]' >/dev/null \
-  || fail "pre-builders mode doesn't contain all six pre-builders in the expected order; output: ${out}"
-pass "pre-builders mode returns [debian-slim-sid, debian-slim-trixie, go-slim-trixie, node-slim-trixie, python-slim-trixie, ubuntu-slim-noble]"
+[[ "${got}" -ge 6 ]] \
+  || fail "pre-builders mode returned ${got} entries (want ≥6); output: ${out}"
+echo "${out}" | jq -e '.include | map(.image_dir) | contains(["debian-slim-sid", "debian-slim-trixie", "go-slim-trixie", "node-slim-trixie", "python-slim-trixie", "ubuntu-slim-noble"])' >/dev/null \
+  || fail "pre-builders mode missing one of the six FG-042/51/58/61/65-era pre-builders; output: ${out}"
+pass "pre-builders mode contains the six FG-042/51/58/61/65-era pre-builders (got ${got} entries total)"
 
 say "7. upstream grep count collapsed"
 # Expect exactly 6 Dockerfiles to FROM the upstream Docker Hub bases:
