@@ -45,11 +45,13 @@ _PRE_BUILDERS = [
     "node-slim-trixie",
     "python-slim-trixie",
     "ubuntu-slim-noble",
+    "zig-slim-trixie",
 ]
 _FORGE_BUILDERS = [
     "forge-builder-go-trixie",
     "forge-builder-node-trixie",
     "forge-builder-python-trixie",
+    "forge-builder-zig-trixie",
 ]
 _BASELINE = ["scratch-base-trixie"]
 _UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet

@@ -2,11 +2,12 @@
 
 ## Chain depth ≤ 5 (FG-042 invariant)
 
-Deepest trust chains post-FG-065 (Python AND Go both at the cap):
+Deepest trust chains post-FG-072 (Python, Go, Zig all at the cap):
 
 - Python: `debian:trixie-slim` → `python:3.14-slim-trixie` → `python-slim-trixie` → `forge-builder-python-trixie` → `scratch-base-trixie` → **5 hops** to a scratch runtime (e.g. `python-scratch-trixie`).
 - Go:     `debian:trixie-slim` → `golang:1.27-trixie` → `go-slim-trixie` → `forge-builder-go-trixie` → `scratch-base-trixie` → **5 hops** to a scratch runtime (e.g. `node-exporter-scratch-trixie`).
 - Node:   `debian:trixie-slim` → `node:24-trixie-slim` → `node-slim-trixie` → `forge-builder-node-trixie` → dual-builder scratch → **4 hops** to a scratch runtime (e.g. `prometheus-scratch-trixie`'s Node UI-builder stage; the Go chain via SBT reaches 5).
+- Zig:    `debian:trixie-slim` → `debian-slim-trixie` → `zig-slim-trixie` → `forge-builder-zig-trixie` → (scratch runtime) — **5 hops** at cap. Zig's pre-builder FROMs the forge debian-slim-trixie instead of a Zig upstream (none exists on Docker Hub); documented tarball-install exception in `memory/design-decisions.md` § "Language family image pairs".
 
 That's the ceiling.
 
@@ -23,7 +24,7 @@ Every Docker Hub upstream used as a `FROM` line must be consumed by **exactly on
 
 Enforced by `scripts/verify-no-upstream-drift.sh` (counts literal `^FROM <allowlisted upstream>` lines) + `scripts/verify-dockerfile-conformance.py` Rules 7+8+9 (per-image forge-over-upstream check, FG-065). Both wired into `make test-fast` + `make check`.
 
-Current pre-builders (6): `debian-slim-trixie`, `debian-slim-sid`, `go-slim-trixie`, `node-slim-trixie`, `python-slim-trixie`, `ubuntu-slim-noble`. Adding a new one: edit `_UPSTREAM_ANCHORS` in the script + bump `_EXPECTED`; also update `_PRE_BUILDERS` in `discover-images.sh` + `verify-dockerfile-conformance.py` + `image_from_graph.py`; add the `<X>_REF` to `_KNOWN_REF_ARGS`.
+Current pre-builders (7): `debian-slim-trixie`, `debian-slim-sid`, `go-slim-trixie`, `node-slim-trixie`, `python-slim-trixie`, `ubuntu-slim-noble`, `zig-slim-trixie` (FG-072; tarball-install, FROMs `debian-slim-trixie` — doesn't bump `_EXPECTED`). Adding a new one with a Docker Hub upstream: edit `_UPSTREAM_ANCHORS` in the script + bump `_EXPECTED`; also update `_PRE_BUILDERS` in `discover-images.sh` + `verify-dockerfile-conformance.py` + `image_from_graph.py`; add the `<X>_REF` to `_KNOWN_REF_ARGS`. Adding a new tarball-install pre-builder (Zig precedent): same `_PRE_BUILDERS` + `_KNOWN_REF_ARGS` edits, no `_EXPECTED` bump, add a named entry to `_INTRA_LAYER_EXEMPTIONS`.
 
 Exempt from this rule (post-FG-065):
 - **Externally-maintained runtimes** (`postgres-slim-trixie` FROMs `postgres:18`): rebuilding from source is far bigger than the drift risk justifies. Explicitly allowlisted in `verify-dockerfile-conformance.py`'s `_UPSTREAM_FROM_RUNTIME_EXEMPTIONS`.

@@ -22,13 +22,13 @@ permissions:
 
 jobs:
 
-  # FG-025 + FG-042 + FG-046 + FG-048 + FG-051 + FG-058 + FG-061 + FG-065: four-tier publish.
+  # FG-025 + FG-042 + FG-046 + FG-048 + FG-051 + FG-058 + FG-061 + FG-065 + FG-072: four-tier publish.
   # 1. pre-builders (debian-slim-trixie + debian-slim-sid + python-slim-trixie
-  #    + ubuntu-slim-noble + node-slim-trixie + go-slim-trixie) — forge-rooted
-  #    slim bases that forge-builder-python-trixie + cadvisor-slim + ipmi-
-  #    exporter-slim + github-runner-noble + uptime-kuma-slim +
-  #    forge-builder-{go,node}-trixie FROM. Publish first so downstream has a
-  #    resolvable forge-signed FROM.
+  #    + ubuntu-slim-noble + node-slim-trixie + go-slim-trixie + zig-slim-trixie)
+  #    — forge-rooted slim bases that forge-builder-python-trixie + cadvisor-
+  #    slim + ipmi-exporter-slim + github-runner-noble + uptime-kuma-slim +
+  #    forge-builder-{go,node,zig}-trixie FROM. Publish first so downstream has
+  #    a resolvable forge-signed FROM.
   #    debian-slim-sid has zero consumers today; it's escape-hatch infra.
   #    node-slim-trixie is FG-061's Node runtime base; uptime-kuma-slim-trixie
   #    runtime migrates onto it (prev FROMed node:24-trixie-slim directly).
@@ -36,11 +36,16 @@ jobs:
   #    dogfoods it (satisfying the FG-065 arch.language-family-image-pair
   #    invariant — every language ships a <lang>-slim-trixie + forge-builder-
   #    <lang>-trixie pair, with the builder dogfooding the pre-builder).
+  #    zig-slim-trixie is FG-072's Zig toolchain base; forge-builder-zig-trixie
+  #    dogfoods it. Zig has no Debian-based Docker Hub upstream, so zig-slim-
+  #    trixie necessarily FROMs debian-slim-trixie (narrow Rule 6 intra-layer
+  #    exemption; preserves FG-042 single-upstream-consumer rule).
   # 2. builders (forge-builder-python-trixie + forge-builder-go-trixie +
-  #    forge-builder-node-trixie) — shared builder-stage images.
-  #    forge-builder-python-trixie FROMs python-slim-trixie (dogfood) so needs
-  #    pre-builders first. forge-builder-node-trixie FROMs node:24-trixie-slim
-  #    upstream (dedicated-toolchain exemption, same as forge-builder-go-trixie).
+  #    forge-builder-node-trixie + forge-builder-zig-trixie) — shared builder-
+  #    stage images. forge-builder-python-trixie FROMs python-slim-trixie
+  #    (dogfood) so needs pre-builders first. All four forge-builders dogfood
+  #    their respective pre-builders per FG-065 arch.language-family-image-pair
+  #    (FG-072 extends from 3 → 4 satisfying language families).
   # 3. base (scratch-base-trixie, remaining slim variants, externally-sourced
   #    leaf images) — publish in parallel.
   # 4. derivatives (scratch image variants, beaconry hub/scout) — FROM bases.
@@ -140,12 +145,13 @@ jobs:
           cosign attest --yes --predicate /tmp/sbom.json --type cyclonedx "${REF_BY_DIGEST}"
           cosign attest --yes --predicate /tmp/scan.json --type vuln "${REF_BY_DIGEST}"
 
-  # FG-042 + FG-051 + FG-058 + FG-061 + FG-065: pre-builders tier — forge-rooted
-  # slim bases (debian-slim-trixie, debian-slim-sid, go-slim-trixie,
-  # node-slim-trixie, python-slim-trixie, ubuntu-slim-noble). Must publish BEFORE
-  # publish-builders because all three forge-builder-*-trixie images now dogfood
-  # their respective pre-builders (FG-042 python, FG-065 node + go) and downstream
-  # runtime images FROM the Debian + Ubuntu + Node pre-builders.
+  # FG-042 + FG-051 + FG-058 + FG-061 + FG-065 + FG-072: pre-builders tier —
+  # forge-rooted slim bases (debian-slim-trixie, debian-slim-sid,
+  # go-slim-trixie, node-slim-trixie, python-slim-trixie, ubuntu-slim-noble,
+  # zig-slim-trixie). Must publish BEFORE publish-builders because all four
+  # forge-builder-*-trixie images now dogfood their respective pre-builders
+  # (FG-042 python, FG-065 node + go, FG-072 zig) and downstream runtime
+  # images FROM the Debian + Ubuntu + Node pre-builders.
   publish-pre-builders:
     name: Publish ${{ matrix.image_dir }}
     needs: discover

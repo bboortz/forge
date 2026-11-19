@@ -47,6 +47,7 @@ _PRE_BUILDERS = {
     "node-slim-trixie",
     "python-slim-trixie",
     "ubuntu-slim-noble",
+    "zig-slim-trixie",
 }
 # FG-066: forge mirror tier. Members under `images/mirror/<name>/` are
 # zero-mod forge-signed passthroughs of external upstream tool images.
@@ -58,6 +59,7 @@ _FORGE_BUILDERS = {
     "forge-builder-go-trixie",
     "forge-builder-node-trixie",
     "forge-builder-python-trixie",
+    "forge-builder-zig-trixie",
 }
 _BASELINE = {"scratch-base-trixie"}
 # Upstream helpers (COPY-from image layer forge-publishes but aren't under images/).
@@ -78,6 +80,7 @@ _KNOWN_REF_ARGS = {
     "UBUNTU_SLIM_NOBLE_REF",     # ubuntu-slim-noble
     "NODE_SLIM_REF",             # node-slim-trixie
     "GO_SLIM_REF",               # go-slim-trixie (FG-065)
+    "ZIG_SLIM_REF",              # zig-slim-trixie (FG-072)
     "SYFT_REF",                  # mirror/syft (FG-066)
     "HC_REF",                    # ghcr.io/bboortz/hc (healthcheck embed)
 }
@@ -101,6 +104,19 @@ _UPSTREAM_ALLOWLIST = {
 # postgres from source is too big (memory/docker-standard.md).
 _UPSTREAM_FROM_RUNTIME_EXEMPTIONS = {
     "postgres-slim-trixie": "postgres:18",
+}
+
+# FG-072 Rule 6 exemption: intra-tier FROM edges inside the pre-builder
+# layer are normally forbidden (layered-graph invariant), but Zig has no
+# Debian-based Docker Hub upstream so `zig-slim-trixie` necessarily FROMs
+# `debian-slim-trixie`. Keeping this edge preserves FG-042's single-
+# upstream-consumer rule (if zig-slim-trixie FROMed `debian:trixie-slim`
+# directly, that upstream would gain a second forge consumer + the drift-
+# guard _EXPECTED would need to bump). Any future `<lang>-slim-trixie`
+# whose upstream isn't on Docker Hub reuses this exemption; new entries
+# must be named here explicitly (no wildcard — keep it audit-grep-able).
+_INTRA_LAYER_EXEMPTIONS: set[tuple[str, str]] = {
+    ("zig-slim-trixie", "debian-slim-trixie"),
 }
 
 # Upstream helpers (not language bases; tools pulled as a stage).
@@ -294,6 +310,11 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
     for target_image in edge_targets:
         target_tier = _tier_of(target_image)
         if target_tier == my_tier:
+            # FG-072: explicit exemption allowlist for pre-builders whose
+            # upstream isn't on Docker Hub (first case: zig-slim-trixie →
+            # debian-slim-trixie).
+            if (image_name, target_image) in _INTRA_LAYER_EXEMPTIONS:
+                continue
             errors.append(
                 f"{rel}: intra-layer FROM edge to {target_image} — both this image "
                 f"({image_name}) and the target are in the '{my_tier}' tier. "
