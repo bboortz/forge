@@ -1,0 +1,59 @@
+# FG-010 contract for zig-slim-trixie (FG-072).
+#
+# Forge-rooted Zig 0.14 toolchain slim base. FROMs debian-slim-trixie
+# (forge pre-builder) + installs Zig from the official ziglang.org
+# tarball with SHA256 verification. Mirrors go-slim-trixie's shape.
+
+spec_version: 1
+image: zig-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.zig-toolchain
+    description: "/usr/local/bin/zig is present + executable; `zig version` prints a 0.x version string (matches the pinned ZIG_VERSION ARG)."
+    caps: [build.zig-slim-base]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_zig_version.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt is present. Downstream `zig fetch` / curl / git / outbound HTTPS calls work without re-apt-installing.
+    caps: [build.zig-slim-base]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_ca_bundle.sh
+
+  - id: files.dumb-init
+    description: /usr/bin/dumb-init is present. Available to downstream consumers that need proper PID 1 signal forwarding (symmetry with go-slim-trixie / node-slim-trixie convention).
+    caps: [build.zig-slim-base]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_dumb_init.sh
+
+  - id: apt.freshly-upgraded
+    description: Image was built with `apt-get upgrade` applied against the Debian trixie-security snapshot. Any trixie-security backport released before BUILD_TIMESTAMP is included.
+    caps: [build.zig-slim-base]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_apt_upgraded.sh
+
+  - id: apt.no-cache
+    description: /var/lib/apt/lists/ carries no Packages/Release/InRelease files. Downstream Dockerfiles that apt-get install MUST re-run apt-get update first.
+    caps: [build.zig-slim-base]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_no_apt_cache.sh
+    inverse: true
+
+  - id: presence.shell
+    description: /bin/sh + /bin/bash are present (slim contract). Downstream builders invoke shell scripts; runtime consumers have `docker exec -it <container> sh` access.
+    caps: [image.has-shell]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_has_shell.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ debian-slim-trixie base × 6.0 (base ~82 MB + Zig 0.14 toolchain ~325 MB; budget covers Debian + Zig + stdlib + headroom for future Zig minor bumps).
+    caps: [test.size-budget]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_size.sh
+
+  - id: scan.nonzero-accepted
+    description: "scan-baseline.json accepts a nonzero CRITICAL CVE list — slim images inherit Debian trixie's dpkg closure. PR scan-regression gate (FG-019) fails only on new CRITICALs beyond baseline."
+    caps: [scan.regression-gate]
+    tests:
+      - images/zig-slim-trixie/tests/smoke_zig_version.sh

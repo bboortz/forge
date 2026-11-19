@@ -50,7 +50,7 @@ done < <(image_yaml_depends "${SRC}/image.yaml")
 # scratch-image build. Build it on demand if any scratch image is being built.
 _FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-python-trixie"
 case "${IMAGE_DIR}" in
-  forge-builder-python-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie)
+  forge-builder-python-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie|forge-builder-zig-trixie|zig-slim-trixie)
     _needs_forge_builder=0 ;;
   mirror/*)
     # FG-066: mirror images are zero-mod passthroughs; never need the
@@ -131,6 +131,16 @@ if [[ -d "${_GO_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "GO_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: go-slim-trixie"
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" go-slim-trixie
+fi
+
+# FG-072: zig-slim-trixie is the Zig toolchain pre-builder. Build on
+# demand when the Dockerfile declares ZIG_SLIM_REF (e.g. forge-builder-
+# zig-trixie dogfoods it).
+_ZIG_SLIM_DIR="${ROOT}/images/zig-slim-trixie"
+if [[ -d "${_ZIG_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "ZIG_SLIM_REF" "${SRC}/Dockerfile"; then
+  echo "→ pre-builder dependency: zig-slim-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" zig-slim-trixie
 fi
 
 # FG-066: mirror/syft is the forge-signed syft mirror. Build on demand
@@ -277,6 +287,18 @@ if ! docker image inspect "${GO_SLIM_REF}" >/dev/null 2>&1; then
   GO_SLIM_REF="ghcr.io/bboortz/go-slim-trixie:${_GO_SLIM_TAG}"
 fi
 
+# FG-072: ZIG_SLIM_REF — Forge-rooted Zig toolchain pre-builder.
+_ZIG_SLIM_YAML="${ROOT}/images/zig-slim-trixie/image.yaml"
+if [[ -f "${_ZIG_SLIM_YAML}" ]]; then
+  _ZIG_SLIM_TAG=$(image_yaml_get "${_ZIG_SLIM_YAML}" tag)
+else
+  _ZIG_SLIM_TAG="latest"
+fi
+ZIG_SLIM_REF="${REGISTRY}/zig-slim-trixie:${_ZIG_SLIM_TAG}"
+if ! docker image inspect "${ZIG_SLIM_REF}" >/dev/null 2>&1; then
+  ZIG_SLIM_REF="ghcr.io/bboortz/zig-slim-trixie:${_ZIG_SLIM_TAG}"
+fi
+
 # FG-066: SYFT_REF — Forge-signed mirror of anchore/syft. Nested repo
 # path under ghcr.io/bboortz/mirror/syft; mirror shape enforced by
 # verify-dockerfile-conformance.py Rule 10.
@@ -339,6 +361,10 @@ if [[ "${NODE_SLIM_REF}" == forge-local/* ]]; then
 fi
 # FG-065: same guard for GO_SLIM_REF.
 if [[ "${GO_SLIM_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-072: same guard for ZIG_SLIM_REF.
+if [[ "${ZIG_SLIM_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-066: same guard for SYFT_REF.
@@ -492,6 +518,12 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${GO_SLIM_REF}" == forge-local/* ]] \
    && grep -q "GO_SLIM_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-072: same for ZIG_SLIM_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${ZIG_SLIM_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "ZIG_SLIM_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-066: same for SYFT_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${SYFT_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -530,6 +562,7 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg UBUNTU_SLIM_NOBLE_REF="${UBUNTU_SLIM_NOBLE_REF}" \
   --build-arg NODE_SLIM_REF="${NODE_SLIM_REF}" \
   --build-arg GO_SLIM_REF="${GO_SLIM_REF}" \
+  --build-arg ZIG_SLIM_REF="${ZIG_SLIM_REF}" \
   --build-arg SYFT_REF="${SYFT_REF}" \
   --build-arg HC_REF="${HC_REF}" \
   --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \

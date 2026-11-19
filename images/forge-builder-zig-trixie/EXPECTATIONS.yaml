@@ -1,0 +1,39 @@
+# What forge-builder-zig-trixie requires from its dependencies.
+# FG-072: dogfoods zig-slim-trixie per FG-065 arch.language-family-image-pair
+# invariant; COPYs the syft binary from mirror/syft (FG-066) for SBOM
+# emission in from-Zig-source derivatives.
+
+spec_version: 1
+image: forge-builder-zig-trixie
+
+dependencies:
+  - image: zig-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: runtime.zig-toolchain
+        reason: Builder inherits the Zig toolchain from the pre-builder — adding its own tools on top (git, curl, jq, syft) via apt-install. Downstream from-Zig-source Dockerfiles invoke `zig build` without installing Zig themselves.
+        preflight:
+          - images/forge-builder-zig-trixie/tests/smoke_has_zig.sh
+
+      - promise: files.ca-certificates
+        reason: curl + git + syft all need the CA trust store for outbound HTTPS. Pre-builder pre-installs ca-certificates so the builder doesn't need to re-apt-install.
+        preflight:
+          - images/forge-builder-zig-trixie/tests/smoke_ca_bundle.sh
+
+      - promise: apt.freshly-upgraded
+        reason: Builder runs its own `apt-get upgrade` on top; starting from an already-fresh pre-builder means less churn + faster builds on cold cache.
+        preflight:
+          - images/forge-builder-zig-trixie/tests/smoke_no_apt_cache.sh
+
+  - image: syft
+    version: ">=0.1"
+    expectations:
+      - promise: files.syft-binary
+        reason: The /syft binary is COPYed from this mirror stage into /usr/local/bin/syft of the builder runtime.
+        preflight:
+          - images/forge-builder-zig-trixie/tests/smoke_has_syft.sh
+
+      - promise: shape.zero-mod
+        reason: mirror/syft must be a zero-mod passthrough — any downstream builder expects the exact upstream syft behavior, not a modified derivative.
+        preflight:
+          - images/forge-builder-zig-trixie/tests/smoke_has_syft.sh

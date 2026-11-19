@@ -56,11 +56,13 @@ graph TD
         node-slim-trixie:::prebuilder
         python-slim-trixie:::prebuilder
         ubuntu-slim-noble:::prebuilder
+        zig-slim-trixie:::prebuilder
     end
     subgraph L2_builders["Layer 2 — Forge builders (publish-builders — never runtime)"]
         forge-builder-go-trixie:::builder
         forge-builder-node-trixie:::builder
         forge-builder-python-trixie:::builder
+        forge-builder-zig-trixie:::builder
     end
     subgraph L3_baseline["Layer 3 — Forge baseline (publish-base — scratch overlay)"]
         scratch-base-trixie:::baseline
@@ -105,6 +107,7 @@ graph TD
     go-slim-trixie --> forge-builder-go-trixie
     node-slim-trixie --> forge-builder-node-trixie
     python-slim-trixie --> forge-builder-python-trixie
+    zig-slim-trixie --> forge-builder-zig-trixie
     ubuntu-slim-noble --> github-runner-noble
     forge-builder-python-trixie --> healthy-scratch-trixie
     forge-builder-go-trixie --> ipmi-exporter-scratch-trixie
@@ -123,11 +126,13 @@ graph TD
     forge-builder-python-trixie --> scratch-base-trixie
     forge-builder-node-trixie --> uptime-kuma-slim-trixie
     node-slim-trixie --> uptime-kuma-slim-trixie
+    debian-slim-trixie --> zig-slim-trixie
 
     %% COPY --from= edges (dashed)
     mirror_syft -.-> forge-builder-go-trixie
     mirror_syft -.-> forge-builder-node-trixie
     mirror_syft -.-> forge-builder-python-trixie
+    mirror_syft -.-> forge-builder-zig-trixie
     scratch-base-trixie -.-> alertmanager-scratch-trixie
     scratch-base-trixie -.-> ipmi-exporter-scratch-trixie
     scratch-base-trixie -.-> mosquitto-scratch-trixie
