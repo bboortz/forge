@@ -31,12 +31,12 @@ FROM ${DEBIAN_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
-ARG ZIG_VERSION=0.14.1
-ARG ZIG_SHA256=24aeeec8af16c381934a6cd7d95c807a8cb2cf7df9fa40d359aa884195c4716c
+ARG ZIG_VERSION=0.17.1
+ARG ZIG_SHA256=3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a
 
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
-LABEL org.opencontainers.image.description="Forge-rooted Zig 0.14 toolchain slim base — apt-upgraded + CA certs + dumb-init + Zig from ziglang.org, dogfooded by forge-builder-zig-trixie per FG-072 (language-family image-pair invariant)"
+LABEL org.opencontainers.image.description="Forge-rooted Zig 0.17 toolchain slim base — apt-upgraded + CA certs + dumb-init + Zig from ziglang.org, dogfooded by forge-builder-zig-trixie per FG-072 (language-family image-pair invariant)"
 LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 

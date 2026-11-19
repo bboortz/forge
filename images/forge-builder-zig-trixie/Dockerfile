@@ -15,8 +15,9 @@
 #   - ca-certificates
 #   - git + curl + jq (for upstream release resolution + source clone)
 #   - syft (dpkg + source-dir cataloger) via mirror/syft (FG-066)
-#   - Zig toolchain from zig-slim-trixie (currently 0.14.1 — see
-#     ZIG_VERSION ARG in images/zig-slim-trixie/Dockerfile)
+#   - Zig toolchain from zig-slim-trixie (currently 0.17.1 — matches
+#     hc's Zig toolchain; see ZIG_VERSION ARG in images/zig-slim-
+#     trixie/Dockerfile)
 #
 # Daily cron (build.yml) rebuilds `zig-slim-trixie` first (publish-pre-
 # builders tier) → this image rebuilds in publish-builders tier → every

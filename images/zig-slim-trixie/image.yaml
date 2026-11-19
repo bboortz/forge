@@ -1,4 +1,4 @@
-# FG-072: forge-rooted Zig 0.14 slim pre-builder. Published in the
+# FG-072: forge-rooted Zig 0.17 slim pre-builder. Published in the
 # publish-pre-builders CI tier alongside debian-slim-{trixie,sid},
 # go-slim-trixie, node-slim-trixie, python-slim-trixie, ubuntu-slim-noble.
 #
