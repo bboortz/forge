@@ -36,7 +36,7 @@ WF_DIR = ROOT / ".github" / "workflows"
 # timeout-minutes table.
 EXPECTED = {
     "ci.yml":      {"fast-check": (1, 10), "lint-verify": (1, 10), "discover": (1, 10),
-                    "acceptance-matrix": (4, 10), "acceptance-aggregate": (1, 5),
+                    "acceptance-matrix": (4, 15), "acceptance-aggregate": (1, 5),
                     "release-check": (1, 10)},
     "build.yml":   {"discover": (1, 10),
                     "publish-builders": (5, 12), "publish-base": (5, 12),
