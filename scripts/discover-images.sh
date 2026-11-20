@@ -178,7 +178,10 @@ while IFS= read -r -d '' yml; do
   # FG-057: post-tier filter.
   _in_filter_set "${name}" || continue
 
-  entries+=("$(printf '{"image_dir":"%s","repo":"%s","tag":"%s"}' "${name}" "${repo}" "${tag}")")
+  # FG-069: `safe_name` is the image_dir with `/` → `_` so it can be used
+  # in GHA artifact names (actions/upload-artifact rejects `/` in names).
+  safe_name="${name//\//_}"
+  entries+=("$(printf '{"image_dir":"%s","repo":"%s","tag":"%s","safe_name":"%s"}' "${name}" "${repo}" "${tag}" "${safe_name}")")
 done < <(find "${ROOT}/images" -mindepth 2 -maxdepth 3 -name image.yaml -print0 | sort -z)
 
 joined=$(IFS=,; echo "${entries[*]:-}")
