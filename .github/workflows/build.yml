@@ -236,12 +236,12 @@ jobs:
       - name: cosign attest — CycloneDX SBOM
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          SBOM: build/${{ matrix.repo }}-${{ matrix.tag }}.sbom.json
+          SBOM: build/${{ matrix.safe_name }}-${{ matrix.tag }}.sbom.json
         run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
       - name: cosign attest — grype vuln scan
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          GRYPE: build/${{ matrix.repo }}-${{ matrix.tag }}.grype.json
+          GRYPE: build/${{ matrix.safe_name }}-${{ matrix.tag }}.grype.json
         run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
       - name: Publish-time verify
         env:
@@ -346,12 +346,12 @@ jobs:
       - name: cosign attest — CycloneDX SBOM
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          SBOM: build/${{ matrix.repo }}-${{ matrix.tag }}.sbom.json
+          SBOM: build/${{ matrix.safe_name }}-${{ matrix.tag }}.sbom.json
         run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
       - name: cosign attest — grype vuln scan
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          GRYPE: build/${{ matrix.repo }}-${{ matrix.tag }}.grype.json
+          GRYPE: build/${{ matrix.safe_name }}-${{ matrix.tag }}.grype.json
         run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
       - name: Publish-time verify
         env:
@@ -454,12 +454,12 @@ jobs:
       - name: cosign attest — CycloneDX SBOM
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          SBOM: build/${{ matrix.repo }}-${{ matrix.tag }}.sbom.json
+          SBOM: build/${{ matrix.safe_name }}-${{ matrix.tag }}.sbom.json
         run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
       - name: cosign attest — grype vuln scan
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          GRYPE: build/${{ matrix.repo }}-${{ matrix.tag }}.grype.json
+          GRYPE: build/${{ matrix.safe_name }}-${{ matrix.tag }}.grype.json
         run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
       - name: Publish-time verify
         env:
@@ -562,12 +562,12 @@ jobs:
       - name: cosign attest — CycloneDX SBOM
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          SBOM: build/${{ matrix.repo }}-${{ matrix.tag }}.sbom.json
+          SBOM: build/${{ matrix.safe_name }}-${{ matrix.tag }}.sbom.json
         run: cosign attest --yes --predicate "$SBOM" --type cyclonedx "$IMAGE_DIGEST"
       - name: cosign attest — grype vuln scan
         env:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
-          GRYPE: build/${{ matrix.repo }}-${{ matrix.tag }}.grype.json
+          GRYPE: build/${{ matrix.safe_name }}-${{ matrix.tag }}.grype.json
         run: cosign attest --yes --predicate "$GRYPE" --type vuln "$IMAGE_DIGEST"
       - name: Publish-time verify
         env:
