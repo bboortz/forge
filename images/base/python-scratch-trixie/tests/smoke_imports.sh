@@ -6,7 +6,7 @@
 # --entrypoint override ensures the test works regardless of variant.
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-base/python-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-base/python-scratch-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-3.14}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

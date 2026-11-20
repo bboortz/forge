@@ -77,7 +77,8 @@ graph TD
         builder_zig_trixie["builder/zig-trixie"]:::builder
     end
     subgraph L3_baseline["Layer 3 — Forge baseline (publish-base — scratch overlay)"]
-        base_python_trixie["base/python-trixie"]:::baseline
+        base_python_scratch_trixie["base/python-scratch-trixie"]:::baseline
+        base_python_slim_trixie["base/python-slim-trixie"]:::baseline
         base_scratch_trixie["base/scratch-trixie"]:::baseline
     end
     subgraph L4_runtimes["Layer 4 — Runtimes (publish-base tail + publish-derivatives)"]
@@ -111,11 +112,12 @@ graph TD
     UP_UBUNTU --> pre-builder_ubuntu_slim_noble
     builder_go_trixie --> alertmanager-scratch-trixie
     builder_node_trixie --> alertmanager-scratch-trixie
-    builder_python_trixie --> base_python_trixie
+    builder_python_trixie --> base_python_scratch_trixie
+    pre-builder_python_slim_trixie --> base_python_slim_trixie
     builder_python_trixie --> base_scratch_trixie
-    base_python_trixie --> beaconry-hub
-    base_python_trixie --> beaconry-scout
-    base_python_trixie --> beaconry-telegram-mock
+    base_python_scratch_trixie --> beaconry-hub
+    base_python_scratch_trixie --> beaconry-scout
+    base_python_scratch_trixie --> beaconry-telegram-mock
     pre-builder_go_slim_trixie --> builder_go_trixie
     pre-builder_node_slim_trixie --> builder_node_trixie
     pre-builder_python_slim_trixie --> builder_python_trixie
@@ -142,7 +144,7 @@ graph TD
 
     %% COPY --from= edges (dashed)
     base_scratch_trixie -.-> alertmanager-scratch-trixie
-    base_scratch_trixie -.-> base_python_trixie
+    base_scratch_trixie -.-> base_python_scratch_trixie
     base_scratch_trixie -.-> ipmi-exporter-scratch-trixie
     base_scratch_trixie -.-> mosquitto-scratch-trixie
     base_scratch_trixie -.-> nginx-scratch-trixie
@@ -158,7 +160,8 @@ graph TD
     UP_BEACONRY -.-> beaconry-scout
     UP_BEACONRY -.-> beaconry-telegram-mock
     UP_HC -.-> alertmanager-scratch-trixie
-    UP_HC -.-> base_python_trixie
+    UP_HC -.-> base_python_scratch_trixie
+    UP_HC -.-> base_python_slim_trixie
     UP_HC -.-> cadvisor-slim-trixie
     UP_HC -.-> healthy-scratch-trixie
     UP_HC -.-> ipmi-exporter-scratch-trixie

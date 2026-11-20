@@ -37,7 +37,7 @@ echo "${out}" | grep -q '^<details>' || fail "emitter missing <details> wrapper"
 missing_nodes=""
 while read -r img; do
   [[ -n "$img" ]] || continue
-  # Translate `base/python-trixie` → `base_python_trixie` for mermaid id matching.
+  # Translate `base/python-scratch-trixie` → `base_python_trixie` for mermaid id matching.
   # The `_local_id` helper in image_from_graph.py replaces BOTH `/` (tier
   # separator) and `-` (dashes inside the leaf) with `_`. The bash side
   # needs to do the same: split on first `/`, keep tier verbatim, replace
@@ -119,14 +119,14 @@ fi
 pass "no intra-layer edges"
 
 # --- (8) external-sourced beaconry resolved via image.yaml depends_on -------
-say "8. external-sourced images (FG-012) show dashed edge from BEACONRY_SRC + solid from base/python-trixie"
-# FG-069: base/python-trixie's mermaid node id is `base_python_trixie`
-# (slash → underscore per _local_id normalization).
+say "8. external-sourced images (FG-012) show dashed edge from BEACONRY_SRC + solid from base/python-scratch-trixie"
+# FG-075: base/python-scratch-trixie's mermaid node id is `base_python_scratch_trixie`
+# (slash → underscore + dash → underscore per _local_id normalization).
 for b in beaconry-hub beaconry-scout beaconry-telegram-mock; do
   grep -q "UP_BEACONRY -\\.-> ${b}" docs/image-dependency-graph.md \
     || fail "${b}: missing dashed UP_BEACONRY edge"
-  grep -q "base_python_trixie --> ${b}" docs/image-dependency-graph.md \
-    || fail "${b}: missing solid base_python_trixie edge"
+  grep -q "base_python_scratch_trixie --> ${b}" docs/image-dependency-graph.md \
+    || fail "${b}: missing solid base_python_scratch_trixie edge"
 done
 pass "external-sourced graph edges present"
 

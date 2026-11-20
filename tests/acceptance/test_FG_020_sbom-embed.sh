@@ -25,7 +25,7 @@ fi
 # Section 1 — /sbom.json ships in every Forge-native scratch image
 # -----------------------------------------------------------------------------
 say "1. /sbom.json present in Forge-native scratch images"
-for img in base/scratch-trixie base/python-trixie nginx-scratch-trixie postgres-scratch-trixie; do
+for img in base/scratch-trixie base/python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie; do
   tag=$(awk '/^tag:/ {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${img}/image.yaml")
   ref="forge-local/${img}:${tag}"
   # FG-069: nested image names have `/`; sanitize for use in a log filename.

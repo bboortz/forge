@@ -1,0 +1,18 @@
+# What base/python-slim-trixie requires from its upstream dep:
+# pre-builder/python-slim-trixie provides python3 + apt + CA + dumb-init.
+# FG-075 adds /hc + nonroot uid + python3 entrypoint on top.
+spec_version: 1
+image: python-slim-trixie
+
+dependencies:
+  - image: python-slim-trixie
+    version: ">=0.2"
+    expectations:
+      - promise: runtime.python3
+        reason: "base/python-slim-trixie serves `python3` as its entrypoint — python interpreter must be functional in the parent image."
+        preflight:
+          - images/base/python-slim-trixie/tests/smoke_imports.sh
+      - promise: files.tls-stack
+        reason: "Consumers building apps on top of base/python-slim-trixie expect outbound HTTPS to work out of the box (pip install, requests, urllib)."
+        preflight:
+          - images/base/python-slim-trixie/tests/smoke_ca_bundle.sh

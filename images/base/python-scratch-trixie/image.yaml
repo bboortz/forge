@@ -4,7 +4,7 @@
 # Scratch runtime: interpreter + stdlib + libs + CA bundle + zoneinfo + pip.
 # No shell, no apt, no dpkg db.
 tag: "3.14"
-repo: base/python-trixie
+repo: base/python-scratch-trixie
 platforms:
   - linux/amd64
 # FG-005 + FG-069: this image derives from base/scratch-trixie via COPY --from=.

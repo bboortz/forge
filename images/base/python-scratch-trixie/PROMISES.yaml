@@ -4,7 +4,7 @@
 # 65532:65532, WORKDIR /nonroot. Beaconry-blessed shape (FG-009).
 
 spec_version: 1
-image: python-trixie
+image: python-scratch-trixie
 version: "0.5"
 
 promises:
@@ -12,67 +12,67 @@ promises:
     description: /usr/local/bin/python3 is python 3.14 with working stdlib — ssl, hashlib, json, urllib.request import and work out of the box.
     caps: [build.two-stage-scratch]
     tests:
-      - images/base/python-trixie/tests/smoke_imports.sh
+      - images/base/python-scratch-trixie/tests/smoke_imports.sh
 
   - id: runtime.entrypoint-python3
     description: Image ENTRYPOINT = ["/usr/local/bin/python3"], CMD = []. `docker run <image> -c "print('ok')"` runs python3 directly (distroless convention).
     caps: [image.python-scratch-nonroot, build.two-stage-scratch]
     tests:
-      - images/base/python-trixie/tests/smoke_entrypoint.sh
+      - images/base/python-scratch-trixie/tests/smoke_entrypoint.sh
 
   - id: runtime.user-nonroot
     description: Container runs as uid 65532, gid 65532 with HOME=/nonroot by default. `os.geteuid()` returns 65532; `pwd.getpwuid(65532).pw_dir` returns "/nonroot".
     caps: [image.python-scratch-nonroot]
     tests:
-      - images/base/python-trixie/tests/smoke_user_nonroot.sh
+      - images/base/python-scratch-trixie/tests/smoke_user_nonroot.sh
 
   - id: runtime.https-outbound
     description: Outbound HTTPS works out of the box — `urllib.request.urlopen("https://example.com")` returns 200. Requires SSL_CERT_FILE env (re-declared in this image's Dockerfile per FG-009).
     caps: [image.ssl-cert-env, image.python-scratch-nonroot]
     tests:
-      - images/base/python-trixie/tests/smoke_tls_https_real.sh
-      - images/base/python-trixie/tests/smoke_ca_bundle.sh
+      - images/base/python-scratch-trixie/tests/smoke_tls_https_real.sh
+      - images/base/python-scratch-trixie/tests/smoke_ca_bundle.sh
 
   - id: runtime.pip-target-install
     description: "`pip install --target /tmp/pkg` works as nonroot (/tmp is 1777 from baseline)."
     caps: [build.two-stage-scratch]
     tests:
-      - images/base/python-trixie/tests/smoke_pip_runtime_install.sh
+      - images/base/python-scratch-trixie/tests/smoke_pip_runtime_install.sh
 
   - id: runtime.locale-utf8
     description: "C.UTF-8 + en_US.UTF-8 locales are compiled into /usr/lib/locale/ so glibc honors ENV LANG=C.UTF-8 and `locale.setlocale(locale.LC_ALL, 'C.UTF-8')` / `locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')` succeed. The two locales produce distinct strcoll behavior (en_US.UTF-8 = Unicode-alphabetical, C.UTF-8 = byte order)."
     caps: [image.locale-utf8, image.python-scratch-nonroot]
     tests:
-      - images/base/python-trixie/tests/smoke_locale_utf8.sh
+      - images/base/python-scratch-trixie/tests/smoke_locale_utf8.sh
 
   - id: runtime.hc-binary
     description: "/hc is present and executable (static Zig binary from ghcr.io/bboortz/hc). Consumer apps wire a docker HEALTHCHECK against their own listener; the image does NOT bake its own because consumer port + path vary. Example: `HEALTHCHECK CMD [\"/hc\", \"-t\", \"5\", \"http://127.0.0.1:8000/healthz\"]`."
     caps: [image.hc-embedded]
     tests:
-      - images/base/python-trixie/tests/smoke_hc_present.sh
+      - images/base/python-scratch-trixie/tests/smoke_hc_present.sh
 
   - id: runtime.librt-abi-stub
     description: /lib/x86_64-linux-gnu/librt.so.1 ABI stub (14.5 KB, as shipped by Debian trixie — empty since glibc 2.34 merged librt into libc) is present and dlopen-able. Required for manylinux2014 / manylinux_2_17 wheels (numpy, scipy, pandas, pillow, cryptography) built against glibc 2.17 which carry NEEDED librt.so.1 in their ELF.
     caps: [image.manylinux-wheel-compat]
     tests:
-      - images/base/python-trixie/tests/smoke_librt_manylinux.sh
+      - images/base/python-scratch-trixie/tests/smoke_librt_manylinux.sh
 
   - id: absence.shell
     description: No /bin/sh, /bin/bash, or any shell binary. docker exec with interactive shell is impossible — by design.
     caps: [image.no-shell]
     tests:
-      - images/base/python-trixie/tests/smoke_scratch_no_shell.sh
+      - images/base/python-scratch-trixie/tests/smoke_scratch_no_shell.sh
     inverse: true
 
   - id: absence.os-cves
     description: grype finds zero Debian-source matches. Every finding is a PyPI package the consumer installed, not Forge-introduced noise.
     caps: [image.zero-os-cves]
     tests:
-      - images/base/python-trixie/tests/smoke_scratch_zero_os_cves.sh
+      - images/base/python-scratch-trixie/tests/smoke_scratch_zero_os_cves.sh
     inverse: true
 
   - id: shape.size-budget
     description: Image size ≤ 60 MB hard ceiling. Baseline accounts for 13 MB; the python overlay adds ~32 MB.
     caps: [test.size-budget]
     tests:
-      - images/base/python-trixie/tests/smoke_size.sh
+      - images/base/python-scratch-trixie/tests/smoke_size.sh

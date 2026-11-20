@@ -20,7 +20,7 @@ BASE_DIR="base/scratch-trixie"
 # bumps (0.1 → 0.2 → …). Future-proof per FG-008.
 BASE_TAG=$(awk '/^tag:/ {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${BASE_DIR}/image.yaml")
 BASE_IMAGE="forge-local/${BASE_DIR}:${BASE_TAG}"
-DERIVATIVES=(base/python-trixie nginx-scratch-trixie postgres-scratch-trixie)
+DERIVATIVES=(base/python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie)
 
 # -----------------------------------------------------------------------------
 # Section 1 — baseline scaffolding

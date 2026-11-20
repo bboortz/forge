@@ -8,7 +8,7 @@
 #           FG-009 "ENTRYPOINT=python3 convention".
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-base/python-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-base/python-scratch-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-3.14}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

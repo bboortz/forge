@@ -21,7 +21,7 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 # -----------------------------------------------------------------------------
 say "1. source files encode the FG-033 contract"
 
-for d in postgres-scratch-trixie base/python-trixie; do
+for d in postgres-scratch-trixie base/python-scratch-trixie; do
   grep -qE 'localedef .*-i C +-f UTF-8 C\.UTF-8' "images/${d}/Dockerfile" \
     || fail "images/${d}/Dockerfile: missing localedef C.UTF-8 compile step"
   grep -qE 'localedef .*-i en_US +-f UTF-8 en_US\.UTF-8' "images/${d}/Dockerfile" \
@@ -44,11 +44,11 @@ pass "all static invariants in place"
 # -----------------------------------------------------------------------------
 # Section 2 — build both images
 # -----------------------------------------------------------------------------
-say "2. build postgres-scratch-trixie + base/python-trixie"
+say "2. build postgres-scratch-trixie + base/python-scratch-trixie"
 bash scripts/build-image.sh postgres-scratch-trixie >/dev/null
-bash scripts/build-image.sh base/python-trixie   >/dev/null
+bash scripts/build-image.sh base/python-scratch-trixie   >/dev/null
 docker image inspect forge-local/postgres-scratch-trixie:18 >/dev/null
-docker image inspect forge-local/base/python-trixie:3.14 >/dev/null
+docker image inspect forge-local/base/python-scratch-trixie:3.14 >/dev/null
 pass "both images built"
 
 # -----------------------------------------------------------------------------
@@ -59,8 +59,8 @@ say "3. locale smokes + existing image suites (regression)"
 IMAGE_TAG=18 bash images/postgres-scratch-trixie/tests/smoke_locale_utf8.sh
 pass "postgres smoke_locale_utf8.sh"
 
-IMAGE_NAME=base/python-trixie IMAGE_TAG=3.14 \
-  bash images/base/python-trixie/tests/smoke_locale_utf8.sh
+IMAGE_NAME=base/python-scratch-trixie IMAGE_TAG=3.14 \
+  bash images/base/python-scratch-trixie/tests/smoke_locale_utf8.sh
 pass "python smoke_locale_utf8.sh"
 
 for s in images/postgres-scratch-trixie/tests/smoke_*.sh; do
@@ -69,9 +69,9 @@ for s in images/postgres-scratch-trixie/tests/smoke_*.sh; do
 done
 pass "existing postgres smokes green"
 
-for s in images/base/python-trixie/tests/smoke_*.sh; do
+for s in images/base/python-scratch-trixie/tests/smoke_*.sh; do
   [[ "${s}" == *smoke_locale_utf8.sh ]] && continue
-  IMAGE_NAME=base/python-trixie IMAGE_TAG=3.14 bash "${s}" >/dev/null
+  IMAGE_NAME=base/python-scratch-trixie IMAGE_TAG=3.14 bash "${s}" >/dev/null
 done
 pass "existing python smokes green"
 

@@ -20,7 +20,7 @@ say() { printf '\n\033[1;36m[FG-003]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
 SLIM_DIR="images/pre-builder/python-slim-trixie"
-SCRATCH_DIR="images/base/python-trixie"
+SCRATCH_DIR="images/base/python-scratch-trixie"
 OLD_DIR="images/python"
 
 # -----------------------------------------------------------------------------
@@ -44,9 +44,9 @@ bash scripts/build-image.sh pre-builder/python-slim-trixie >/dev/null
 docker image inspect forge-local/pre-builder/python-slim-trixie:3.14 >/dev/null
 pass "forge-local/pre-builder/python-slim-trixie:3.14 built"
 
-bash scripts/build-image.sh base/python-trixie >/dev/null
-docker image inspect forge-local/base/python-trixie:3.14 >/dev/null
-pass "forge-local/base/python-trixie:3.14 built"
+bash scripts/build-image.sh base/python-scratch-trixie >/dev/null
+docker image inspect forge-local/base/python-scratch-trixie:3.14 >/dev/null
+pass "forge-local/base/python-scratch-trixie:3.14 built"
 
 # -----------------------------------------------------------------------------
 # Section 3 — Scenario: central test script runs every variant's suite
@@ -59,8 +59,8 @@ say "3. scripts/test-images.sh discovers and runs the python variants it just bu
 # `test-images` phase which runs AFTER every acceptance test has had a chance
 # to build its image.
 bash scripts/test-images.sh pre-builder/python-slim-trixie
-bash scripts/test-images.sh base/python-trixie
-pass "python-slim-trixie + base/python-trixie smoke suites passed"
+bash scripts/test-images.sh base/python-scratch-trixie
+pass "python-slim-trixie + base/python-scratch-trixie smoke suites passed"
 
 # -----------------------------------------------------------------------------
 # Section 4 — Scenario: GHA matrix auto-discovers image dirs

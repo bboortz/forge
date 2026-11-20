@@ -58,7 +58,7 @@ pass "baseline-contract.md references every required term"
 # Section 4 — existing scratch derivatives still pass against 0.2
 # -----------------------------------------------------------------------------
 say "4. existing derivatives build + smoke green against 0.2 baseline"
-for d in base/python-trixie nginx-scratch-trixie postgres-scratch-trixie; do
+for d in base/python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
   # FG-017 B: skip per-derivative smokes under `make check` (test-images runs globally).
   if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then

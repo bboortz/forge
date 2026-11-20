@@ -22,7 +22,7 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 say "1. source files encode the FG-032 contract"
 
 # Both image.yaml tags are 3.14
-for d in pre-builder/python-slim-trixie base/python-trixie; do
+for d in pre-builder/python-slim-trixie base/python-scratch-trixie; do
   tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' "images/${d}/image.yaml")
   [[ "${tag}" == "3.14" ]] || fail "images/${d}/image.yaml: tag=${tag} (want 3.14)"
 done
@@ -34,12 +34,12 @@ grep -qE '^FROM python:3\.14-slim-trixie' images/pre-builder/python-slim-trixie/
 # python-scratch-trixie Dockerfile parameterizes via ARG PY_VERSION=3.14
 # (named PY_VERSION, not PYTHON_VERSION, to avoid colliding with the base
 # image's ENV PYTHON_VERSION=3.14.10 which wins over ARG in RUN shells).
-grep -qE '^ARG PY_VERSION=3\.14' images/base/python-trixie/Dockerfile \
-  || fail "base/python-trixie/Dockerfile: expected ARG PY_VERSION=3.14"
+grep -qE '^ARG PY_VERSION=3\.14' images/base/python-scratch-trixie/Dockerfile \
+  || fail "base/python-scratch-trixie/Dockerfile: expected ARG PY_VERSION=3.14"
 
 # No stray 3.13 literal paths in the python-scratch Dockerfile
-if grep -nE 'python3\.13|python:3\.13' images/base/python-trixie/Dockerfile; then
-  fail "base/python-trixie/Dockerfile: unexpected 3.13 literal"
+if grep -nE 'python3\.13|python:3\.13' images/base/python-scratch-trixie/Dockerfile; then
+  fail "base/python-scratch-trixie/Dockerfile: unexpected 3.13 literal"
 fi
 
 # builder/python-trixie base points at python 3.14 — post-FG-042, the ARG is
@@ -54,12 +54,12 @@ pass "all static invariants in place"
 # -----------------------------------------------------------------------------
 # Section 2 — build
 # -----------------------------------------------------------------------------
-say "2. build builder/python-trixie + python-slim-trixie + base/python-trixie"
-for d in builder/python-trixie pre-builder/python-slim-trixie base/python-trixie; do
+say "2. build builder/python-trixie + python-slim-trixie + base/python-scratch-trixie"
+for d in builder/python-trixie pre-builder/python-slim-trixie base/python-scratch-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
 done
 docker image inspect forge-local/pre-builder/python-slim-trixie:3.14 >/dev/null
-docker image inspect forge-local/base/python-trixie:3.14 >/dev/null
+docker image inspect forge-local/base/python-scratch-trixie:3.14 >/dev/null
 pass "both python images built at :3.14"
 
 # -----------------------------------------------------------------------------
@@ -75,10 +75,10 @@ case "${slim_ver}" in
 esac
 
 scratch_ver=$(docker run --rm --entrypoint=/usr/local/bin/python3 \
-               forge-local/base/python-trixie:3.14 --version 2>&1)
+               forge-local/base/python-scratch-trixie:3.14 --version 2>&1)
 case "${scratch_ver}" in
-  "Python 3.14."*) pass "base/python-trixie: ${scratch_ver}" ;;
-  *) fail "base/python-trixie: unexpected --version output: ${scratch_ver}" ;;
+  "Python 3.14."*) pass "base/python-scratch-trixie: ${scratch_ver}" ;;
+  *) fail "base/python-scratch-trixie: unexpected --version output: ${scratch_ver}" ;;
 esac
 
 # -----------------------------------------------------------------------------
@@ -101,7 +101,7 @@ pass "FG-031 (hc-in-service-images) passes"
 # -----------------------------------------------------------------------------
 say "5. scan-baseline.json carries the 3.14 closure (no drift in-PR)"
 # scan-regression.py returns 0 when the baseline matches the current scan.
-for d in pre-builder/python-slim-trixie base/python-trixie; do
+for d in pre-builder/python-slim-trixie base/python-scratch-trixie; do
   python3 scripts/scan-regression.py "${d}" >/dev/null 2>&1 \
     || fail "scan-regression against images/${d}/scan-baseline.json fails"
 done
@@ -112,9 +112,9 @@ pass "both scan baselines match current 3.14 closure"
 # -----------------------------------------------------------------------------
 say "6. image.yaml: tag=3.14, depends_on preserved"
 grep -qE '^[[:space:]]*-[[:space:]]*base/scratch-trixie' \
-  images/base/python-trixie/image.yaml \
-  || fail "base/python-trixie/image.yaml: depends_on must still list base/scratch-trixie"
-pass "base/python-trixie depends_on base/scratch-trixie (preserved)"
+  images/base/python-scratch-trixie/image.yaml \
+  || fail "base/python-scratch-trixie/image.yaml: depends_on must still list base/scratch-trixie"
+pass "base/python-scratch-trixie depends_on base/scratch-trixie (preserved)"
 
 echo
 echo "FG-032 acceptance: all sections passed."
