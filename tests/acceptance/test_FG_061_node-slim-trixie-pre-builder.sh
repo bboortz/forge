@@ -10,19 +10,19 @@ say()  { printf '\n\033[1;36m[FG-061]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
-say "1. images/node-slim-trixie/ exists with required files"
+say "1. images/pre-builder/node-slim-trixie/ exists with required files"
 for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json sid-pins \
          tests/smoke_node_version.sh tests/smoke_ca_bundle.sh \
          tests/smoke_dumb_init.sh tests/smoke_apt_upgraded.sh \
          tests/smoke_no_apt_cache.sh tests/smoke_has_shell.sh \
          tests/smoke_size.sh; do
-  test -e "images/node-slim-trixie/${f}" \
-    || fail "images/node-slim-trixie/${f} missing"
+  test -e "images/pre-builder/node-slim-trixie/${f}" \
+    || fail "images/pre-builder/node-slim-trixie/${f} missing"
 done
 pass "node-slim-trixie layout complete"
 
 say "2. node-slim-trixie Dockerfile FROMs node:24-trixie-slim (upstream)"
-grep -qE '^FROM node:24-trixie-slim' images/node-slim-trixie/Dockerfile \
+grep -qE '^FROM node:24-trixie-slim' images/pre-builder/node-slim-trixie/Dockerfile \
   || fail "node-slim-trixie Dockerfile must FROM node:24-trixie-slim"
 pass "FROM node:24-trixie-slim present"
 
@@ -68,9 +68,9 @@ say "7. Full build + smoke suite (skip in fast-mode)"
 if [[ "${FORGE_FAST:-0}" == "1" ]]; then
   pass "skipped per FORGE_FAST=1"
 else
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh node-slim-trixie >/dev/null 2>&1 \
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh pre-builder/node-slim-trixie >/dev/null 2>&1 \
     || fail "node-slim-trixie build failed"
-  for s in images/node-slim-trixie/tests/smoke_*.sh; do
+  for s in images/pre-builder/node-slim-trixie/tests/smoke_*.sh; do
     IMAGE_NAME=node-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done

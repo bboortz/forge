@@ -14,8 +14,8 @@
 # FG-042: FROM forge-rooted debian-slim-trixie (not debian:trixie-slim
 # upstream) so cadvisor-slim and ipmi-exporter-slim share apt-upgrade
 # state atomically. Resolved to forge-local during local builds, to
-# ghcr.io/bboortz/debian-slim-trixie:latest in CI (see build-image.sh).
-ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/debian-slim-trixie:latest
+# ghcr.io/bboortz/pre-builder/debian-slim-trixie:latest in CI (see build-image.sh).
+ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/pre-builder/debian-slim-trixie:latest
 # FG-046: shared Go builder base (apt-upgraded, syft + git + jq pre-baked,
 # Go 1.27+ toolchain). Rebuilt before this image in the daily cron so
 # Go stdlib CVE fixes propagate within 24h.

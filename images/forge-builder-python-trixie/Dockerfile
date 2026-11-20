@@ -4,7 +4,7 @@
 # image. Pre-bakes apt-get upgrade + ca-certificates + syft so each
 # scratch derivative's Dockerfile doesn't re-run this ~30-60s of work.
 #
-# FG-042: FROMs ghcr.io/bboortz/python-slim-trixie (dogfood) instead of
+# FG-042: FROMs ghcr.io/bboortz/pre-builder/python-slim-trixie (dogfood) instead of
 # python:3.14-slim-trixie upstream. Benefits: version drift between
 # forge-builder-python-trixie and python-slim-trixie is now structurally
 # impossible (one bump propagates atomically), fewer Docker Hub digest
@@ -19,9 +19,9 @@
 # only: `FROM ghcr.io/bboortz/forge-builder-python-trixie:<tag> AS builder`.
 
 # FG-042: resolve at build time to forge-local during local builds,
-# ghcr.io/bboortz/python-slim-trixie:latest in CI. See
+# ghcr.io/bboortz/pre-builder/python-slim-trixie:latest in CI. See
 # scripts/build-image.sh PYTHON_SLIM_REF resolution.
-ARG PYTHON_SLIM_REF=ghcr.io/bboortz/python-slim-trixie:latest
+ARG PYTHON_SLIM_REF=ghcr.io/bboortz/pre-builder/python-slim-trixie:latest
 # FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
 # arch.forge-mirror-image invariant: mirror/* consumed via COPY --from=
 # only; see docs/CAPABILITIES.md for the forge-mirror-image contract.

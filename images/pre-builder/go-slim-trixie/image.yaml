@@ -8,5 +8,6 @@
 # the FG-065 "every language family has a pair" invariant + the FBG
 # dogfood.
 tag: "latest"
+repo: pre-builder/go-slim-trixie
 platforms:
   - linux/amd64

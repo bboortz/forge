@@ -15,5 +15,6 @@
 #
 # Runtime image — shell + apt kept (image.has-shell contract).
 tag: "24.04"
+repo: pre-builder/ubuntu-slim-noble
 platforms:
   - linux/amd64

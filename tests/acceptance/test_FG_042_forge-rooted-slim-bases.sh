@@ -11,19 +11,19 @@ say()  { printf '\n\033[1;36m[FG-042]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
-say "1. images/debian-slim-trixie/ has required layout"
+say "1. images/pre-builder/debian-slim-trixie/ has required layout"
 for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json \
          tests/smoke_ca_bundle.sh tests/smoke_apt_upgraded.sh \
          tests/smoke_no_apt_cache.sh tests/smoke_has_shell.sh \
          tests/smoke_size.sh; do
-  test -e "images/debian-slim-trixie/${f}" \
-    || fail "images/debian-slim-trixie/${f} missing"
+  test -e "images/pre-builder/debian-slim-trixie/${f}" \
+    || fail "images/pre-builder/debian-slim-trixie/${f} missing"
 done
 pass "all required files present"
 
 say "2. debian-slim-trixie:0.1 builds + smokes pass"
-bash scripts/build-image.sh debian-slim-trixie >/dev/null
-for s in images/debian-slim-trixie/tests/smoke_*.sh; do
+bash scripts/build-image.sh pre-builder/debian-slim-trixie >/dev/null
+for s in images/pre-builder/debian-slim-trixie/tests/smoke_*.sh; do
   bash "${s}" >/dev/null
 done
 pass "debian-slim-trixie:0.1 built + 5 smokes green"

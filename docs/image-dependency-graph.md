@@ -62,13 +62,13 @@ graph TD
         mirror_syft["mirror/syft"]:::mirror
     end
     subgraph L1_prebuilders["Layer 1 — Forge pre-builders (publish-pre-builders)"]
-        debian-slim-sid:::prebuilder
-        debian-slim-trixie:::prebuilder
-        go-slim-trixie:::prebuilder
-        node-slim-trixie:::prebuilder
-        python-slim-trixie:::prebuilder
-        ubuntu-slim-noble:::prebuilder
-        zig-slim-trixie:::prebuilder
+        pre-builder_debian_slim_sid["pre-builder/debian-slim-sid"]:::prebuilder
+        pre-builder_debian_slim_trixie["pre-builder/debian-slim-trixie"]:::prebuilder
+        pre-builder_go_slim_trixie["pre-builder/go-slim-trixie"]:::prebuilder
+        pre-builder_node_slim_trixie["pre-builder/node-slim-trixie"]:::prebuilder
+        pre-builder_python_slim_trixie["pre-builder/python-slim-trixie"]:::prebuilder
+        pre-builder_ubuntu_slim_noble["pre-builder/ubuntu-slim-noble"]:::prebuilder
+        pre-builder_zig_slim_trixie["pre-builder/zig-slim-trixie"]:::prebuilder
     end
     subgraph L2_builders["Layer 2 — Forge builders (publish-builders — never runtime)"]
         forge-builder-go-trixie:::builder
@@ -102,13 +102,13 @@ graph TD
 
     %% FROM edges (solid)
     UP_SYFT --> mirror_syft
-    UP_DEBIAN_SID --> debian-slim-sid
-    UP_DEBIAN_TRIXIE --> debian-slim-trixie
-    UP_GOLANG --> go-slim-trixie
-    UP_NODE --> node-slim-trixie
+    UP_DEBIAN_SID --> pre-builder_debian_slim_sid
+    UP_DEBIAN_TRIXIE --> pre-builder_debian_slim_trixie
+    UP_GOLANG --> pre-builder_go_slim_trixie
+    UP_NODE --> pre-builder_node_slim_trixie
     UP_POSTGRES --> postgres-slim-trixie
-    UP_PYTHON --> python-slim-trixie
-    UP_UBUNTU --> ubuntu-slim-noble
+    UP_PYTHON --> pre-builder_python_slim_trixie
+    UP_UBUNTU --> pre-builder_ubuntu_slim_noble
     forge-builder-go-trixie --> alertmanager-scratch-trixie
     forge-builder-node-trixie --> alertmanager-scratch-trixie
     forge-builder-python-trixie --> base_python_trixie
@@ -116,29 +116,29 @@ graph TD
     base_python_trixie --> beaconry-hub
     base_python_trixie --> beaconry-scout
     base_python_trixie --> beaconry-telegram-mock
-    debian-slim-trixie --> cadvisor-slim-trixie
     forge-builder-go-trixie --> cadvisor-slim-trixie
-    go-slim-trixie --> forge-builder-go-trixie
-    node-slim-trixie --> forge-builder-node-trixie
-    python-slim-trixie --> forge-builder-python-trixie
-    zig-slim-trixie --> forge-builder-zig-trixie
-    ubuntu-slim-noble --> github-runner-noble
+    pre-builder_debian_slim_trixie --> cadvisor-slim-trixie
+    pre-builder_go_slim_trixie --> forge-builder-go-trixie
+    pre-builder_node_slim_trixie --> forge-builder-node-trixie
+    pre-builder_python_slim_trixie --> forge-builder-python-trixie
+    pre-builder_zig_slim_trixie --> forge-builder-zig-trixie
+    pre-builder_ubuntu_slim_noble --> github-runner-noble
     forge-builder-python-trixie --> healthy-scratch-trixie
     forge-builder-go-trixie --> ipmi-exporter-scratch-trixie
     forge-builder-python-trixie --> ipmi-exporter-scratch-trixie
-    debian-slim-trixie --> ipmi-exporter-slim-trixie
     forge-builder-go-trixie --> ipmi-exporter-slim-trixie
+    pre-builder_debian_slim_trixie --> ipmi-exporter-slim-trixie
     forge-builder-python-trixie --> mosquitto-scratch-trixie
     forge-builder-python-trixie --> nginx-scratch-trixie
     forge-builder-go-trixie --> node-exporter-scratch-trixie
     forge-builder-python-trixie --> postgres-scratch-trixie
     forge-builder-go-trixie --> postgres-slim-trixie
+    pre-builder_debian_slim_trixie --> pre-builder_zig_slim_trixie
     forge-builder-go-trixie --> prometheus-scratch-trixie
     forge-builder-node-trixie --> prometheus-scratch-trixie
     forge-builder-python-trixie --> redis-scratch-trixie
     forge-builder-node-trixie --> uptime-kuma-slim-trixie
-    node-slim-trixie --> uptime-kuma-slim-trixie
-    debian-slim-trixie --> zig-slim-trixie
+    pre-builder_node_slim_trixie --> uptime-kuma-slim-trixie
 
     %% COPY --from= edges (dashed)
     base_scratch_trixie -.-> alertmanager-scratch-trixie
@@ -181,7 +181,7 @@ graph TD
     SRC_GH_PROMETHEUS_NODE_EXPORTER -.-> node-exporter-scratch-trixie
     SRC_GH_PROMETHEUS_PROMETHEUS -.-> prometheus-scratch-trixie
     SRC_GH_TIANON_GOSU -.-> postgres-slim-trixie
-    SRC_ZIGLANG_ORG_DOWNLOAD -.-> zig-slim-trixie
+    SRC_ZIGLANG_ORG_DOWNLOAD -.-> pre-builder_zig_slim_trixie
 
     %% Styling
     classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;

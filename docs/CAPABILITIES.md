@@ -704,3 +704,17 @@ Architectural invariant: every L3 image lives under `images/base/` (encoded in t
 - **Delivered by**: FG-069
 - **Extended by**: *(reserved for future base-tier additions — e.g., base/node-trixie if a from-Node-source scratch runtime ever justifies it)*
 - **Covered by**: `tests/acceptance/test_FG_069_base-tier-migration.sh`, `docs/plan/tier-layering-model.md` §3 L3
+
+### build.pre-builder-migrated
+
+Post-FG-070, the 7 L1 pre-builders live under `images/pre-builder/<name>/` with GHCR paths `ghcr.io/bboortz/pre-builder/<name>:<tag>`. Members: `pre-builder/debian-slim-trixie`, `pre-builder/debian-slim-sid`, `pre-builder/go-slim-trixie`, `pre-builder/node-slim-trixie`, `pre-builder/python-slim-trixie`, `pre-builder/ubuntu-slim-noble`, `pre-builder/zig-slim-trixie`. Each image.yaml carries an explicit `repo: pre-builder/<name>` field (parallel with mirror/+base/ convention) so `image_yaml_repo` returns the canonical nested path, not the leaf. 8 consumer ARG defaults in the forge fleet flip to the new path: `UBUNTU_SLIM_NOBLE_REF` (github-runner-noble), `ZIG_SLIM_REF` (forge-builder-zig-trixie), `PYTHON_SLIM_REF` (forge-builder-python-trixie), `NODE_SLIM_REF` (forge-builder-node-trixie + uptime-kuma-slim-trixie), `GO_SLIM_REF` (forge-builder-go-trixie), `DEBIAN_SLIM_REF` (cadvisor-slim-trixie + ipmi-exporter-slim-trixie + pre-builder/zig-slim-trixie). Homelab coordination paired via FG-074.
+
+- **Delivered by**: FG-070
+- **Covered by**: `tests/acceptance/test_FG_070_pre-builder-tier-migration.sh`, `scripts/verify-dockerfile-conformance.py`, `scripts/image_from_graph.py`
+
+### arch.pre-builder-tier-images
+
+Architectural invariant: every `pre-builder/<name>/` L1 image is a thin apt-upgrade layer on an upstream OS base. Shape rules: (a) single-stage Dockerfile with literal `FROM <upstream>` (grep-verified by `verify-no-upstream-drift.sh`), (b) adds only `apt-get upgrade` + `ca-certificates` + `dumb-init`, (c) keeps shell + apt + package manager intact (operators can `docker exec -it <image> sh`), (d) consumed by ≥1 forge image (L2 builder dogfood, L3 base, or L4 slim runtime). Published in the `publish-pre-builders` CI tier. Zig is the one exception — FROM `${DEBIAN_SLIM_REF}` (narrow Rule 6 `_INTRA_LAYER_EXEMPTIONS` entry) because Zig has no Debian-based Docker Hub upstream.
+
+- **Delivered by**: FG-070
+- **Covered by**: `tests/acceptance/test_FG_070_pre-builder-tier-migration.sh`, `docs/plan/tier-layering-model.md` §3 L1

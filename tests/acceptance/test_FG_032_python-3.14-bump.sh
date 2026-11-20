@@ -28,7 +28,7 @@ for d in python-slim-trixie base/python-trixie; do
 done
 
 # python-slim-trixie Dockerfile FROMs python:3.14-slim-trixie
-grep -qE '^FROM python:3\.14-slim-trixie' images/python-slim-trixie/Dockerfile \
+grep -qE '^FROM python:3\.14-slim-trixie' images/pre-builder/python-slim-trixie/Dockerfile \
   || fail "python-slim-trixie/Dockerfile: expected FROM python:3.14-slim-trixie"
 
 # python-scratch-trixie Dockerfile parameterizes via ARG PY_VERSION=3.14
@@ -46,8 +46,8 @@ fi
 # PYTHON_SLIM_REF (dogfood of python-slim-trixie, which itself FROMs
 # python:3.14-slim-trixie upstream). The 3.14 version pin is enforced at
 # python-slim-trixie's FROM line (checked above on line 30-32).
-grep -qE '^ARG PYTHON_SLIM_REF=ghcr\.io/bboortz/python-slim-trixie:' images/forge-builder-python-trixie/Dockerfile \
-  || fail "forge-builder-python-trixie/Dockerfile: expected ARG PYTHON_SLIM_REF=ghcr.io/bboortz/python-slim-trixie:… (post-FG-042 dogfood)"
+grep -qE '^ARG PYTHON_SLIM_REF=ghcr\.io/bboortz/pre-builder/python-slim-trixie:' images/forge-builder-python-trixie/Dockerfile \
+  || fail "forge-builder-python-trixie/Dockerfile: expected ARG PYTHON_SLIM_REF=ghcr.io/bboortz/pre-builder/python-slim-trixie:… (post-FG-042 dogfood)"
 
 pass "all static invariants in place"
 
@@ -58,7 +58,7 @@ say "2. build forge-builder-python-trixie + python-slim-trixie + base/python-tri
 for d in forge-builder-python-trixie python-slim-trixie base/python-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
 done
-docker image inspect forge-local/python-slim-trixie:3.14 >/dev/null
+docker image inspect forge-local/pre-builder/python-slim-trixie:3.14 >/dev/null
 docker image inspect forge-local/base/python-trixie:3.14 >/dev/null
 pass "both python images built at :3.14"
 
@@ -68,7 +68,7 @@ pass "both python images built at :3.14"
 say "3. runtime interpreter reports Python 3.14"
 
 slim_ver=$(docker run --rm --entrypoint=/usr/local/bin/python3 \
-             forge-local/python-slim-trixie:3.14 --version 2>&1)
+             forge-local/pre-builder/python-slim-trixie:3.14 --version 2>&1)
 case "${slim_ver}" in
   "Python 3.14."*) pass "python-slim-trixie: ${slim_ver}" ;;
   *) fail "python-slim-trixie: unexpected --version output: ${slim_ver}" ;;

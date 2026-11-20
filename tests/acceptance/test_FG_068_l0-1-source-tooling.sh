@@ -130,8 +130,8 @@ _src_count=$(echo "${_graph}" | awk '/subgraph L0_1_sources/,/^    end$/' | grep
 # Representative edges.
 echo "${_graph}" | grep -qE 'SRC_GH_BBOORTZ_BEACONRY -\.-> beaconry-' \
   || fail "L0.1 edge missing: beaconry-* consumers"
-echo "${_graph}" | grep -qE 'SRC_ZIGLANG_ORG_DOWNLOAD -\.-> zig-slim-trixie' \
-  || fail "L0.1 edge missing: zig-slim-trixie ← ziglang.org/download"
+echo "${_graph}" | grep -qE 'SRC_ZIGLANG_ORG_DOWNLOAD -\.-> pre-builder_zig_slim_trixie' \
+  || fail "L0.1 edge missing: pre-builder/zig-slim-trixie ← ziglang.org/download"
 pass "L0.1 subgraph present with ${_src_count} sources + edges"
 
 # --- (6) Makefile wires verify-source-inventory into test-fast ---

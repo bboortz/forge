@@ -51,7 +51,7 @@ _UPSTREAM_SOURCES: dict[str, list[str]] = {
     "github.com/actions/runner": ["github-runner-noble"],
 
     # External tarball host (not GitHub; committed SHA256 for provenance).
-    "ziglang.org/download": ["zig-slim-trixie"],
+    "ziglang.org/download": ["pre-builder/zig-slim-trixie"],
 }
 
 

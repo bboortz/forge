@@ -50,11 +50,12 @@ done < <(image_yaml_depends "${SRC}/image.yaml")
 # scratch-image build. Build it on demand if any scratch image is being built.
 _FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-python-trixie"
 case "${IMAGE_DIR}" in
-  forge-builder-python-trixie|python-slim-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie|forge-builder-zig-trixie|zig-slim-trixie)
+  forge-builder-python-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie|forge-builder-zig-trixie)
     _needs_forge_builder=0 ;;
-  mirror/*)
+  pre-builder/*|mirror/*)
     # FG-066: mirror images are zero-mod passthroughs; never need the
     # forge-builder-python-trixie builder stage.
+    # FG-070: pre-builder/* are thin apt-upgrade layers; same reasoning.
     _needs_forge_builder=0 ;;
   *)
     _needs_forge_builder=1 ;;
@@ -88,59 +89,59 @@ fi
 # FG-042: debian-slim-trixie is a runtime-base dependency for cadvisor-slim
 # + ipmi-exporter-slim. Build it on demand when the Dockerfile declares
 # DEBIAN_SLIM_REF.
-_DEBIAN_SLIM_DIR="${ROOT}/images/debian-slim-trixie"
+_DEBIAN_SLIM_DIR="${ROOT}/images/pre-builder/debian-slim-trixie"
 if [[ -d "${_DEBIAN_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "DEBIAN_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: debian-slim-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" debian-slim-trixie
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/debian-slim-trixie
 fi
 
 # FG-042: python-slim-trixie is a runtime-base dependency for forge-builder-python-trixie
 # (dogfood). Build it on demand when the Dockerfile declares PYTHON_SLIM_REF.
-_PYTHON_SLIM_DIR="${ROOT}/images/python-slim-trixie"
+_PYTHON_SLIM_DIR="${ROOT}/images/pre-builder/python-slim-trixie"
 if [[ -d "${_PYTHON_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "PYTHON_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: python-slim-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" python-slim-trixie
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/python-slim-trixie
 fi
 
 # FG-051: ubuntu-slim-noble is the Ubuntu pre-builder (first non-Debian
 # base in the Forge fleet). Build it on demand when the Dockerfile
 # declares UBUNTU_SLIM_NOBLE_REF.
-_UBUNTU_SLIM_NOBLE_DIR="${ROOT}/images/ubuntu-slim-noble"
+_UBUNTU_SLIM_NOBLE_DIR="${ROOT}/images/pre-builder/ubuntu-slim-noble"
 if [[ -d "${_UBUNTU_SLIM_NOBLE_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "UBUNTU_SLIM_NOBLE_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: ubuntu-slim-noble"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" ubuntu-slim-noble
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/ubuntu-slim-noble
 fi
 
 # FG-061: node-slim-trixie is the Node runtime pre-builder. Build on
 # demand when the Dockerfile declares NODE_SLIM_REF.
-_NODE_SLIM_DIR="${ROOT}/images/node-slim-trixie"
+_NODE_SLIM_DIR="${ROOT}/images/pre-builder/node-slim-trixie"
 if [[ -d "${_NODE_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "NODE_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: node-slim-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" node-slim-trixie
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/node-slim-trixie
 fi
 
 # FG-065: go-slim-trixie is the Go toolchain pre-builder. Build on
 # demand when the Dockerfile declares GO_SLIM_REF (e.g. forge-builder-
 # go-trixie dogfoods it).
-_GO_SLIM_DIR="${ROOT}/images/go-slim-trixie"
+_GO_SLIM_DIR="${ROOT}/images/pre-builder/go-slim-trixie"
 if [[ -d "${_GO_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "GO_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: go-slim-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" go-slim-trixie
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/go-slim-trixie
 fi
 
 # FG-072: zig-slim-trixie is the Zig toolchain pre-builder. Build on
 # demand when the Dockerfile declares ZIG_SLIM_REF (e.g. forge-builder-
 # zig-trixie dogfoods it).
-_ZIG_SLIM_DIR="${ROOT}/images/zig-slim-trixie"
+_ZIG_SLIM_DIR="${ROOT}/images/pre-builder/zig-slim-trixie"
 if [[ -d "${_ZIG_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "ZIG_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ pre-builder dependency: zig-slim-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" zig-slim-trixie
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/zig-slim-trixie
 fi
 
 # FG-066: mirror/syft is the forge-signed syft mirror. Build on demand
@@ -227,76 +228,76 @@ fi
 
 # FG-042: DEBIAN_SLIM_REF — forge-rooted Debian slim base for
 # cadvisor-slim + ipmi-exporter-slim runtime stages.
-_DEBIAN_SLIM_YAML="${ROOT}/images/debian-slim-trixie/image.yaml"
+_DEBIAN_SLIM_YAML="${ROOT}/images/pre-builder/debian-slim-trixie/image.yaml"
 if [[ -f "${_DEBIAN_SLIM_YAML}" ]]; then
   _DEBIAN_SLIM_TAG=$(image_yaml_get "${_DEBIAN_SLIM_YAML}" tag)
 else
   _DEBIAN_SLIM_TAG="latest"
 fi
-DEBIAN_SLIM_REF="${REGISTRY}/debian-slim-trixie:${_DEBIAN_SLIM_TAG}"
+DEBIAN_SLIM_REF="${REGISTRY}/pre-builder/debian-slim-trixie:${_DEBIAN_SLIM_TAG}"
 if ! docker image inspect "${DEBIAN_SLIM_REF}" >/dev/null 2>&1; then
-  DEBIAN_SLIM_REF="ghcr.io/bboortz/debian-slim-trixie:${_DEBIAN_SLIM_TAG}"
+  DEBIAN_SLIM_REF="ghcr.io/bboortz/pre-builder/debian-slim-trixie:${_DEBIAN_SLIM_TAG}"
 fi
 
 # FG-042: PYTHON_SLIM_REF — forge-rooted Python slim base that
 # forge-builder-python-trixie now FROMs (dogfood).
-_PYTHON_SLIM_YAML="${ROOT}/images/python-slim-trixie/image.yaml"
+_PYTHON_SLIM_YAML="${ROOT}/images/pre-builder/python-slim-trixie/image.yaml"
 if [[ -f "${_PYTHON_SLIM_YAML}" ]]; then
   _PYTHON_SLIM_TAG=$(image_yaml_get "${_PYTHON_SLIM_YAML}" tag)
 else
   _PYTHON_SLIM_TAG="latest"
 fi
-PYTHON_SLIM_REF="${REGISTRY}/python-slim-trixie:${_PYTHON_SLIM_TAG}"
+PYTHON_SLIM_REF="${REGISTRY}/pre-builder/python-slim-trixie:${_PYTHON_SLIM_TAG}"
 if ! docker image inspect "${PYTHON_SLIM_REF}" >/dev/null 2>&1; then
-  PYTHON_SLIM_REF="ghcr.io/bboortz/python-slim-trixie:${_PYTHON_SLIM_TAG}"
+  PYTHON_SLIM_REF="ghcr.io/bboortz/pre-builder/python-slim-trixie:${_PYTHON_SLIM_TAG}"
 fi
 
 # FG-051: UBUNTU_SLIM_NOBLE_REF — Forge's first Ubuntu pre-builder.
-_UBUNTU_SLIM_NOBLE_YAML="${ROOT}/images/ubuntu-slim-noble/image.yaml"
+_UBUNTU_SLIM_NOBLE_YAML="${ROOT}/images/pre-builder/ubuntu-slim-noble/image.yaml"
 if [[ -f "${_UBUNTU_SLIM_NOBLE_YAML}" ]]; then
   _UBUNTU_SLIM_NOBLE_TAG=$(image_yaml_get "${_UBUNTU_SLIM_NOBLE_YAML}" tag)
 else
   _UBUNTU_SLIM_NOBLE_TAG="24.04"
 fi
-UBUNTU_SLIM_NOBLE_REF="${REGISTRY}/ubuntu-slim-noble:${_UBUNTU_SLIM_NOBLE_TAG}"
+UBUNTU_SLIM_NOBLE_REF="${REGISTRY}/pre-builder/ubuntu-slim-noble:${_UBUNTU_SLIM_NOBLE_TAG}"
 if ! docker image inspect "${UBUNTU_SLIM_NOBLE_REF}" >/dev/null 2>&1; then
-  UBUNTU_SLIM_NOBLE_REF="ghcr.io/bboortz/ubuntu-slim-noble:${_UBUNTU_SLIM_NOBLE_TAG}"
+  UBUNTU_SLIM_NOBLE_REF="ghcr.io/bboortz/pre-builder/ubuntu-slim-noble:${_UBUNTU_SLIM_NOBLE_TAG}"
 fi
 
 # FG-061: NODE_SLIM_REF — Forge-rooted Node runtime pre-builder.
-_NODE_SLIM_YAML="${ROOT}/images/node-slim-trixie/image.yaml"
+_NODE_SLIM_YAML="${ROOT}/images/pre-builder/node-slim-trixie/image.yaml"
 if [[ -f "${_NODE_SLIM_YAML}" ]]; then
   _NODE_SLIM_TAG=$(image_yaml_get "${_NODE_SLIM_YAML}" tag)
 else
   _NODE_SLIM_TAG="latest"
 fi
-NODE_SLIM_REF="${REGISTRY}/node-slim-trixie:${_NODE_SLIM_TAG}"
+NODE_SLIM_REF="${REGISTRY}/pre-builder/node-slim-trixie:${_NODE_SLIM_TAG}"
 if ! docker image inspect "${NODE_SLIM_REF}" >/dev/null 2>&1; then
-  NODE_SLIM_REF="ghcr.io/bboortz/node-slim-trixie:${_NODE_SLIM_TAG}"
+  NODE_SLIM_REF="ghcr.io/bboortz/pre-builder/node-slim-trixie:${_NODE_SLIM_TAG}"
 fi
 
 # FG-065: GO_SLIM_REF — Forge-rooted Go toolchain pre-builder.
-_GO_SLIM_YAML="${ROOT}/images/go-slim-trixie/image.yaml"
+_GO_SLIM_YAML="${ROOT}/images/pre-builder/go-slim-trixie/image.yaml"
 if [[ -f "${_GO_SLIM_YAML}" ]]; then
   _GO_SLIM_TAG=$(image_yaml_get "${_GO_SLIM_YAML}" tag)
 else
   _GO_SLIM_TAG="latest"
 fi
-GO_SLIM_REF="${REGISTRY}/go-slim-trixie:${_GO_SLIM_TAG}"
+GO_SLIM_REF="${REGISTRY}/pre-builder/go-slim-trixie:${_GO_SLIM_TAG}"
 if ! docker image inspect "${GO_SLIM_REF}" >/dev/null 2>&1; then
-  GO_SLIM_REF="ghcr.io/bboortz/go-slim-trixie:${_GO_SLIM_TAG}"
+  GO_SLIM_REF="ghcr.io/bboortz/pre-builder/go-slim-trixie:${_GO_SLIM_TAG}"
 fi
 
 # FG-072: ZIG_SLIM_REF — Forge-rooted Zig toolchain pre-builder.
-_ZIG_SLIM_YAML="${ROOT}/images/zig-slim-trixie/image.yaml"
+_ZIG_SLIM_YAML="${ROOT}/images/pre-builder/zig-slim-trixie/image.yaml"
 if [[ -f "${_ZIG_SLIM_YAML}" ]]; then
   _ZIG_SLIM_TAG=$(image_yaml_get "${_ZIG_SLIM_YAML}" tag)
 else
   _ZIG_SLIM_TAG="latest"
 fi
-ZIG_SLIM_REF="${REGISTRY}/zig-slim-trixie:${_ZIG_SLIM_TAG}"
+ZIG_SLIM_REF="${REGISTRY}/pre-builder/zig-slim-trixie:${_ZIG_SLIM_TAG}"
 if ! docker image inspect "${ZIG_SLIM_REF}" >/dev/null 2>&1; then
-  ZIG_SLIM_REF="ghcr.io/bboortz/zig-slim-trixie:${_ZIG_SLIM_TAG}"
+  ZIG_SLIM_REF="ghcr.io/bboortz/pre-builder/zig-slim-trixie:${_ZIG_SLIM_TAG}"
 fi
 
 # FG-066: SYFT_REF — Forge-signed mirror of anchore/syft. Nested repo

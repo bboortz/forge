@@ -25,7 +25,7 @@
 # Bumping is a chore-commit that updates both ZIG_VERSION + ZIG_SHA256
 # after validating against every downstream consumer.
 
-ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/debian-slim-trixie:latest
+ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/pre-builder/debian-slim-trixie:latest
 
 FROM ${DEBIAN_SLIM_REF}
 

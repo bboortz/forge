@@ -23,23 +23,23 @@ grep -qE 'until: "202[7-9]-' "$pp" \
   || fail "$pp: waiver until: field must be in the future"
 pass "postgres-slim-trixie waiver block present + annotated"
 
-say "2. images/debian-slim-sid/ exists with required files"
+say "2. images/pre-builder/debian-slim-sid/ exists with required files"
 for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json sid-pins \
          tests/smoke_is_sid.sh tests/smoke_ca_bundle.sh \
          tests/smoke_apt_upgraded.sh tests/smoke_no_apt_cache.sh \
          tests/smoke_has_shell.sh tests/smoke_size.sh; do
-  test -e "images/debian-slim-sid/${f}" \
-    || fail "images/debian-slim-sid/${f} missing"
+  test -e "images/pre-builder/debian-slim-sid/${f}" \
+    || fail "images/pre-builder/debian-slim-sid/${f} missing"
 done
 pass "debian-slim-sid layout complete"
 
 say "3. debian-slim-sid Dockerfile FROMs debian:sid-slim"
-grep -qE '^FROM debian:sid-slim' images/debian-slim-sid/Dockerfile \
+grep -qE '^FROM debian:sid-slim' images/pre-builder/debian-slim-sid/Dockerfile \
   || fail "debian-slim-sid Dockerfile must FROM debian:sid-slim"
 pass "FROM debian:sid-slim present"
 
 say "4. image.yaml tag is \"latest\" (floating per rolling-release)"
-tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' images/debian-slim-sid/image.yaml)
+tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' images/pre-builder/debian-slim-sid/image.yaml)
 [[ "$tag" == "latest" ]] || fail "debian-slim-sid image.yaml tag = '${tag}' (want 'latest')"
 pass "image.yaml tag correct"
 
@@ -63,9 +63,9 @@ say "7. Full build + smoke suite (skip in fast-mode)"
 if [[ "${FORGE_FAST:-0}" == "1" ]]; then
   pass "skipped per FORGE_FAST=1"
 else
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh debian-slim-sid >/dev/null 2>&1 \
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh pre-builder/debian-slim-sid >/dev/null 2>&1 \
     || fail "debian-slim-sid build failed"
-  for s in images/debian-slim-sid/tests/smoke_*.sh; do
+  for s in images/pre-builder/debian-slim-sid/tests/smoke_*.sh; do
     IMAGE_NAME=debian-slim-sid IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done

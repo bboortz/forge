@@ -9,5 +9,6 @@
 # Published in the publish-pre-builders CI tier. Floating `:latest`
 # tag — sid is rolling-release, daily cron re-resolves.
 tag: "latest"
+repo: pre-builder/debian-slim-sid
 platforms:
   - linux/amd64

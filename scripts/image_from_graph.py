@@ -47,13 +47,13 @@ except ImportError:  # inventory not present — degrade gracefully
 
 # Role classification — mirrors scripts/discover-images.sh.
 _PRE_BUILDERS = [
-    "debian-slim-sid",
-    "debian-slim-trixie",
-    "go-slim-trixie",
-    "node-slim-trixie",
-    "python-slim-trixie",
-    "ubuntu-slim-noble",
-    "zig-slim-trixie",
+    "pre-builder/debian-slim-sid",
+    "pre-builder/debian-slim-trixie",
+    "pre-builder/go-slim-trixie",
+    "pre-builder/node-slim-trixie",
+    "pre-builder/python-slim-trixie",
+    "pre-builder/ubuntu-slim-noble",
+    "pre-builder/zig-slim-trixie",
 ]
 _FORGE_BUILDERS = [
     "forge-builder-go-trixie",
@@ -398,18 +398,29 @@ def emit_mermaid_body(local_images: set[str]) -> str:
             lines.append(f'        {node_id}["{name}"]:::mirror')
     lines.append("    end")
 
-    # L1 subgraph (pre-builders).
+    # L1 subgraph (pre-builders). FG-070: nested under pre-builder/<name>/,
+    # emit as `<tier>_<leaf>[<label>]:::style` for mermaid-safe node ids.
     lines.append('    subgraph L1_prebuilders["Layer 1 — Forge pre-builders (publish-pre-builders)"]')
     for name in sorted(_PRE_BUILDERS):
         if name in local_images:
-            lines.append(f"        {name}:::prebuilder")
+            if "/" in name:
+                tier, leaf = name.split("/", 1)
+                node_id = f"{tier}_{leaf.replace('-', '_')}"
+                lines.append(f'        {node_id}["{name}"]:::prebuilder')
+            else:
+                lines.append(f"        {name}:::prebuilder")
     lines.append("    end")
 
-    # L2 subgraph (builders).
+    # L2 subgraph (builders). Not yet nested (FG-071 will move these).
     lines.append('    subgraph L2_builders["Layer 2 — Forge builders (publish-builders — never runtime)"]')
     for name in sorted(_FORGE_BUILDERS):
         if name in local_images:
-            lines.append(f"        {name}:::builder")
+            if "/" in name:
+                tier, leaf = name.split("/", 1)
+                node_id = f"{tier}_{leaf.replace('-', '_')}"
+                lines.append(f'        {node_id}["{name}"]:::builder')
+            else:
+                lines.append(f"        {name}:::builder")
     lines.append("    end")
 
     # L3 subgraph (baseline).

@@ -8,7 +8,7 @@
 # ever pass IMAGE_DIR. test-images delegates to scripts/test-images.sh which
 # does its own yaml resolution.
 
-IMAGE_DIR ?= python-slim-trixie
+IMAGE_DIR ?= pre-builder/python-slim-trixie
 REGISTRY  ?= forge-local
 OUT_DIR   ?= build
 

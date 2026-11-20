@@ -15,14 +15,14 @@ dependencies:
       - promise: files.ca-certificates
         reason: curl needs the CA trust store to fetch the Zig tarball from https://ziglang.org/download/<ver>/zig-x86_64-linux-<ver>.tar.xz. Pre-builder pre-installs ca-certificates so this image doesn't need to re-apt-install.
         preflight:
-          - images/zig-slim-trixie/tests/smoke_ca_bundle.sh
+          - images/pre-builder/zig-slim-trixie/tests/smoke_ca_bundle.sh
 
       - promise: apt.freshly-upgraded
         reason: Pre-builder has already applied apt-get upgrade; this image inherits that + adds its own install of ca-certificates + curl + dumb-init + xz-utils on top.
         preflight:
-          - images/zig-slim-trixie/tests/smoke_apt_upgraded.sh
+          - images/pre-builder/zig-slim-trixie/tests/smoke_apt_upgraded.sh
 
       - promise: presence.shell
         reason: Zig tarball-install uses `set -eux` + `curl` + `sha256sum -c -` + `tar -xJf` + `ln -s` via /bin/sh. Pre-builder keeps shell for all downstream slim consumers.
         preflight:
-          - images/zig-slim-trixie/tests/smoke_has_shell.sh
+          - images/pre-builder/zig-slim-trixie/tests/smoke_has_shell.sh

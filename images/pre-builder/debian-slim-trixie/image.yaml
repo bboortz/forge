@@ -13,5 +13,6 @@
 #
 # Runtime image — shell + apt kept (image.has-shell contract).
 tag: "0.1"
+repo: pre-builder/debian-slim-trixie
 platforms:
   - linux/amd64

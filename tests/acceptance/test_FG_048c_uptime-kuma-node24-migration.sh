@@ -28,9 +28,9 @@ say "2. uptime-kuma runtime FROMs the forge-rooted Node pre-builder (FG-061)"
 # (defaulting to ghcr.io/bboortz/node-slim-trixie:latest, which itself
 # FROMs node:24-trixie-slim). The Node 24 LTS guarantee is still enforced
 # by section 4 below (docker run node --version matches v24.*).
-grep -qE '^ARG NODE_SLIM_REF=ghcr\.io/bboortz/node-slim-trixie:(latest|[0-9.]+)' "$dockerfile" \
-  || fail "uptime-kuma must declare ARG NODE_SLIM_REF=ghcr.io/bboortz/node-slim-trixie:… (FG-061 migration)"
-pass "NODE_SLIM_REF=ghcr.io/bboortz/node-slim-trixie:… (Node 24 LTS via forge pre-builder)"
+grep -qE '^ARG NODE_SLIM_REF=ghcr\.io/bboortz/pre-builder/node-slim-trixie:(latest|[0-9.]+)' "$dockerfile" \
+  || fail "uptime-kuma must declare ARG NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:… (FG-061 migration)"
+pass "NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:… (Node 24 LTS via forge pre-builder)"
 
 say "3. uptime-kuma-slim-trixie builds via forge-builder-node-trixie"
 bash scripts/build-image.sh uptime-kuma-slim-trixie >/dev/null

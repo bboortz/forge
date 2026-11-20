@@ -19,7 +19,7 @@
 # forge-rooted `node-slim-trixie` pre-builder, so apt-upgrade state is
 # shared with every other Forge Node runtime (psitransfer, future).
 ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
-ARG NODE_SLIM_REF=ghcr.io/bboortz/node-slim-trixie:latest
+ARG NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # Track upstream's latest GitHub release. Empty default → build-time

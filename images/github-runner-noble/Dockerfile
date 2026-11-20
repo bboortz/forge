@@ -25,7 +25,7 @@
 # GITHUB_ORG + GITHUB_RUNNER_PAT + RUNNER_NAME + RUNNER_LABELS; registers
 # at first start via GitHub API; subsequent starts skip to run.sh.
 
-ARG UBUNTU_SLIM_NOBLE_REF=ghcr.io/bboortz/ubuntu-slim-noble:24.04
+ARG UBUNTU_SLIM_NOBLE_REF=ghcr.io/bboortz/pre-builder/ubuntu-slim-noble:24.04
 
 # Upstream-resolved versions (bump via Forge PR; daily cron bakes newer
 # versions on each publish).
