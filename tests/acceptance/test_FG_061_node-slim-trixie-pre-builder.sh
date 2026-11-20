@@ -39,7 +39,7 @@ pass "upstream-drift invariant satisfied"
 say "4. discover-images.sh pre-builders mode returns node-slim-trixie"
 # Membership assertion only — exact count is FG-065's concern (now 6).
 out=$(bash scripts/discover-images.sh pre-builders)
-echo "${out}" | jq -e '.include | map(.image_dir) | contains(["node-slim-trixie"])' >/dev/null \
+echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/node-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing node-slim-trixie"
 pass "pre-builders tier includes node-slim-trixie"
 

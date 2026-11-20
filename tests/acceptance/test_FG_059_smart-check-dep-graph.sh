@@ -18,7 +18,7 @@ echo "$graph_json" | jq -e '.["forge-builder-python-trixie"]' >/dev/null \
 echo "$graph_json" | jq -e '.["forge-builder-python-trixie"] | map(select(test("scratch"))) | length > 0' >/dev/null \
   || fail "forge-builder-python-trixie should fan out to scratch derivatives"
 # python-slim-trixie → forge-builder-python-trixie (dogfood)
-echo "$graph_json" | jq -e '.["python-slim-trixie"] | contains(["forge-builder-python-trixie"])' >/dev/null \
+echo "$graph_json" | jq -e '.["pre-builder/python-slim-trixie"] | contains(["forge-builder-python-trixie"])' >/dev/null \
   || fail "python-slim-trixie should fan out to forge-builder-python-trixie (dogfood edge)"
 # scratch-base-trixie → the scratch fleet
 echo "$graph_json" | jq -e '.["base/scratch-trixie"] | length >= 3' >/dev/null \

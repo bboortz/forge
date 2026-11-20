@@ -75,7 +75,7 @@ say "6. discover-images.sh pre-builders returns ≥6 entries including go-slim-t
 out=$(bash scripts/discover-images.sh pre-builders)
 got=$(echo "${out}" | jq '.include | length')
 [[ "${got}" -ge 6 ]] || fail "pre-builders tier returned ${got} entries (want ≥6)"
-echo "${out}" | jq -e '.include | map(.image_dir) | contains(["go-slim-trixie"])' >/dev/null \
+echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/go-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing go-slim-trixie"
 pass "${got} pre-builders including go-slim-trixie"
 

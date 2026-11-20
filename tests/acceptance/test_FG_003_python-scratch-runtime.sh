@@ -19,7 +19,7 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-003]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-SLIM_DIR="images/python-slim-trixie"
+SLIM_DIR="images/pre-builder/python-slim-trixie"
 SCRATCH_DIR="images/base/python-trixie"
 OLD_DIR="images/python"
 

@@ -55,7 +55,7 @@ pass "upstream-drift invariant satisfied (debian:sid-slim anchor present, guard 
 
 say "6. discover-images.sh pre-builders mode includes debian-slim-sid"
 out=$(bash scripts/discover-images.sh pre-builders)
-echo "${out}" | jq -e '.include | map(.image_dir) | contains(["debian-slim-sid"])' >/dev/null \
+echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/debian-slim-sid"])' >/dev/null \
   || fail "pre-builders tier missing debian-slim-sid"
 pass "pre-builders tier includes debian-slim-sid"
 

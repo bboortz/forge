@@ -91,7 +91,7 @@ say "6. discover-images.sh pre-builders = 7, builders = 4"
 out=$(bash scripts/discover-images.sh pre-builders)
 got=$(echo "${out}" | jq '.include | length')
 [[ "${got}" -eq 7 ]] || fail "pre-builders tier returned ${got} entries (want 7)"
-echo "${out}" | jq -e '.include | map(.image_dir) | contains(["zig-slim-trixie"])' >/dev/null \
+echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/zig-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing zig-slim-trixie"
 out=$(bash scripts/discover-images.sh builders)
 got=$(echo "${out}" | jq '.include | length')
