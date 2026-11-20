@@ -86,7 +86,7 @@ pass "all github-runner-noble smokes green"
 # -----------------------------------------------------------------------------
 
 say "8. upstream-single-consumer: ubuntu:24.04 FROMs exactly 1 Dockerfile"
-hits=$(grep -lE "^FROM ubuntu:24\.04" images/*/Dockerfile 2>/dev/null | wc -l)
+hits=$(grep -lE "^FROM ubuntu:24\.04" images/*/Dockerfile images/*/*/Dockerfile 2>/dev/null | wc -l)
 [[ "${hits}" -eq 1 ]] \
   || fail "expected 1 Dockerfile FROMing ubuntu:24.04 (the ubuntu-slim-noble pre-builder), got ${hits}"
 pass "ubuntu:24.04 consumed by exactly 1 forge pre-builder (ubuntu-slim-noble)"

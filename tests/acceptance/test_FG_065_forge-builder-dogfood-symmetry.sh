@@ -191,7 +191,7 @@ else
   FORGE_NO_SKIP=1 bash scripts/build-image.sh pre-builder/go-slim-trixie >/dev/null 2>&1 \
     || fail "go-slim-trixie build failed"
   for s in images/pre-builder/go-slim-trixie/tests/smoke_*.sh; do
-    IMAGE_NAME=go-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
+    IMAGE_NAME=pre-builder/go-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done
   FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-go-trixie >/dev/null 2>&1 \

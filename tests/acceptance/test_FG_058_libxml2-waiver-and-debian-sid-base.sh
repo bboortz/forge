@@ -66,7 +66,7 @@ else
   FORGE_NO_SKIP=1 bash scripts/build-image.sh pre-builder/debian-slim-sid >/dev/null 2>&1 \
     || fail "debian-slim-sid build failed"
   for s in images/pre-builder/debian-slim-sid/tests/smoke_*.sh; do
-    IMAGE_NAME=debian-slim-sid IMAGE_TAG=latest bash "${s}" >/dev/null \
+    IMAGE_NAME=pre-builder/debian-slim-sid IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done
   pass "image built + all smokes green"

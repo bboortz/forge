@@ -88,11 +88,11 @@ say "7. upstream grep count collapsed"
 # Expect exactly 6 Dockerfiles to FROM the upstream Docker Hub bases:
 # the 6 pre-builders. Everything else (including both forge-builders
 # post-FG-065) goes through the forge-rooted intermediates.
-hits=$(grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim|golang:1\.27-trixie)' images/*/Dockerfile 2>&1 | wc -l)
+hits=$(grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim|golang:1\.27-trixie)' images/*/Dockerfile images/*/*/Dockerfile 2>&1 | wc -l)
 expected=6
 [[ "${hits}" == "${expected}" ]] \
   || { echo "  ✗ expected ${expected} Dockerfiles to FROM upstream, got ${hits}:" >&2; \
-       grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim|golang:1\.27-trixie)' images/*/Dockerfile >&2; \
+       grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim|golang:1\.27-trixie)' images/*/Dockerfile images/*/*/Dockerfile >&2; \
        exit 1; }
 pass "exactly 6 Dockerfiles reference upstream directly (the 6 pre-builders)"
 

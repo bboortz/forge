@@ -71,7 +71,7 @@ else
   FORGE_NO_SKIP=1 bash scripts/build-image.sh pre-builder/node-slim-trixie >/dev/null 2>&1 \
     || fail "node-slim-trixie build failed"
   for s in images/pre-builder/node-slim-trixie/tests/smoke_*.sh; do
-    IMAGE_NAME=node-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
+    IMAGE_NAME=pre-builder/node-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done
   pass "image built + all smokes green"
