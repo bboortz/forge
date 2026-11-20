@@ -29,7 +29,7 @@
 # Current consumers (post-FG-072): zero. Pair lands ahead of the first
 # Zig source build (hc migration into forge — tracked as a follow-up FG).
 
-ARG ZIG_SLIM_REF=ghcr.io/bboortz/zig-slim-trixie:latest
+ARG ZIG_SLIM_REF=ghcr.io/bboortz/pre-builder/zig-slim-trixie:latest
 # FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
 ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:latest
 

@@ -41,7 +41,7 @@
 # in `node-slim-trixie/Dockerfile` — all forge-rooted consumers inherit
 # via the chain.
 
-ARG NODE_SLIM_REF=ghcr.io/bboortz/node-slim-trixie:latest
+ARG NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:latest
 # FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
 ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:latest
 

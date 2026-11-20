@@ -30,7 +30,7 @@
 # their toolchain and rebuilds — which can lag by months. Building from
 # source against a newer Go eliminates the lag.
 
-ARG GO_SLIM_REF=ghcr.io/bboortz/go-slim-trixie:latest
+ARG GO_SLIM_REF=ghcr.io/bboortz/pre-builder/go-slim-trixie:latest
 # FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
 ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:latest
 

@@ -16,14 +16,17 @@
 
 set -euo pipefail
 
-IMAGE_DIR="python-slim-trixie"
-IMAGE_REPO="python-slim-trixie"          # FG-004: repo name == dir name
+IMAGE_DIR="pre-builder/python-slim-trixie"
+IMAGE_REPO="pre-builder/python-slim-trixie"          # FG-004: repo name == dir name
 IMAGE_TAG="3.14"                         # FG-004: version only
 IMAGE_LOCAL="forge-local/${IMAGE_REPO}:${IMAGE_TAG}"
 IMAGE_PUBLISHED="ghcr.io/bboortz/${IMAGE_REPO}:${IMAGE_TAG}"
 BUILD_DIR="build"
-SBOM="${BUILD_DIR}/${IMAGE_REPO}-${IMAGE_TAG}.sbom.json"
-GRYPE="${BUILD_DIR}/${IMAGE_REPO}-${IMAGE_TAG}.grype.json"
+# FG-070: IMAGE_REPO may contain `/` for nested dirs — match Makefile's
+# IMAGE_SLUG sanitization (slash → underscore) for flat filenames.
+_IMAGE_SLUG="${IMAGE_REPO//\//_}"
+SBOM="${BUILD_DIR}/${_IMAGE_SLUG}-${IMAGE_TAG}.sbom.json"
+GRYPE="${BUILD_DIR}/${_IMAGE_SLUG}-${IMAGE_TAG}.grype.json"
 
 cd "$(git rev-parse --show-toplevel)"
 

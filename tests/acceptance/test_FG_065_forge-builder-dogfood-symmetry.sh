@@ -13,28 +13,28 @@ pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 # --- (1) images/go-slim-trixie/ layout -------------------------------------
-say "1. images/go-slim-trixie/ exists with the standard pre-builder shape"
+say "1. images/pre-builder/go-slim-trixie/ exists with the standard pre-builder shape"
 for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json sid-pins \
          tests/smoke_go_version.sh tests/smoke_ca_bundle.sh \
          tests/smoke_dumb_init.sh tests/smoke_apt_upgraded.sh \
          tests/smoke_no_apt_cache.sh tests/smoke_has_shell.sh \
          tests/smoke_size.sh; do
-  test -e "images/go-slim-trixie/${f}" \
-    || fail "images/go-slim-trixie/${f} missing"
+  test -e "images/pre-builder/go-slim-trixie/${f}" \
+    || fail "images/pre-builder/go-slim-trixie/${f} missing"
 done
 pass "go-slim-trixie layout complete"
 
 # --- (2) go-slim-trixie FROMs the upstream Go base ------------------------
 say "2. go-slim-trixie Dockerfile FROMs golang:1.27-trixie"
-grep -qE '^FROM golang:1\.27-trixie' images/go-slim-trixie/Dockerfile \
+grep -qE '^FROM golang:1\.27-trixie' images/pre-builder/go-slim-trixie/Dockerfile \
   || fail "go-slim-trixie must FROM golang:1.27-trixie literally"
 pass "FROM golang:1.27-trixie present"
 
 # --- (3) forge-builder-go-trixie dogfoods go-slim-trixie ------------------
 say "3. forge-builder-go-trixie dogfoods go-slim-trixie"
-grep -qE '^ARG GO_SLIM_REF=ghcr\.io/bboortz/go-slim-trixie:(latest|[0-9.]+)' \
+grep -qE '^ARG GO_SLIM_REF=ghcr\.io/bboortz/pre-builder/go-slim-trixie:(latest|[0-9.]+)' \
   images/forge-builder-go-trixie/Dockerfile \
-  || fail "forge-builder-go-trixie must declare ARG GO_SLIM_REF default ghcr.io/bboortz/go-slim-trixie:…"
+  || fail "forge-builder-go-trixie must declare ARG GO_SLIM_REF default ghcr.io/bboortz/pre-builder/go-slim-trixie:…"
 runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/forge-builder-go-trixie/Dockerfile)
 # shellcheck disable=SC2016
 [[ "${runtime_from}" == *'${GO_SLIM_REF}'* ]] \
@@ -47,9 +47,9 @@ pass "FBG dogfoods go-slim-trixie"
 
 # --- (4) forge-builder-node-trixie dogfoods node-slim-trixie --------------
 say "4. forge-builder-node-trixie dogfoods node-slim-trixie"
-grep -qE '^ARG NODE_SLIM_REF=ghcr\.io/bboortz/node-slim-trixie:(latest|[0-9.]+)' \
+grep -qE '^ARG NODE_SLIM_REF=ghcr\.io/bboortz/pre-builder/node-slim-trixie:(latest|[0-9.]+)' \
   images/forge-builder-node-trixie/Dockerfile \
-  || fail "forge-builder-node-trixie must declare ARG NODE_SLIM_REF default ghcr.io/bboortz/node-slim-trixie:…"
+  || fail "forge-builder-node-trixie must declare ARG NODE_SLIM_REF default ghcr.io/bboortz/pre-builder/node-slim-trixie:…"
 runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/forge-builder-node-trixie/Dockerfile)
 # shellcheck disable=SC2016
 [[ "${runtime_from}" == *'${NODE_SLIM_REF}'* ]] \
@@ -75,7 +75,7 @@ say "6. discover-images.sh pre-builders returns ≥6 entries including go-slim-t
 out=$(bash scripts/discover-images.sh pre-builders)
 got=$(echo "${out}" | jq '.include | length')
 [[ "${got}" -ge 6 ]] || fail "pre-builders tier returned ${got} entries (want ≥6)"
-echo "${out}" | jq -e '.include | map(.image_dir) | contains(["go-slim-trixie"])' >/dev/null \
+echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/go-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing go-slim-trixie"
 pass "${got} pre-builders including go-slim-trixie"
 
@@ -138,14 +138,14 @@ pass "Rule 7 enforcement logic present (full negative test deferred to unit suit
 say "10. only pre-builders + postgres-slim-trixie exempt from literal upstream FROM"
 # Grep every non-pre-builder Dockerfile for literal upstream FROMs.
 # Exempt: images/postgres-slim-trixie/Dockerfile (FROM postgres:18).
-_literal_from=$(grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim|golang:1\.27-trixie)' images/*/Dockerfile 2>/dev/null | sort)
+_literal_from=$(grep -lE '^FROM (debian:trixie-slim|debian:sid-slim|python:3\.14-slim-trixie|ubuntu:24\.04|node:24-trixie-slim|golang:1\.27-trixie)' images/*/Dockerfile images/*/*/Dockerfile 2>/dev/null | sort)
 _expected=$(cat <<'EOF'
-images/debian-slim-sid/Dockerfile
-images/debian-slim-trixie/Dockerfile
-images/go-slim-trixie/Dockerfile
-images/node-slim-trixie/Dockerfile
-images/python-slim-trixie/Dockerfile
-images/ubuntu-slim-noble/Dockerfile
+images/pre-builder/debian-slim-sid/Dockerfile
+images/pre-builder/debian-slim-trixie/Dockerfile
+images/pre-builder/go-slim-trixie/Dockerfile
+images/pre-builder/node-slim-trixie/Dockerfile
+images/pre-builder/python-slim-trixie/Dockerfile
+images/pre-builder/ubuntu-slim-noble/Dockerfile
 EOF
 )
 if ! diff <(echo "${_literal_from}") <(echo "${_expected}") >/dev/null; then
@@ -163,12 +163,14 @@ say "11. deepest chain for every scratch runtime is ≤ 5 hops"
 # We don't compute the full DAG here (covered by FG-064's generator);
 # instead we assert the two known deepest chains exist as expected via
 # the live FROM-graph.
+# FG-070: pre-builder/* mermaid node ids are `pre-builder_<leaf>`
+# (slash+dashes normalized).
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'go-slim-trixie --> forge-builder-go-trixie' \
-  || fail "dep graph missing go-slim-trixie → forge-builder-go-trixie edge"
+  | grep -q 'pre-builder_go_slim_trixie --> forge-builder-go-trixie' \
+  || fail "dep graph missing pre-builder/go-slim-trixie → forge-builder-go-trixie edge"
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'node-slim-trixie --> forge-builder-node-trixie' \
-  || fail "dep graph missing node-slim-trixie → forge-builder-node-trixie edge"
+  | grep -q 'pre-builder_node_slim_trixie --> forge-builder-node-trixie' \
+  || fail "dep graph missing pre-builder/node-slim-trixie → forge-builder-node-trixie edge"
 pass "chain structure updated per FG-065"
 
 # --- (12) memory + design-decisions updated -----------------------------
@@ -186,10 +188,10 @@ say "13. Full build + smokes for go-slim-trixie + FBG + FBN (skip in fast-mode)"
 if [[ "${FORGE_FAST:-0}" == "1" ]]; then
   pass "skipped per FORGE_FAST=1"
 else
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh go-slim-trixie >/dev/null 2>&1 \
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh pre-builder/go-slim-trixie >/dev/null 2>&1 \
     || fail "go-slim-trixie build failed"
-  for s in images/go-slim-trixie/tests/smoke_*.sh; do
-    IMAGE_NAME=go-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
+  for s in images/pre-builder/go-slim-trixie/tests/smoke_*.sh; do
+    IMAGE_NAME=pre-builder/go-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done
   FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-go-trixie >/dev/null 2>&1 \

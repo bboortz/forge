@@ -1,0 +1,13 @@
+# FG-065: forge-rooted Go 1.27 slim pre-builder. Published in the
+# publish-pre-builders CI tier alongside debian-slim-{trixie,sid},
+# node-slim-trixie, python-slim-trixie, ubuntu-slim-noble.
+#
+# Current consumer: forge-builder-go-trixie (dogfood). No slim-runtime
+# Go consumer today — Go produces static binaries; typical downstream is
+# scratch + scratch-base-trixie. Justification for this pre-builder is
+# the FG-065 "every language family has a pair" invariant + the FBG
+# dogfood.
+tag: "latest"
+repo: pre-builder/go-slim-trixie
+platforms:
+  - linux/amd64

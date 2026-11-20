@@ -22,6 +22,8 @@ Full definitions, 🔑 semantic tests, overlap-resolution matrix, decisions log:
 
 **Rule 12** (`scripts/verify-dockerfile-conformance.py`, FG-069): every `images/base/<name>/` L3 image must (a) have `FROM scratch` as its final-stage FROM AND (b) have at least one forge-internal consumer (another image's `image.yaml depends_on:` lists it). Zero-consumer base images belong at the flat L4 runtime position instead. Current members: `base/scratch-trixie` (9 consumers), `base/python-trixie` (3 consumers — beaconry-*). Renamed from `scratch-base-trixie` / `python-scratch-trixie` per tier-plan §O2+O3 (drop redundant tokens encoded by the tier prefix).
 
+**pre-builder/ migration** (FG-070): 7 L1 pre-builders moved to `images/pre-builder/<name>/` → `ghcr.io/bboortz/pre-builder/<name>:<tag>`. Current members: `pre-builder/{debian-slim-trixie,debian-slim-sid,go-slim-trixie,node-slim-trixie,python-slim-trixie,ubuntu-slim-noble,zig-slim-trixie}`. Leaf names preserved (tier prefix encodes L1 semantic). Homelab 7-bot coordination paired via FG-074.
+
 ## Chain depth ≤ 5 (FG-042 invariant)
 
 Deepest trust chains post-FG-072 (Python, Go, Zig all at the cap):

@@ -16,26 +16,26 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 # §1. ubuntu-slim-noble layout + build
 # -----------------------------------------------------------------------------
 
-say "1. images/ubuntu-slim-noble/ has required layout"
+say "1. images/pre-builder/ubuntu-slim-noble/ has required layout"
 for f in Dockerfile image.yaml PROMISES.yaml \
          tests/smoke_os_release.sh \
          tests/smoke_ca_bundle.sh \
          tests/smoke_libicu74_installed.sh; do
-  test -e "images/ubuntu-slim-noble/${f}" \
-    || fail "images/ubuntu-slim-noble/${f} missing"
+  test -e "images/pre-builder/ubuntu-slim-noble/${f}" \
+    || fail "images/pre-builder/ubuntu-slim-noble/${f} missing"
 done
 pass "all required files present"
 
 say "2. ubuntu-slim-noble:24.04 builds from upstream ubuntu:24.04"
-grep -qE '^FROM ubuntu:24\.04' images/ubuntu-slim-noble/Dockerfile \
-  || fail "images/ubuntu-slim-noble/Dockerfile must FROM ubuntu:24.04 literal (FG-042 grep-invariant)"
-bash scripts/build-image.sh ubuntu-slim-noble >/dev/null
-docker image inspect forge-local/ubuntu-slim-noble:24.04 >/dev/null \
-  || fail "forge-local/ubuntu-slim-noble:24.04 did not materialize"
-pass "forge-local/ubuntu-slim-noble:24.04 built"
+grep -qE '^FROM ubuntu:24\.04' images/pre-builder/ubuntu-slim-noble/Dockerfile \
+  || fail "images/pre-builder/ubuntu-slim-noble/Dockerfile must FROM ubuntu:24.04 literal (FG-042 grep-invariant)"
+bash scripts/build-image.sh pre-builder/ubuntu-slim-noble >/dev/null
+docker image inspect forge-local/pre-builder/ubuntu-slim-noble:24.04 >/dev/null \
+  || fail "forge-local/pre-builder/ubuntu-slim-noble:24.04 did not materialize"
+pass "forge-local/pre-builder/ubuntu-slim-noble:24.04 built"
 
 say "3. ubuntu-slim-noble smoke suite"
-for s in images/ubuntu-slim-noble/tests/smoke_*.sh; do
+for s in images/pre-builder/ubuntu-slim-noble/tests/smoke_*.sh; do
   IMAGE_TAG=24.04 bash "${s}" >/dev/null
 done
 pass "all ubuntu-slim-noble smokes green"
@@ -86,13 +86,13 @@ pass "all github-runner-noble smokes green"
 # -----------------------------------------------------------------------------
 
 say "8. upstream-single-consumer: ubuntu:24.04 FROMs exactly 1 Dockerfile"
-hits=$(grep -lE "^FROM ubuntu:24\.04" images/*/Dockerfile 2>/dev/null | wc -l)
+hits=$(grep -lE "^FROM ubuntu:24\.04" images/*/Dockerfile images/*/*/Dockerfile 2>/dev/null | wc -l)
 [[ "${hits}" -eq 1 ]] \
   || fail "expected 1 Dockerfile FROMing ubuntu:24.04 (the ubuntu-slim-noble pre-builder), got ${hits}"
 pass "ubuntu:24.04 consumed by exactly 1 forge pre-builder (ubuntu-slim-noble)"
 
 say "9. image.yaml invariants"
-tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' images/ubuntu-slim-noble/image.yaml)
+tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' images/pre-builder/ubuntu-slim-noble/image.yaml)
 [[ "$tag" == "24.04" ]] || fail "ubuntu-slim-noble image.yaml tag = '$tag' (want '24.04')"
 tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' images/github-runner-noble/image.yaml)
 [[ "$tag" == "latest" ]] || fail "github-runner-noble image.yaml tag = '$tag' (want 'latest')"

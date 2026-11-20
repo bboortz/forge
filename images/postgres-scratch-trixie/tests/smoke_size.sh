@@ -12,4 +12,4 @@ export IMAGE_NAME="${IMAGE_NAME:-postgres-scratch-trixie}"
 export IMAGE_TAG="${IMAGE_TAG:-18}"
 export REGISTRY="${REGISTRY:-forge-local}"
 
-exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../python-slim-trixie/tests" && pwd)/smoke_size.sh"
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../pre-builder/python-slim-trixie/tests" && pwd)/smoke_size.sh"

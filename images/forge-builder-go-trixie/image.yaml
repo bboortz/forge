@@ -14,5 +14,5 @@ tag: "0.1"
 platforms:
   - linux/amd64
 depends_on:
-  - go-slim-trixie
+  - pre-builder/go-slim-trixie
   - mirror/syft

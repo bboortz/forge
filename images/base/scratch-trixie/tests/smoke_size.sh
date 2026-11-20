@@ -14,4 +14,4 @@ export REGISTRY="${REGISTRY:-forge-local}"
 
 # FG-069: this file moved from images/scratch-base-trixie/tests/ to
 # images/base/scratch-trixie/tests/. Walk up 3 levels now instead of 2.
-exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../python-slim-trixie/tests" && pwd)/smoke_size.sh"
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../pre-builder/python-slim-trixie/tests" && pwd)/smoke_size.sh"

@@ -47,13 +47,13 @@ IMAGES_DIR = Path(_images_override).resolve() if _images_override else (REPO_ROO
 # Mirrors scripts/discover-images.sh _PRE_BUILDERS / _FORGE_BUILDERS.
 # Keep in sync via the FG-064 acceptance test §1.
 _PRE_BUILDERS = {
-    "debian-slim-sid",
-    "debian-slim-trixie",
-    "go-slim-trixie",
-    "node-slim-trixie",
-    "python-slim-trixie",
-    "ubuntu-slim-noble",
-    "zig-slim-trixie",
+    "pre-builder/debian-slim-sid",
+    "pre-builder/debian-slim-trixie",
+    "pre-builder/go-slim-trixie",
+    "pre-builder/node-slim-trixie",
+    "pre-builder/python-slim-trixie",
+    "pre-builder/ubuntu-slim-noble",
+    "pre-builder/zig-slim-trixie",
 }
 # FG-066: forge mirror tier. Members under `images/mirror/<name>/` are
 # zero-mod forge-signed passthroughs of external upstream tool images.
@@ -122,7 +122,7 @@ _UPSTREAM_FROM_RUNTIME_EXEMPTIONS = {
 # whose upstream isn't on Docker Hub reuses this exemption; new entries
 # must be named here explicitly (no wildcard — keep it audit-grep-able).
 _INTRA_LAYER_EXEMPTIONS: set[tuple[str, str]] = {
-    ("zig-slim-trixie", "debian-slim-trixie"),
+    ("pre-builder/zig-slim-trixie", "pre-builder/debian-slim-trixie"),
     # FG-069: base/python-trixie overlays base/scratch-trixie. Both are
     # L3 "scratch-assembled runtime foundations", and the python overlay
     # legitimately COPYs the scratch-trixie overlay as its substrate.
@@ -547,9 +547,13 @@ def _check_language_family_invariant(local_images: set[str]) -> list[str]:
     """FG-065 arch.language-family-image-pair invariant.
 
     Every `forge-builder-<lang>-trixie/` image must have a sibling
-    `<lang>-slim-trixie/` pre-builder. Enforces that new language
-    families land as paired images (builder + pre-builder; builder
-    dogfoods pre-builder).
+    `pre-builder/<lang>-slim-trixie/` pre-builder. Enforces that new
+    language families land as paired images (builder + pre-builder;
+    builder dogfoods pre-builder).
+
+    FG-070: sibling canonical path is `pre-builder/<lang>-slim-trixie`
+    (nested under the pre-builder/ tier). Pre-move: sibling was flat
+    `<lang>-slim-trixie`.
     """
     errors: list[str] = []
     for img in sorted(local_images):
@@ -557,13 +561,13 @@ def _check_language_family_invariant(local_images: set[str]) -> list[str]:
         if not m:
             continue
         lang = m.group(1)
-        sibling = f"{lang}-slim-trixie"
+        sibling = f"pre-builder/{lang}-slim-trixie"
         if sibling not in local_images:
             errors.append(
                 f"images/{img}/: missing sibling pre-builder images/{sibling}/ "
                 f"(FG-065 arch.language-family-image-pair invariant — "
-                f"every forge-builder-<lang>-trixie must have a <lang>-slim-"
-                f"trixie pre-builder that it dogfoods)"
+                f"every forge-builder-<lang>-trixie must have a pre-builder/"
+                f"<lang>-slim-trixie pre-builder that it dogfoods)"
             )
     return errors
 

@@ -49,7 +49,10 @@ _EXPECTED=6
 # Build a single alternation for grep (|-separated).
 _ANCHOR_RE="$(IFS='|'; echo "${_UPSTREAM_ANCHORS[*]}")"
 
-hits=$(grep -lE "^FROM (${_ANCHOR_RE})" images/*/Dockerfile 2>/dev/null | wc -l)
+# FG-066 (mirror/) + FG-069 (base/) + FG-070 (pre-builder/) introduced
+# nested image dirs — grep must walk both flat `images/<name>/Dockerfile`
+# AND nested `images/<tier>/<name>/Dockerfile`.
+hits=$(grep -lE "^FROM (${_ANCHOR_RE})" images/*/Dockerfile images/*/*/Dockerfile 2>/dev/null | wc -l)
 
 if [[ "${hits}" -ne "${_EXPECTED}" ]]; then
   printf '✗ verify-no-upstream-drift: expected %d Dockerfiles FROMing ' "${_EXPECTED}" >&2

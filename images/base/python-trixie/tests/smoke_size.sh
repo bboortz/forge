@@ -16,4 +16,4 @@ export REGISTRY="${REGISTRY:-forge-local}"
 # images/base/python-trixie/tests/. The target (python-slim-trixie)
 # remained at images/python-slim-trixie/ (L1 pre-builder, not moved).
 # Walk up 3 levels now instead of 2.
-exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../python-slim-trixie/tests" && pwd)/smoke_size.sh"
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../pre-builder/python-slim-trixie/tests" && pwd)/smoke_size.sh"

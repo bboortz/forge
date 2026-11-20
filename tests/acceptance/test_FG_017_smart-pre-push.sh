@@ -131,7 +131,7 @@ commit_touch ">7 images: synth" \
   "images/beaconry-scout/image.yaml" \
   "images/beaconry-hub/image.yaml" \
   "images/beaconry-telegram-mock/image.yaml" \
-  "images/python-slim-trixie/image.yaml" \
+  "images/pre-builder/python-slim-trixie/image.yaml" \
   "images/nginx-scratch-trixie/image.yaml"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
 # The invariant that matters: >7 triggers the image-count bailout. Any

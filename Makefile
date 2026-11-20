@@ -8,7 +8,7 @@
 # ever pass IMAGE_DIR. test-images delegates to scripts/test-images.sh which
 # does its own yaml resolution.
 
-IMAGE_DIR ?= python-slim-trixie
+IMAGE_DIR ?= pre-builder/python-slim-trixie
 REGISTRY  ?= forge-local
 OUT_DIR   ?= build
 
@@ -21,7 +21,9 @@ _REPO_EXPLICIT := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^repo:/ {gsub(/[
 _REPO := $(or $(_REPO_EXPLICIT),$(IMAGE_DIR))
 _TAG  := $(if $(wildcard $(_IMAGE_YAML)),$(shell awk '/^tag:/ {gsub(/["\x27]/,"",$$2); print $$2; exit}' $(_IMAGE_YAML)))
 IMAGE := $(REGISTRY)/$(_REPO):$(_TAG)
-IMAGE_SLUG := $(_REPO)-$(_TAG)
+# FG-070: _REPO may contain `/` for nested dirs (pre-builder/, base/, mirror/).
+# IMAGE_SLUG is used as a flat filename component so slashes must be replaced.
+IMAGE_SLUG := $(subst /,_,$(_REPO))-$(_TAG)
 
 SBOM  := $(OUT_DIR)/$(IMAGE_SLUG).sbom.json
 GRYPE := $(OUT_DIR)/$(IMAGE_SLUG).grype.json

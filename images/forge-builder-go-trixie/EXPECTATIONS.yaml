@@ -6,7 +6,7 @@ spec_version: 1
 image: forge-builder-go-trixie
 
 dependencies:
-  - image: go-slim-trixie
+  - image: pre-builder/go-slim-trixie
     version: ">=0.1"
     expectations:
       - promise: runtime.go-toolchain

@@ -22,13 +22,13 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 say "1. source files encode the FG-032 contract"
 
 # Both image.yaml tags are 3.14
-for d in python-slim-trixie base/python-trixie; do
+for d in pre-builder/python-slim-trixie base/python-trixie; do
   tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' "images/${d}/image.yaml")
   [[ "${tag}" == "3.14" ]] || fail "images/${d}/image.yaml: tag=${tag} (want 3.14)"
 done
 
 # python-slim-trixie Dockerfile FROMs python:3.14-slim-trixie
-grep -qE '^FROM python:3\.14-slim-trixie' images/python-slim-trixie/Dockerfile \
+grep -qE '^FROM python:3\.14-slim-trixie' images/pre-builder/python-slim-trixie/Dockerfile \
   || fail "python-slim-trixie/Dockerfile: expected FROM python:3.14-slim-trixie"
 
 # python-scratch-trixie Dockerfile parameterizes via ARG PY_VERSION=3.14
@@ -46,8 +46,8 @@ fi
 # PYTHON_SLIM_REF (dogfood of python-slim-trixie, which itself FROMs
 # python:3.14-slim-trixie upstream). The 3.14 version pin is enforced at
 # python-slim-trixie's FROM line (checked above on line 30-32).
-grep -qE '^ARG PYTHON_SLIM_REF=ghcr\.io/bboortz/python-slim-trixie:' images/forge-builder-python-trixie/Dockerfile \
-  || fail "forge-builder-python-trixie/Dockerfile: expected ARG PYTHON_SLIM_REF=ghcr.io/bboortz/python-slim-trixie:… (post-FG-042 dogfood)"
+grep -qE '^ARG PYTHON_SLIM_REF=ghcr\.io/bboortz/pre-builder/python-slim-trixie:' images/forge-builder-python-trixie/Dockerfile \
+  || fail "forge-builder-python-trixie/Dockerfile: expected ARG PYTHON_SLIM_REF=ghcr.io/bboortz/pre-builder/python-slim-trixie:… (post-FG-042 dogfood)"
 
 pass "all static invariants in place"
 
@@ -55,10 +55,10 @@ pass "all static invariants in place"
 # Section 2 — build
 # -----------------------------------------------------------------------------
 say "2. build forge-builder-python-trixie + python-slim-trixie + base/python-trixie"
-for d in forge-builder-python-trixie python-slim-trixie base/python-trixie; do
+for d in forge-builder-python-trixie pre-builder/python-slim-trixie base/python-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
 done
-docker image inspect forge-local/python-slim-trixie:3.14 >/dev/null
+docker image inspect forge-local/pre-builder/python-slim-trixie:3.14 >/dev/null
 docker image inspect forge-local/base/python-trixie:3.14 >/dev/null
 pass "both python images built at :3.14"
 
@@ -68,7 +68,7 @@ pass "both python images built at :3.14"
 say "3. runtime interpreter reports Python 3.14"
 
 slim_ver=$(docker run --rm --entrypoint=/usr/local/bin/python3 \
-             forge-local/python-slim-trixie:3.14 --version 2>&1)
+             forge-local/pre-builder/python-slim-trixie:3.14 --version 2>&1)
 case "${slim_ver}" in
   "Python 3.14."*) pass "python-slim-trixie: ${slim_ver}" ;;
   *) fail "python-slim-trixie: unexpected --version output: ${slim_ver}" ;;
@@ -101,7 +101,7 @@ pass "FG-031 (hc-in-service-images) passes"
 # -----------------------------------------------------------------------------
 say "5. scan-baseline.json carries the 3.14 closure (no drift in-PR)"
 # scan-regression.py returns 0 when the baseline matches the current scan.
-for d in python-slim-trixie base/python-trixie; do
+for d in pre-builder/python-slim-trixie base/python-trixie; do
   python3 scripts/scan-regression.py "${d}" >/dev/null 2>&1 \
     || fail "scan-regression against images/${d}/scan-baseline.json fails"
 done

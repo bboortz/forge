@@ -19,7 +19,7 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-003]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-SLIM_DIR="images/python-slim-trixie"
+SLIM_DIR="images/pre-builder/python-slim-trixie"
 SCRATCH_DIR="images/base/python-trixie"
 OLD_DIR="images/python"
 
@@ -40,9 +40,9 @@ pass "slim-trixie + scratch dirs present with Dockerfile + image.yaml"
 say "2. scripts/build-image.sh builds both variants from image.yaml"
 [[ -x scripts/build-image.sh ]] || { echo "  ✗ scripts/build-image.sh missing or not executable" >&2; exit 1; }
 
-bash scripts/build-image.sh python-slim-trixie >/dev/null
-docker image inspect forge-local/python-slim-trixie:3.14 >/dev/null
-pass "forge-local/python-slim-trixie:3.14 built"
+bash scripts/build-image.sh pre-builder/python-slim-trixie >/dev/null
+docker image inspect forge-local/pre-builder/python-slim-trixie:3.14 >/dev/null
+pass "forge-local/pre-builder/python-slim-trixie:3.14 built"
 
 bash scripts/build-image.sh base/python-trixie >/dev/null
 docker image inspect forge-local/base/python-trixie:3.14 >/dev/null
@@ -58,7 +58,7 @@ say "3. scripts/test-images.sh discovers and runs the python variants it just bu
 # The aggregate "all variants" exercise happens via `make check`'s dedicated
 # `test-images` phase which runs AFTER every acceptance test has had a chance
 # to build its image.
-bash scripts/test-images.sh python-slim-trixie
+bash scripts/test-images.sh pre-builder/python-slim-trixie
 bash scripts/test-images.sh base/python-trixie
 pass "python-slim-trixie + base/python-trixie smoke suites passed"
 
