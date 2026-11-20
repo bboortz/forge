@@ -26,7 +26,7 @@
 # routes gone (homelab's grafana-verify.py already updated in FG-048
 # follow-up). Full audit in docs/plan/FG-053-prometheus-v3-cve-fix-plan.md.
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0

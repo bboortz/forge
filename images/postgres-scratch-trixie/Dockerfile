@@ -10,7 +10,7 @@
 # marginal gain). No shell → initdb cannot run in-scratch; use a shelled
 # sidecar for one-time cluster init (see FG-007 smoke_server_accepts.sh).
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image
 # (apt-upgraded + CA certs + syft pre-installed).
 ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest

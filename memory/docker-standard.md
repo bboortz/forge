@@ -20,6 +20,8 @@ Full definitions, 🔑 semantic tests, overlap-resolution matrix, decisions log:
 
 **L0.1 inventory** (`scripts/_upstream_sources.py`, FG-068): every upstream source repo / tarball URL referenced in Dockerfiles or `image.yaml source:` blocks is registered in `_UPSTREAM_SOURCES` with its declared consumers. `scripts/verify-source-inventory.py` enforces two-way sync (wired into `make test-fast`). The dep-graph emitter renders an L0.1 subgraph with dashed edges to each source's consumers. See `docs/plan/tier-layering-model.md` §10 for the current 10-entry inventory.
 
+**Rule 12** (`scripts/verify-dockerfile-conformance.py`, FG-069): every `images/base/<name>/` L3 image must (a) have `FROM scratch` as its final-stage FROM AND (b) have at least one forge-internal consumer (another image's `image.yaml depends_on:` lists it). Zero-consumer base images belong at the flat L4 runtime position instead. Current members: `base/scratch-trixie` (9 consumers), `base/python-trixie` (3 consumers — beaconry-*). Renamed from `scratch-base-trixie` / `python-scratch-trixie` per tier-plan §O2+O3 (drop redundant tokens encoded by the tier prefix).
+
 ## Chain depth ≤ 5 (FG-042 invariant)
 
 Deepest trust chains post-FG-072 (Python, Go, Zig all at the cap):

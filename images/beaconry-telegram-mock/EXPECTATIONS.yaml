@@ -6,7 +6,7 @@ spec_version: 1
 image: beaconry-telegram-mock
 
 dependencies:
-  - image: python-scratch-trixie
+  - image: base/python-trixie
     version: ">=0.2"
     expectations:
       - promise: runtime.python3-interp

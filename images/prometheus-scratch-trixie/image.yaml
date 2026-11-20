@@ -7,4 +7,4 @@ tag: "latest"
 platforms:
   - linux/amd64
 depends_on:
-  - scratch-base-trixie
+  - base/scratch-trixie

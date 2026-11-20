@@ -11,7 +11,7 @@
 # NEED it — the server starts directly with no side effects. Consumer
 # healthcheck uses `redis-cli ping` which also works without a shell.)
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image.
 ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 

@@ -4,7 +4,7 @@ spec_version: 1
 image: prometheus-scratch-trixie
 
 dependencies:
-  - image: scratch-base-trixie
+  - image: base/scratch-trixie
     version: ">=0.2"
     expectations:
       - promise: files.dynamic-linker

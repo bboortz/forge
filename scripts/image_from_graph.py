@@ -61,7 +61,7 @@ _FORGE_BUILDERS = [
     "forge-builder-python-trixie",
     "forge-builder-zig-trixie",
 ]
-_BASELINE = ["scratch-base-trixie"]
+_BASELINE = ["base/scratch-trixie", "base/python-trixie"]
 _UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet
 # FG-066: forge mirror tier — zero-mod passthroughs under images/mirror/<name>/.
 _FORGE_MIRRORS = ["mirror/syft"]

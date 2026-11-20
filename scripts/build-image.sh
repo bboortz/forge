@@ -7,7 +7,7 @@
 #   scripts/build-image.sh <image-dir>
 #     e.g. scripts/build-image.sh python-slim-trixie
 #
-# Scratch variants that derive from scratch-base-trixie (FG-005) pass
+# Scratch variants that derive from base/scratch-trixie (FG-005 + FG-069) pass
 # SCRATCH_BASE_REF as a build-arg pointing at the local baseline image,
 # so the Dockerfile's `FROM ${SCRATCH_BASE_REF}` resolves to whatever
 # REGISTRY produced (forge-local for local builds; ghcr.io/bboortz in CI).
@@ -178,15 +178,15 @@ BUILD_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Supply SCRATCH_BASE_REF so scratch derivatives build against our locally-
 # produced baseline instead of attempting to pull from GHCR. Baseline tag
-# is resolved dynamically from images/scratch-base-trixie/image.yaml so
+# is resolved dynamically from images/base/scratch-trixie/image.yaml so
 # future bumps (0.1 → 0.2 → …) don't require script edits.
-_BASELINE_YAML="${ROOT}/images/scratch-base-trixie/image.yaml"
+_BASELINE_YAML="${ROOT}/images/base/scratch-trixie/image.yaml"
 if [[ -f "${_BASELINE_YAML}" ]]; then
   _BASELINE_TAG=$(image_yaml_get "${_BASELINE_YAML}" tag)
 else
   _BASELINE_TAG="latest"
 fi
-SCRATCH_BASE_REF="${REGISTRY}/scratch-base-trixie:${_BASELINE_TAG}"
+SCRATCH_BASE_REF="${REGISTRY}/base/scratch-trixie:${_BASELINE_TAG}"
 
 # FG-025: resolve FORGE_BUILDER_REF the same way — prefer the local tag if
 # present (we just built it above), else fall back to GHCR.
@@ -329,7 +329,7 @@ PULL_FLAG="--pull"
 if docker image inspect "${SCRATCH_BASE_REF}" >/dev/null 2>&1; then
   PULL_FLAG=""
 else
-  SCRATCH_BASE_REF="ghcr.io/bboortz/scratch-base-trixie:latest"
+  SCRATCH_BASE_REF="ghcr.io/bboortz/base/scratch-trixie:latest"
 fi
 # FG-025: same guard for FORGE_BUILDER_REF. When it's forge-local/... we must
 # drop --pull regardless of SCRATCH_BASE_REF.
