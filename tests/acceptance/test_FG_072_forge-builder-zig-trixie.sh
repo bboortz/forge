@@ -128,7 +128,7 @@ python3 scripts/image_from_graph.py --emit=mermaid \
   | grep -q 'pre-builder_debian_slim_trixie --> pre-builder_zig_slim_trixie' \
   || fail "dep graph missing pre-builder/debian-slim-trixie → pre-builder/zig-slim-trixie edge"
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_zig_slim_trixie --> builder/zig-trixie' \
+  | grep -q 'pre-builder_zig_slim_trixie --> builder_zig_trixie' \
   || fail "dep graph missing pre-builder/zig-slim-trixie → builder/zig-trixie edge"
 # Belt-and-suspenders: no direct upstream edge to the Zig pre-builder.
 if python3 scripts/image_from_graph.py --emit=mermaid | grep -qE 'UP_[A-Z]+ --> pre-builder_zig_slim_trixie'; then

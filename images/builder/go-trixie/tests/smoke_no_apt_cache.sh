@@ -2,7 +2,7 @@
 # Smoke: /var/lib/apt/lists/ carries no Packages/Release files.
 # Downstream builders that `apt-get install` MUST re-run `apt-get update`.
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-go-trixie}"
+: "${IMAGE_NAME:=builder/go-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

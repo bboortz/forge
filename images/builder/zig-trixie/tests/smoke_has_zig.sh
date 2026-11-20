@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Smoke: forge-builder-zig-trixie carries a working Zig toolchain (0.*).
+# Smoke: builder/zig-trixie carries a working Zig toolchain (0.*).
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-zig-trixie}"
+: "${IMAGE_NAME:=builder/zig-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Smoke: forge-builder-go-trixie carries a working Go toolchain (>= 1.27).
+# Smoke: builder/go-trixie carries a working Go toolchain (>= 1.27).
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-go-trixie}"
+: "${IMAGE_NAME:=builder/go-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke: CA bundle present for TLS.
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-go-trixie}"
+: "${IMAGE_NAME:=builder/go-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

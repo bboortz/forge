@@ -25,11 +25,11 @@ say "1. images/builder/python-trixie/ exists; old dir removed"
   || fail "images/forge-builder-trixie/ still present — expected rename"
 pass "dir renamed"
 
-say "2. PROMISES.yaml carries the new image: name"
-grep -qE '^image:[[:space:]]*builder/python-trixie$' \
+say "2. PROMISES.yaml carries the new image: name (leaf, per FG-071 base/mirror convention)"
+grep -qE '^image:[[:space:]]*python-trixie$' \
   images/builder/python-trixie/PROMISES.yaml \
-  || fail "PROMISES.yaml: image: field must be builder/python-trixie"
-pass "PROMISES.yaml image field = builder/python-trixie"
+  || fail "PROMISES.yaml: image: field must be python-trixie (leaf, matching base/+mirror/ convention — tier encoded by path)"
+pass "PROMISES.yaml image field = python-trixie"
 
 say "3. No LIVE code path still references the old name"
 # Allowed-to-contain-old-name locations (historical / self-ref):

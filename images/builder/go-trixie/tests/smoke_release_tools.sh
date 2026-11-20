@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke: git + curl + jq present (upstream-release resolution tools).
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-go-trixie}"
+: "${IMAGE_NAME:=builder/go-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

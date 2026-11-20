@@ -3,7 +3,7 @@
 # Also smokes git/curl/jq (release-resolve tools) + make/g++/python3
 # (native-dep toolchain) + apt-upgraded state (no cache files).
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-node-trixie}"
+: "${IMAGE_NAME:=builder/node-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

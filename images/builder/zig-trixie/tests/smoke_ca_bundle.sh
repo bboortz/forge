@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-: "${IMAGE_NAME:=forge-builder-zig-trixie}"
+: "${IMAGE_NAME:=builder/zig-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 
