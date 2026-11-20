@@ -69,9 +69,17 @@ import sys, pathlib, yaml
 root = pathlib.Path('.').resolve()
 promises = {}
 # FG-066: walk flat + 1-nested so images/mirror/<name>/PROMISES.yaml is included.
+# FG-069: index PROMISES by BOTH the image: field (usually the leaf name per
+# mirror/syft convention) AND the canonical directory path (base/<leaf> etc.)
+# so EXPECTATIONS dependencies pointing at the nested canonical path resolve.
 for p in list((root / 'images').glob('*/PROMISES.yaml')) + list((root / 'images').glob('*/*/PROMISES.yaml')):
     data = yaml.safe_load(p.read_text())
-    promises[data['image']] = {pr['id'] for pr in data.get('promises', [])}
+    ids = {pr['id'] for pr in data.get('promises', [])}
+    # Image name from PROMISES (leaf per convention).
+    promises[data['image']] = ids
+    # Canonical dir path relative to images/.
+    canonical = p.parent.relative_to(root / 'images').as_posix()
+    promises[canonical] = ids
 errs = []
 for p in list((root / 'images').glob('*/EXPECTATIONS.yaml')) + list((root / 'images').glob('*/*/EXPECTATIONS.yaml')):
     data = yaml.safe_load(p.read_text())
@@ -85,7 +93,7 @@ if errs:
     for e in errs: print(e, file=sys.stderr)
     sys.exit(1)
 PY
-pass "all 23 expectations resolve to declared promises"
+pass "all expectations resolve to declared promises"
 
 # -----------------------------------------------------------------------------
 # Section 3 — nonexistent promise reference fails verify-contracts
