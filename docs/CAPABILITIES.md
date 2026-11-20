@@ -699,11 +699,25 @@ The L3 base tier formalized by FG-069. Members live at `images/base/<name>/`, pu
 
 ### arch.base-tier-images
 
-Architectural invariant: every L3 image lives under `images/base/` (encoded in the directory prefix), has `image:` field in PROMISES.yaml equal to the leaf name only (parallel with `mirror/syft`'s `image: syft`), and is reachable at the canonical `base/<leaf>` path via the tooling (discover-images.sh, verify-contracts.py, image_from_graph.py). The rename from `scratch-base-trixie` → `base/scratch-trixie` and `python-scratch-trixie` → `base/python-trixie` is locked per tier-plan §O2+O3. Legacy GHCR repos at the flat paths stop being updated after FG-069 lands + the next release promotion publishes to the new paths; external consumers (Beaconry) pair their FROM updates per §O5.
+Architectural invariant: every L3 image lives under `images/base/` (encoded in the directory prefix), has `image:` field in PROMISES.yaml equal to the leaf name only (parallel with `mirror/syft`'s `image: syft`), and is reachable at the canonical `base/<leaf>` path via the tooling (discover-images.sh, verify-contracts.py, image_from_graph.py). **FG-075 extension**: shape-agnostic — base/* can be scratch OR slim. Rule 12 reworked to drop the "FROM scratch" + "≥1 forge-internal consumer" sub-rules; base/* members only need image.yaml (with explicit `repo: base/<name>`) + PROMISES.yaml + CI publishing. **FG-075 rename**: `base/python-trixie` → `base/python-scratch-trixie` for naming symmetry with the new slim sibling `base/python-slim-trixie`.
 
 - **Delivered by**: FG-069
-- **Extended by**: *(reserved for future base-tier additions — e.g., base/node-trixie if a from-Node-source scratch runtime ever justifies it)*
-- **Covered by**: `tests/acceptance/test_FG_069_base-tier-migration.sh`, `docs/plan/tier-layering-model.md` §3 L3
+- **Extended by**: FG-075 (shape-agnostic — slim + scratch both allowed; rename for symmetry)
+- **Covered by**: `tests/acceptance/test_FG_069_base-tier-migration.sh`, `tests/acceptance/test_FG_075_base-tier-public-api.sh`, `docs/LAYERING.md` §3 L3 + §11
+
+### arch.base-tier-public-api
+
+**FG-075**: `base/*` is Forge's consumer-facing public API; `pre-builder/*`, `builder/*` are forge-internal implementation. Documented in `docs/LAYERING.md` §11 "Public API vs internal implementation". External consumers (homelab, Beaconry, future adopters) should FROM `base/*` or flat L4 images; they may use `mirror/*` via `COPY --from=` for tool passthroughs. Forge reserves the right to refactor internal GHCR paths (as FG-069/FG-070/FG-071 demonstrated) without notice; external consumers on `base/*` + flat L4 are insulated from those moves. No CI gate blocks external consumers from FROMing internal tiers (that's a consumer-side policy call) but the boundary is prominently documented.
+
+- **Delivered by**: FG-075
+- **Covered by**: `tests/acceptance/test_FG_075_base-tier-public-api.sh`, `docs/LAYERING.md` §11
+
+### image.python-slim-foundation
+
+**FG-075**: `base/python-slim-trixie` published as a Forge-signed slim Python foundation. Contents: `pre-builder/python-slim-trixie` + `/hc` (static Zig healthcheck binary from `ghcr.io/bboortz/hc`) + `USER 65532` nonroot baseline + `ENTRYPOINT ["python3"]`. Dual duty: final runtime for slim Python apps AND builder stage for consumers who want a scratch runtime via `base/python-scratch-trixie` overlay. External consumers (homelab's 7 bots, Beaconry's upstream) flip their `FROM ghcr.io/bboortz/python-slim-trixie:latest` (pre-FG-070 flat path, frozen) to `FROM ghcr.io/bboortz/base/python-slim-trixie:latest` (new, daily-cron'd) in a paired FG-074 follow-up.
+
+- **Delivered by**: FG-075
+- **Covered by**: `tests/acceptance/test_FG_075_base-tier-public-api.sh`, `images/base/python-slim-trixie/PROMISES.yaml`
 
 ### build.pre-builder-migrated
 

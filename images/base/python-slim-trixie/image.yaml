@@ -1,0 +1,13 @@
+# FG-075: slim Python foundation. Public API surface for external consumers
+# who want a slim Python runtime (homelab bots + any adopter who needs apt
+# at build time or a shell at runtime).
+#
+# Shape: FROM pre-builder/python-slim-trixie + /hc + USER 65532 +
+# ENTRYPOINT python3. Serves dual duty — final runtime AND builder stage
+# for consumer scratch overlays.
+repo: base/python-slim-trixie
+tag: "0.1"
+platforms:
+  - linux/amd64
+depends_on:
+  - pre-builder/python-slim-trixie

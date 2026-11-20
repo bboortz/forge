@@ -67,7 +67,7 @@ _FORGE_BUILDERS = {
     "builder/python-trixie",
     "builder/zig-trixie",
 }
-_BASELINE = {"base/scratch-trixie", "base/python-trixie"}
+_BASELINE = {"base/scratch-trixie", "base/python-scratch-trixie", "base/python-slim-trixie"}
 # Upstream helpers (COPY-from image layer forge-publishes but aren't under images/).
 # Treated as L0 for layering — not a runtime, not a builder.
 _UPSTREAM_HELPERS = {"hc"}
@@ -124,11 +124,12 @@ _UPSTREAM_FROM_RUNTIME_EXEMPTIONS = {
 # must be named here explicitly (no wildcard — keep it audit-grep-able).
 _INTRA_LAYER_EXEMPTIONS: set[tuple[str, str]] = {
     ("pre-builder/zig-slim-trixie", "pre-builder/debian-slim-trixie"),
-    # FG-069: base/python-trixie overlays base/scratch-trixie. Both are
+    # FG-069: base/python-scratch-trixie overlays base/scratch-trixie. Both are
     # L3 "scratch-assembled runtime foundations", and the python overlay
     # legitimately COPYs the scratch-trixie overlay as its substrate.
     # Narrow within-tier edge, same pattern as zig → debian-slim.
-    ("base/python-trixie", "base/scratch-trixie"),
+    # FG-075: renamed from base/python-trixie.
+    ("base/python-scratch-trixie", "base/scratch-trixie"),
 }
 
 # Upstream helpers (not language bases; tools pulled as a stage).
@@ -438,76 +439,57 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
 
 
 def _check_rule_12_base_tier_invariants(local_images: set[str]) -> list[str]:
-    """FG-069 Rule 12: every `base/<name>` L3 image must satisfy both:
-      (a) final-stage FROM is `scratch` (bases are scratch-assembled
-          runtime foundations — L3 semantic test).
-      (b) ≥ 1 forge-internal consumer exists (another image's image.yaml
-          lists it in depends_on).
+    """Rule 12 (reworked by FG-075): every `base/<name>` L3 image must be a
+    well-formed Forge-signed public-API runtime foundation.
 
-    Decision context: docs/plan/tier-layering-model.md §3 L3 + §4 L3↔L4
-    semantic test + §O2+O3 rename decisions.
+    FG-075 removed the earlier two sub-rules (final-stage FROM scratch +
+    ≥1 forge-internal consumer) because the tier semantic widened:
+      - base/* now covers BOTH scratch runtime foundations (e.g. base/
+        python-scratch-trixie) AND slim runtime foundations (e.g. base/
+        python-slim-trixie) — shape-agnostic.
+      - base/* is the consumer-facing public API; external consumers
+        (homelab, Beaconry) FROM it directly without a forge-internal
+        consumer existing.
+
+    What remains to check mechanically:
+      (a) image.yaml exists AND declares `repo: base/<name>` explicitly
+          (consistent with mirror/, pre-builder/, builder/, base/ nested
+          repo convention; required for GHCR path resolution).
+      (b) PROMISES.yaml exists (every forge image needs an authoritative
+          contract — Rule 2 covers this globally, but we restate here so
+          the base/ tier's contract requirement is visible).
+
+    Decision context: docs/stories/FG-075-base-tier-public-api.md,
+    docs/plan/FG-075-base-tier-public-api-plan.md § "Reworked Rule 12".
     """
     errors: list[str] = []
     base_images = {img for img in local_images if img.startswith("base/")}
     if not base_images:
         return errors
 
-    # Minimal depends_on parser (avoid PyYAML dependency).
-    def _depends_on(yaml_path):
-        try:
-            txt = yaml_path.read_text()
-        except OSError:
-            return []
-        deps = []
-        in_deps = False
-        for raw in txt.splitlines():
-            line = raw.rstrip()
-            if not line or line.lstrip().startswith("#"):
-                continue
-            if line.startswith("depends_on:"):
-                in_deps = True
-                continue
-            if in_deps:
-                if not line.startswith((" ", "\t")):
-                    in_deps = False
-                    continue
-                m = re.match(r"\s+-\s+(.+)", line)
-                if m:
-                    deps.append(m.group(1).strip())
-        return deps
-
-    consumers: dict[str, set[str]] = {b: set() for b in base_images}
-    for img in local_images:
-        yml = IMAGES_DIR / img / "image.yaml"
-        if not yml.is_file():
-            continue
-        for d in _depends_on(yml):
-            if d in consumers:
-                consumers[d].add(img)
-
     for base in sorted(base_images):
-        # (a) final-stage FROM scratch
-        df = IMAGES_DIR / base / "Dockerfile"
-        if df.is_file():
-            content = df.read_text()
-            froms = []
-            for raw in content.splitlines():
-                line = raw.split("#", 1)[0].rstrip()
-                m = _FROM_RE.match(line)
-                if m:
-                    froms.append(m.group(1))
-            last_from = froms[-1] if froms else None
-            if last_from and last_from != "scratch":
-                errors.append(
-                    f"{base}: Rule 12 — final-stage FROM is '{last_from}', expected 'scratch'. "
-                    f"base/ images are scratch-assembled runtime foundations (L3 semantic test)."
-                )
-        # (b) ≥ 1 forge-internal consumer
-        if not consumers[base]:
+        # (a) image.yaml declares explicit `repo: base/<name>`
+        yml = IMAGES_DIR / base / "image.yaml"
+        if not yml.is_file():
+            errors.append(f"{base}: Rule 12 — missing image.yaml")
+            continue
+        try:
+            txt = yml.read_text()
+        except OSError:
+            errors.append(f"{base}: Rule 12 — unreadable image.yaml")
+            continue
+        if not re.search(rf"^repo:\s+{re.escape(base)}\s*$", txt, re.MULTILINE):
             errors.append(
-                f"{base}: Rule 12 — no forge-internal consumer found. "
-                f"base/ images must have ≥ 1 image.yaml with `depends_on: [{base}]`. "
-                f"If zero consumers, move the image to the flat L4 runtime position."
+                f"{base}: Rule 12 — image.yaml must declare `repo: {base}` explicitly "
+                f"(consistent with mirror/, pre-builder/, builder/ nested-repo convention)."
+            )
+
+        # (b) PROMISES.yaml exists (every base/* image publishes a contract)
+        promises = IMAGES_DIR / base / "PROMISES.yaml"
+        if not promises.is_file():
+            errors.append(
+                f"{base}: Rule 12 — missing PROMISES.yaml. Every base/* public-API "
+                f"image publishes an authoritative contract (FG-010)."
             )
 
     return errors

@@ -1,0 +1,51 @@
+# Authoritative contract for base/python-slim-trixie.
+#
+# FG-075 public-API slim Python foundation. Shell + apt + pip retained from
+# pre-builder/python-slim-trixie; adds /hc + nonroot uid + python3 entrypoint.
+
+spec_version: 1
+image: python-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.python3
+    description: /usr/local/bin/python3 is python 3.14; stdlib imports (ssl, hashlib, json, urllib) succeed at container boot.
+    caps: [image.python-slim-foundation]
+    tests:
+      - images/base/python-slim-trixie/tests/smoke_imports.sh
+
+  - id: runtime.entrypoint-python3
+    description: Image ENTRYPOINT = ["python3"]. `docker run <image> -c "print('ok')"` executes python directly without an explicit entrypoint override.
+    caps: [image.python-slim-foundation]
+    tests:
+      - images/base/python-slim-trixie/tests/smoke_entrypoint.sh
+
+  - id: runtime.user-nonroot
+    description: Container runs as uid 65532 by default. Consumers can override with `USER 0` in a derived Dockerfile.
+    caps: [image.python-slim-foundation]
+    tests:
+      - images/base/python-slim-trixie/tests/smoke_user_nonroot.sh
+
+  - id: files.hc-embedded
+    description: /hc is present + executable (static Zig healthcheck binary from bboortz/healthy via mirror-less direct consumption at ghcr.io/bboortz/hc). Consumers wire a docker HEALTHCHECK against their own listener.
+    caps: [image.python-slim-foundation]
+    tests:
+      - images/base/python-slim-trixie/tests/smoke_hc_embedded.sh
+
+  - id: files.tls-stack
+    description: /etc/ssl/certs/ca-certificates.crt present (inherited from pre-builder/python-slim-trixie). Python's default SSL context resolves normally.
+    caps: [image.python-slim-foundation]
+    tests:
+      - images/base/python-slim-trixie/tests/smoke_ca_bundle.sh
+
+  - id: runtime.pip-install
+    description: pip is present and operational. `pip install --target=/install pkg` works for use as a builder stage (consumers copy /install into a scratch overlay) OR for ad-hoc runtime extension.
+    caps: [image.python-slim-foundation]
+    tests:
+      - images/base/python-slim-trixie/tests/smoke_pip_install.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ pre-builder/python-slim-trixie × 1.1 (10% headroom for /hc + labels).
+    caps: [image.python-slim-foundation]
+    tests:
+      - images/base/python-slim-trixie/tests/smoke_size.sh

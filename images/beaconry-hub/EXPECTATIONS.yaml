@@ -9,7 +9,7 @@ spec_version: 1
 image: beaconry-hub
 
 dependencies:
-  - image: base/python-trixie
+  - image: base/python-scratch-trixie
     version: ">=0.2"
     expectations:
       - promise: runtime.python3-interp
