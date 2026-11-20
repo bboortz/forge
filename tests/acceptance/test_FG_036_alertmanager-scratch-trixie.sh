@@ -36,13 +36,13 @@ for s in images/alertmanager-scratch-trixie/tests/smoke_*.sh; do
 done
 pass "all smoke tests green"
 
-say "4. image.yaml: tag=latest, depends_on=[scratch-base-trixie]"
+say "4. image.yaml: tag=latest, depends_on=[base/scratch-trixie]"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' \
         images/alertmanager-scratch-trixie/image.yaml)
 [[ "${tag}" == "latest" ]] || fail "image.yaml tag = '${tag}' (want latest)"
-grep -qE '^[[:space:]]*-[[:space:]]*scratch-base-trixie' \
+grep -qE '^[[:space:]]*-[[:space:]]*base/scratch-trixie' \
   images/alertmanager-scratch-trixie/image.yaml \
-  || fail "image.yaml: depends_on must list scratch-base-trixie"
+  || fail "image.yaml: depends_on must list base/scratch-trixie"
 pass "image.yaml correct"
 
 echo

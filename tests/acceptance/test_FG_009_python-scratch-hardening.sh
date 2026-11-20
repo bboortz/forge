@@ -13,13 +13,13 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-009]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-IMAGE="forge-local/python-scratch-trixie:3.14"
+IMAGE="forge-local/base/python-trixie:3.14"
 
 # -----------------------------------------------------------------------------
 # Section 1 — build python-scratch-trixie
 # -----------------------------------------------------------------------------
-say "1. python-scratch-trixie builds with hardening"
-bash scripts/build-image.sh python-scratch-trixie >/dev/null
+say "1. base/python-trixie builds with hardening"
+bash scripts/build-image.sh base/python-trixie >/dev/null
 docker image inspect "${IMAGE}" >/dev/null
 pass "${IMAGE} built"
 
@@ -27,13 +27,13 @@ pass "${IMAGE} built"
 # Section 2 — Beaconry claim 1: HTTPS works out of the box
 # -----------------------------------------------------------------------------
 say "2. HTTPS works out of the box (Beaconry claim 1)"
-bash images/python-scratch-trixie/tests/smoke_tls_https_real.sh
+bash images/base/python-trixie/tests/smoke_tls_https_real.sh
 
 # -----------------------------------------------------------------------------
 # Section 3 — Beaconry claim 2 + 3: nonroot runtime + USER baked
 # -----------------------------------------------------------------------------
 say "3. runs as nonroot (uid 65532) by default (Beaconry claims 2+3)"
-bash images/python-scratch-trixie/tests/smoke_user_nonroot.sh
+bash images/base/python-trixie/tests/smoke_user_nonroot.sh
 
 # -----------------------------------------------------------------------------
 # Section 4 — Beaconry claim 4: ENTRYPOINT=python3
@@ -46,7 +46,7 @@ if [[ "${got}" != '["/usr/local/bin/python3"]' ]]; then
 fi
 pass ".Config.Entrypoint = [\"/usr/local/bin/python3\"]"
 
-bash images/python-scratch-trixie/tests/smoke_entrypoint.sh
+bash images/base/python-trixie/tests/smoke_entrypoint.sh
 
 # -----------------------------------------------------------------------------
 # Section 5 — Beaconry claim 5: PYTHON* env baked
@@ -70,7 +70,7 @@ pass "all 4 required env vars present in image config"
 # Section 6 — every scratch derivative re-declares SSL_CERT_FILE
 # -----------------------------------------------------------------------------
 say "6. every scratch derivative Dockerfile re-declares SSL_CERT_FILE"
-for d in python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie; do
+for d in base/python-trixie nginx-scratch-trixie postgres-scratch-trixie; do
   if ! grep -qE 'SSL_CERT_FILE=/etc/ssl/certs/ca-certificates\.crt' \
          "images/${d}/Dockerfile"; then
     echo "  ✗ images/${d}/Dockerfile missing SSL_CERT_FILE env" >&2
@@ -97,13 +97,13 @@ if [[ "${PUBLISHED:-0}" == "1" ]]; then
   cosign verify \
     --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-    "ghcr.io/bboortz/python-scratch-trixie:3.14" >/dev/null
-  pass "cosign verify ghcr.io/bboortz/python-scratch-trixie:3.14"
+    "ghcr.io/bboortz/base/python-trixie:3.14" >/dev/null
+  pass "cosign verify ghcr.io/bboortz/base/python-trixie:3.14"
 
-  docker run --rm ghcr.io/bboortz/python-scratch-trixie:3.14 \
+  docker run --rm ghcr.io/bboortz/base/python-trixie:3.14 \
     -c "import urllib.request; print(urllib.request.urlopen('https://example.com').status)" \
     | grep -qx 200
-  pass "ghcr.io/bboortz/python-scratch-trixie:3.14 serves HTTPS 200 out of the box"
+  pass "ghcr.io/bboortz/base/python-trixie:3.14 serves HTTPS 200 out of the box"
 else
   say "8. published-digest checks skipped (set PUBLISHED=1 to run)"
 fi

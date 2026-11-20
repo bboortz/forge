@@ -20,7 +20,7 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 say "1. source files encode the FG-031 contract"
 
 # Both Dockerfiles reference an hc stage.
-for d in nginx-scratch-trixie python-scratch-trixie; do
+for d in nginx-scratch-trixie base/python-trixie; do
   # shellcheck disable=SC2016  # intentional literal ${HC_REF} match in grep pattern
   grep -qE '^ARG HC_REF='           "images/${d}/Dockerfile" \
     || fail "images/${d}/Dockerfile: missing ARG HC_REF"
@@ -34,8 +34,8 @@ done
 # nginx bakes HEALTHCHECK; python deliberately does NOT.
 grep -qE '^HEALTHCHECK ' images/nginx-scratch-trixie/Dockerfile \
   || fail "nginx-scratch-trixie/Dockerfile: expected HEALTHCHECK instruction"
-if grep -qE '^HEALTHCHECK ' images/python-scratch-trixie/Dockerfile; then
-  fail "python-scratch-trixie/Dockerfile: HEALTHCHECK must NOT be baked (consumer-decided)"
+if grep -qE '^HEALTHCHECK ' images/base/python-trixie/Dockerfile; then
+  fail "base/python-trixie/Dockerfile: HEALTHCHECK must NOT be baked (consumer-decided)"
 fi
 
 # nginx.conf has /healthz handler.
@@ -43,7 +43,7 @@ grep -qE 'location = /healthz' images/nginx-scratch-trixie/nginx.conf \
   || fail "nginx.conf: missing /healthz location block"
 
 # PROMISES.yaml carries runtime.hc-binary for both images.
-for d in nginx-scratch-trixie python-scratch-trixie; do
+for d in nginx-scratch-trixie base/python-trixie; do
   grep -q 'runtime.hc-binary' "images/${d}/PROMISES.yaml" \
     || fail "images/${d}/PROMISES.yaml: missing promise runtime.hc-binary"
 done
@@ -53,12 +53,12 @@ pass "source invariants in place"
 # -----------------------------------------------------------------------------
 # Section 2 — build both images
 # -----------------------------------------------------------------------------
-say "2. build nginx-scratch-trixie + python-scratch-trixie"
-for d in nginx-scratch-trixie python-scratch-trixie; do
+say "2. build nginx-scratch-trixie + base/python-trixie"
+for d in nginx-scratch-trixie base/python-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
 done
 docker image inspect forge-local/nginx-scratch-trixie:1.26 >/dev/null
-docker image inspect forge-local/python-scratch-trixie:3.14 >/dev/null
+docker image inspect forge-local/base/python-trixie:3.14 >/dev/null
 pass "both images built"
 
 # -----------------------------------------------------------------------------
@@ -81,15 +81,15 @@ pass "smoke_hc_healthcheck.sh"
 # -----------------------------------------------------------------------------
 say "4. python: /hc present, no HEALTHCHECK"
 py_hc="$(docker inspect --format '{{json .Config.Healthcheck}}' \
-           forge-local/python-scratch-trixie:3.14)"
+           forge-local/base/python-trixie:3.14)"
 # docker returns "null" for an unset Healthcheck.
 case "${py_hc}" in
-  null) pass "python-scratch-trixie has no baked HEALTHCHECK" ;;
-  *) fail "python-scratch-trixie should have no HEALTHCHECK, got: ${py_hc}" ;;
+  null) pass "base/python-trixie has no baked HEALTHCHECK" ;;
+  *) fail "base/python-trixie should have no HEALTHCHECK, got: ${py_hc}" ;;
 esac
 
-IMAGE_NAME=python-scratch-trixie IMAGE_TAG=3.14 \
-  bash images/python-scratch-trixie/tests/smoke_hc_present.sh
+IMAGE_NAME=base/python-trixie IMAGE_TAG=3.14 \
+  bash images/base/python-trixie/tests/smoke_hc_present.sh
 pass "smoke_hc_present.sh"
 
 # -----------------------------------------------------------------------------
@@ -97,8 +97,8 @@ pass "smoke_hc_present.sh"
 # -----------------------------------------------------------------------------
 say "5. existing size smokes stay green with hc embedded"
 IMAGE_TAG=1.26 bash images/nginx-scratch-trixie/tests/smoke_size.sh
-IMAGE_NAME=python-scratch-trixie IMAGE_TAG=3.14 \
-  bash images/python-scratch-trixie/tests/smoke_size.sh
+IMAGE_NAME=base/python-trixie IMAGE_TAG=3.14 \
+  bash images/base/python-trixie/tests/smoke_size.sh
 pass "both size budgets respected"
 
 echo

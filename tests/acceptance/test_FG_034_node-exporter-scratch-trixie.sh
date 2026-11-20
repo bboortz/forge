@@ -53,14 +53,14 @@ pass "all 7 smoke tests green"
 # -----------------------------------------------------------------------------
 # Section 4 — image.yaml invariants
 # -----------------------------------------------------------------------------
-say "4. image.yaml: tag=1.12, depends_on=[scratch-base-trixie]"
+say "4. image.yaml: tag=1.12, depends_on=[base/scratch-trixie]"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' \
         images/node-exporter-scratch-trixie/image.yaml)
 [[ "${tag}" == "1.12" ]] || fail "image.yaml tag = '${tag}' (want 1.12)"
-grep -qE '^[[:space:]]*-[[:space:]]*scratch-base-trixie' \
+grep -qE '^[[:space:]]*-[[:space:]]*base/scratch-trixie' \
   images/node-exporter-scratch-trixie/image.yaml \
-  || fail "image.yaml: depends_on must list scratch-base-trixie"
-pass "image.yaml correct (tag=1.12, depends_on=scratch-base-trixie)"
+  || fail "image.yaml: depends_on must list base/scratch-trixie"
+pass "image.yaml correct (tag=1.12, depends_on=base/scratch-trixie)"
 
 echo
 echo "FG-034 acceptance: all sections passed."

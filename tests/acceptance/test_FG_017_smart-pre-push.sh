@@ -83,8 +83,8 @@ git reset --hard "${BASE_SHA}" >/dev/null
 # -----------------------------------------------------------------------------
 # Section 4 — Dispatch: scratch-base-trixie touched → full bailout
 # -----------------------------------------------------------------------------
-say "4. scratch-base-trixie touched → full bailout"
-commit_touch "baseline: synth" "images/scratch-base-trixie/Dockerfile"
+say "4. base/scratch-trixie touched → full bailout"
+commit_touch "baseline: synth" "images/base/scratch-trixie/Dockerfile"
 out=$(SMART_CHECK_DRY_RUN=1 _FORGE_BASE_OVERRIDE="${BASE_SHA}" bash scripts/smart-check.sh 2>&1)
 grep -q 'DISPATCH=full reason=tooling-or-baseline' <<<"${out}" || { echo "  ✗ expected baseline bailout; got: ${out}" >&2; exit 1; }
 pass "scratch-base → full bailout"
@@ -146,8 +146,8 @@ git reset --hard "${BASE_SHA}" >/dev/null
 # -----------------------------------------------------------------------------
 say "8. affected_images.py fans out on promise removal"
 # Remove a promise from python-scratch-trixie to force cascade.
-cp images/python-scratch-trixie/PROMISES.yaml /tmp/py-promises.yaml.bak
-python3 - images/python-scratch-trixie/PROMISES.yaml <<'PY'
+cp images/base/python-trixie/PROMISES.yaml /tmp/py-promises.yaml.bak
+python3 - images/base/python-trixie/PROMISES.yaml <<'PY'
 import sys, yaml, pathlib
 p = pathlib.Path(sys.argv[1])
 data = yaml.safe_load(p.read_text())
@@ -156,18 +156,18 @@ data['promises'] = [pr for pr in data['promises'] if pr['id'] != 'runtime.librt-
 data['version'] = '99.0.0'
 p.write_text(yaml.safe_dump(data, sort_keys=False))
 PY
-git add images/python-scratch-trixie/PROMISES.yaml
+git add images/base/python-trixie/PROMISES.yaml
 git -c user.email=fg017@test -c user.name=FG017 commit -q --no-verify -m "python-scratch: promise remove synth" >/dev/null
 affected=$(python3 scripts/affected_images.py "${BASE_SHA}" 2>&1 | tr '\n' ' ')
 echo "    affected: ${affected}"
-[[ "${affected}" == *python-scratch-trixie* ]] || { echo "  ✗ python-scratch-trixie not in affected set" >&2; exit 1; }
+[[ "${affected}" == *base/python-trixie* ]] || { echo "  ✗ base/python-trixie not in affected set" >&2; exit 1; }
 if [[ "${affected}" != *beaconry-scout* && "${affected}" != *beaconry-hub* ]]; then
   echo "  ✗ no python-scratch dependent fanned out" >&2
   exit 1
 fi
 pass "promise removal on python-scratch cascades to dependents"
 git reset --hard "${BASE_SHA}" >/dev/null
-cp /tmp/py-promises.yaml.bak images/python-scratch-trixie/PROMISES.yaml 2>/dev/null || true
+cp /tmp/py-promises.yaml.bak images/base/python-trixie/PROMISES.yaml 2>/dev/null || true
 rm -f /tmp/py-promises.yaml.bak
 
 # -----------------------------------------------------------------------------

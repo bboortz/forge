@@ -80,11 +80,11 @@ fi
 # -----------------------------------------------------------------------------
 # Section 5 — image.yaml declares correct tag + depends_on
 # -----------------------------------------------------------------------------
-say "5. image.yaml: tag=8, depends_on includes scratch-base-trixie"
+say "5. image.yaml: tag=8, depends_on includes base/scratch-trixie"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' images/redis-scratch-trixie/image.yaml)
 [[ "${tag}" == "8" ]] || { echo "  ✗ image.yaml tag = '${tag}' (want 8)" >&2; exit 1; }
-grep -q 'scratch-base-trixie' images/redis-scratch-trixie/image.yaml \
-  || { echo "  ✗ image.yaml missing scratch-base-trixie dep" >&2; exit 1; }
+grep -q 'base/scratch-trixie' images/redis-scratch-trixie/image.yaml \
+  || { echo "  ✗ image.yaml missing base/scratch-trixie dep" >&2; exit 1; }
 pass "image.yaml correct"
 
 echo
