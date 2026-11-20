@@ -1,7 +1,7 @@
 ---
 id: FG-071
 slug: builder-tier-migration
-status: ready
+status: shipped
 owner: bboortz
 created: 2026-11-20
 ---
