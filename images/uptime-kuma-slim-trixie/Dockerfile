@@ -18,7 +18,7 @@
 # FG-061: runtime migrated from upstream node:24-trixie-slim to the new
 # forge-rooted `node-slim-trixie` pre-builder, so apt-upgrade state is
 # shared with every other Forge Node runtime (psitransfer, future).
-ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
+ARG BUILDER_NODE_REF=ghcr.io/bboortz/builder/node-trixie:latest
 ARG NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
@@ -41,7 +41,7 @@ FROM ${HC_REF} AS hc
 # FG-048: shared forge-signed Node 24 builder base. git/curl/jq/make/g++/
 # python3/dumb-init/syft all pre-baked, apt-upgraded. No per-image apt-install
 # needed here — we only clone + npm ci + npm run build + syft emit.
-FROM ${FORGE_BUILDER_NODE_REF} AS builder
+FROM ${BUILDER_NODE_REF} AS builder
 
 ARG UPTIME_KUMA_VERSION
 # hadolint ignore=DL3064

@@ -13,6 +13,7 @@
 # Published in the `publish-builders` CI tier (needs publish-pre-builders
 # to land node-slim-trixie first). Daily cron rebuilds pre-builders →
 # this image → every Node-source derivative within 24h.
+repo: builder/node-trixie
 tag: "0.1"
 platforms:
   - linux/amd64

@@ -62,10 +62,10 @@ _FORGE_MIRRORS = {
     "mirror/syft",
 }
 _FORGE_BUILDERS = {
-    "forge-builder-go-trixie",
-    "forge-builder-node-trixie",
-    "forge-builder-python-trixie",
-    "forge-builder-zig-trixie",
+    "builder/go-trixie",
+    "builder/node-trixie",
+    "builder/python-trixie",
+    "builder/zig-trixie",
 }
 _BASELINE = {"base/scratch-trixie", "base/python-trixie"}
 # Upstream helpers (COPY-from image layer forge-publishes but aren't under images/).
@@ -76,9 +76,10 @@ _UPSTREAM_HELPERS = {"hc"}
 # (and probably mirrored in scripts/image_from_graph.py). Keeping the
 # list small is the point — grep-ability + predictable parsing.
 _KNOWN_REF_ARGS = {
-    "FORGE_BUILDER_REF",         # forge-builder-python-trixie (legacy; kept for scratch-base-trixie + scratch runtimes)
-    "FORGE_BUILDER_GO_REF",      # forge-builder-go-trixie
-    "FORGE_BUILDER_NODE_REF",    # forge-builder-node-trixie
+    "BUILDER_PYTHON_REF",        # builder/python-trixie (FG-071; renamed from FORGE_BUILDER_REF)
+    "BUILDER_GO_REF",            # builder/go-trixie (FG-071; renamed from FORGE_BUILDER_GO_REF)
+    "BUILDER_NODE_REF",          # builder/node-trixie (FG-071; renamed from FORGE_BUILDER_NODE_REF)
+    "BUILDER_ZIG_REF",           # builder/zig-trixie (FG-071; reserved; no consumer yet)
     "SCRATCH_BASE_REF",          # scratch-base-trixie
     "DEBIAN_SLIM_REF",           # debian-slim-trixie
     "DEBIAN_SLIM_SID_REF",       # debian-slim-sid (zero consumers today; reserved)
@@ -332,11 +333,11 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
                 f"Layered dep-graph (FG-064) requires downward-only edges."
             )
 
-    # Rule 7 (FG-065): forge-builder-<lang>-trixie's runtime (last) FROM MUST
+    # Rule 7 (FG-065 + FG-071): builder/<lang>-trixie's runtime (last) FROM MUST
     # resolve to a forge-rooted image, not an upstream. Builder-stage copy-
     # sources (syft, hc) are allowed earlier — this rule only checks the
     # last FROM, which is the "runtime" / default stage of the builder.
-    if image_name.startswith("forge-builder-") and froms:
+    if image_name in _FORGE_BUILDERS and froms:
         # froms[-1] = (lineno, target, stage) per the parser above.
         _ln, last_target, _last_stage = froms[-1]
         resolved_kind: str | None = None
@@ -352,8 +353,8 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
                 f"{rel}: builder image's last FROM resolves to an upstream "
                 f"({last_target}) — must FROM a forge-rooted pre-builder instead "
                 f"(FG-065 arch.language-family-image-pair invariant: every "
-                f"forge-builder-<lang>-trixie dogfoods its sibling <lang>-slim-"
-                f"trixie pre-builder)."
+                f"builder/<lang>-trixie dogfoods its sibling pre-builder/"
+                f"<lang>-slim-trixie pre-builder)."
             )
 
     # Rule 8 (FG-065): literal `FROM <upstream>` (any line, not just the last)
@@ -546,18 +547,18 @@ def _check_rule_11_no_source_tier() -> list[str]:
 def _check_language_family_invariant(local_images: set[str]) -> list[str]:
     """FG-065 arch.language-family-image-pair invariant.
 
-    Every `forge-builder-<lang>-trixie/` image must have a sibling
+    Every `builder/<lang>-trixie/` image must have a sibling
     `pre-builder/<lang>-slim-trixie/` pre-builder. Enforces that new
     language families land as paired images (builder + pre-builder;
     builder dogfoods pre-builder).
 
-    FG-070: sibling canonical path is `pre-builder/<lang>-slim-trixie`
-    (nested under the pre-builder/ tier). Pre-move: sibling was flat
-    `<lang>-slim-trixie`.
+    FG-070: pre-builder sibling canonical path is `pre-builder/<lang>-slim-trixie`.
+    FG-071: builder canonical path is `builder/<lang>-trixie` (was flat
+    `forge-builder-<lang>-trixie`).
     """
     errors: list[str] = []
     for img in sorted(local_images):
-        m = re.match(r"^forge-builder-([a-z0-9]+)-trixie$", img)
+        m = re.match(r"^builder/([a-z0-9]+)-trixie$", img)
         if not m:
             continue
         lang = m.group(1)
@@ -566,7 +567,7 @@ def _check_language_family_invariant(local_images: set[str]) -> list[str]:
             errors.append(
                 f"images/{img}/: missing sibling pre-builder images/{sibling}/ "
                 f"(FG-065 arch.language-family-image-pair invariant — "
-                f"every forge-builder-<lang>-trixie must have a pre-builder/"
+                f"every builder/<lang>-trixie must have a pre-builder/"
                 f"<lang>-slim-trixie pre-builder that it dogfoods)"
             )
     return errors

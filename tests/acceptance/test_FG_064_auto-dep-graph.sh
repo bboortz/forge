@@ -133,10 +133,10 @@ pass "external-sourced graph edges present"
 # --- (9) multi-builder images show every builder edge ----------------------
 say "9. prometheus-scratch-trixie + alertmanager-scratch-trixie show BOTH builder edges"
 for img in prometheus-scratch-trixie alertmanager-scratch-trixie; do
-  grep -q "forge-builder-go-trixie --> ${img}" docs/image-dependency-graph.md \
-    || fail "${img}: missing forge-builder-go-trixie edge"
-  grep -q "forge-builder-node-trixie --> ${img}" docs/image-dependency-graph.md \
-    || fail "${img}: missing forge-builder-node-trixie edge"
+  grep -q "builder/go-trixie --> ${img}" docs/image-dependency-graph.md \
+    || fail "${img}: missing builder/go-trixie edge"
+  grep -q "builder/node-trixie --> ${img}" docs/image-dependency-graph.md \
+    || fail "${img}: missing builder/node-trixie edge"
 done
 pass "dual-builder edges present"
 

@@ -3,7 +3,7 @@
 # upstream directly — "dedicated-toolchain exemption" retired).
 
 spec_version: 1
-image: forge-builder-go-trixie
+image: go-trixie
 
 dependencies:
   - image: pre-builder/go-slim-trixie
@@ -12,17 +12,17 @@ dependencies:
       - promise: runtime.go-toolchain
         reason: Builder inherits the Go toolchain from the pre-builder — adding its own tools on top (git, curl, jq, syft) via apt-install.
         preflight:
-          - images/forge-builder-go-trixie/tests/smoke_has_go.sh
+          - images/builder/go-trixie/tests/smoke_has_go.sh
 
       - promise: files.ca-certificates
         reason: curl + git + go mod download + syft all need the CA trust store for outbound HTTPS (module proxy, GitHub, etc.). Pre-builder pre-installs ca-certificates so the builder doesn't need to re-apt-install.
         preflight:
-          - images/forge-builder-go-trixie/tests/smoke_ca_bundle.sh
+          - images/builder/go-trixie/tests/smoke_ca_bundle.sh
 
       - promise: apt.freshly-upgraded
         reason: Builder runs its own `apt-get upgrade` on top; starting from an already-fresh pre-builder means less churn + faster builds on cold cache.
         preflight:
-          - images/forge-builder-go-trixie/tests/smoke_no_apt_cache.sh
+          - images/builder/go-trixie/tests/smoke_no_apt_cache.sh
 
   - image: syft
     version: ">=0.1"
@@ -30,9 +30,9 @@ dependencies:
       - promise: files.syft-binary
         reason: The /syft binary is COPYed from this mirror stage into /usr/local/bin/syft of the builder runtime.
         preflight:
-          - images/forge-builder-go-trixie/tests/smoke_has_syft.sh
+          - images/builder/go-trixie/tests/smoke_has_syft.sh
 
       - promise: shape.zero-mod
         reason: mirror/syft must be a zero-mod passthrough — any downstream builder expects the exact upstream syft behavior, not a modified derivative.
         preflight:
-          - images/forge-builder-go-trixie/tests/smoke_has_syft.sh
+          - images/builder/go-trixie/tests/smoke_has_syft.sh

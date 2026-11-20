@@ -20,13 +20,13 @@
 # upstream behavior.
 
 # FG-046: shared Go builder base. go1.27.x + syft + git.
-ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
+ARG BUILDER_GO_REF=ghcr.io/bboortz/builder/go-trixie:latest
 # Upstream gosu. Pinned to the current release tag; bump via chore PR
 # when new upstream versions ship.
 ARG GOSU_VERSION=1.20
 
 # --- Stage 1: Go builder (gosu from source) ----------------------------------
-FROM ${FORGE_BUILDER_GO_REF} AS gosu-builder
+FROM ${BUILDER_GO_REF} AS gosu-builder
 
 ARG GOSU_VERSION
 

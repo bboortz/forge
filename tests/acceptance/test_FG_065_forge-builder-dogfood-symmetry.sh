@@ -30,41 +30,41 @@ grep -qE '^FROM golang:1\.27-trixie' images/pre-builder/go-slim-trixie/Dockerfil
   || fail "go-slim-trixie must FROM golang:1.27-trixie literally"
 pass "FROM golang:1.27-trixie present"
 
-# --- (3) forge-builder-go-trixie dogfoods go-slim-trixie ------------------
-say "3. forge-builder-go-trixie dogfoods go-slim-trixie"
+# --- (3) builder/go-trixie dogfoods go-slim-trixie ------------------
+say "3. builder/go-trixie dogfoods go-slim-trixie"
 grep -qE '^ARG GO_SLIM_REF=ghcr\.io/bboortz/pre-builder/go-slim-trixie:(latest|[0-9.]+)' \
-  images/forge-builder-go-trixie/Dockerfile \
-  || fail "forge-builder-go-trixie must declare ARG GO_SLIM_REF default ghcr.io/bboortz/pre-builder/go-slim-trixie:…"
-runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/forge-builder-go-trixie/Dockerfile)
+  images/builder/go-trixie/Dockerfile \
+  || fail "builder/go-trixie must declare ARG GO_SLIM_REF default ghcr.io/bboortz/pre-builder/go-slim-trixie:…"
+runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/builder/go-trixie/Dockerfile)
 # shellcheck disable=SC2016
 [[ "${runtime_from}" == *'${GO_SLIM_REF}'* ]] \
-  || fail "forge-builder-go-trixie runtime FROM is '${runtime_from}', want '... \${GO_SLIM_REF}'"
+  || fail "builder/go-trixie runtime FROM is '${runtime_from}', want '... \${GO_SLIM_REF}'"
 # Belt-and-suspenders: no literal `FROM golang:1.27-trixie` anywhere.
-if grep -qE '^FROM golang:1\.27-trixie' images/forge-builder-go-trixie/Dockerfile; then
-  fail "forge-builder-go-trixie must NOT FROM golang:1.27-trixie directly (dogfood go-slim-trixie per FG-065)"
+if grep -qE '^FROM golang:1\.27-trixie' images/builder/go-trixie/Dockerfile; then
+  fail "builder/go-trixie must NOT FROM golang:1.27-trixie directly (dogfood go-slim-trixie per FG-065)"
 fi
 pass "FBG dogfoods go-slim-trixie"
 
-# --- (4) forge-builder-node-trixie dogfoods node-slim-trixie --------------
-say "4. forge-builder-node-trixie dogfoods node-slim-trixie"
+# --- (4) builder/node-trixie dogfoods node-slim-trixie --------------
+say "4. builder/node-trixie dogfoods node-slim-trixie"
 grep -qE '^ARG NODE_SLIM_REF=ghcr\.io/bboortz/pre-builder/node-slim-trixie:(latest|[0-9.]+)' \
-  images/forge-builder-node-trixie/Dockerfile \
-  || fail "forge-builder-node-trixie must declare ARG NODE_SLIM_REF default ghcr.io/bboortz/pre-builder/node-slim-trixie:…"
-runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/forge-builder-node-trixie/Dockerfile)
+  images/builder/node-trixie/Dockerfile \
+  || fail "builder/node-trixie must declare ARG NODE_SLIM_REF default ghcr.io/bboortz/pre-builder/node-slim-trixie:…"
+runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/builder/node-trixie/Dockerfile)
 # shellcheck disable=SC2016
 [[ "${runtime_from}" == *'${NODE_SLIM_REF}'* ]] \
-  || fail "forge-builder-node-trixie runtime FROM is '${runtime_from}', want '... \${NODE_SLIM_REF}'"
-if grep -qE '^FROM node:24-trixie-slim' images/forge-builder-node-trixie/Dockerfile; then
-  fail "forge-builder-node-trixie must NOT FROM node:24-trixie-slim directly (dogfood node-slim-trixie per FG-065)"
+  || fail "builder/node-trixie runtime FROM is '${runtime_from}', want '... \${NODE_SLIM_REF}'"
+if grep -qE '^FROM node:24-trixie-slim' images/builder/node-trixie/Dockerfile; then
+  fail "builder/node-trixie must NOT FROM node:24-trixie-slim directly (dogfood node-slim-trixie per FG-065)"
 fi
 pass "FBN dogfoods node-slim-trixie"
 
 # --- (5) image.yaml depends_on grows -------------------------------------
 say "5. both builders' image.yaml declare their dogfood dep"
-grep -q 'go-slim-trixie' images/forge-builder-go-trixie/image.yaml \
-  || fail "forge-builder-go-trixie/image.yaml must list go-slim-trixie in depends_on"
-grep -q 'node-slim-trixie' images/forge-builder-node-trixie/image.yaml \
-  || fail "forge-builder-node-trixie/image.yaml must list node-slim-trixie in depends_on"
+grep -q 'go-slim-trixie' images/builder/go-trixie/image.yaml \
+  || fail "builder/go-trixie/image.yaml must list go-slim-trixie in depends_on"
+grep -q 'node-slim-trixie' images/builder/node-trixie/image.yaml \
+  || fail "builder/node-trixie/image.yaml must list node-slim-trixie in depends_on"
 pass "depends_on wiring present"
 
 # --- (6) pre-builder count 5 → 6+ ----------------------------------------
@@ -110,13 +110,13 @@ say "9. conformance Rule 7 catches a builder FROMing upstream (negative test)"
 tmp_dir=$(mktemp -d)
 # shellcheck disable=SC2064
 trap "rm -rf '${tmp_dir}'" EXIT
-mkdir -p "${tmp_dir}/images/forge-builder-rust-trixie"
-cat > "${tmp_dir}/images/forge-builder-rust-trixie/Dockerfile" <<'EOF'
+mkdir -p "${tmp_dir}/images/builder/rust-trixie"
+cat > "${tmp_dir}/images/builder/rust-trixie/Dockerfile" <<'EOF'
 # Synthetic bad Dockerfile: builder FROMs upstream directly.
 FROM rust:1.80-trixie
 RUN rustc --version
 EOF
-cat > "${tmp_dir}/images/forge-builder-rust-trixie/image.yaml" <<'EOF'
+cat > "${tmp_dir}/images/builder/rust-trixie/image.yaml" <<'EOF'
 tag: "0.1"
 platforms:
   - linux/amd64
@@ -166,11 +166,11 @@ say "11. deepest chain for every scratch runtime is ≤ 5 hops"
 # FG-070: pre-builder/* mermaid node ids are `pre-builder_<leaf>`
 # (slash+dashes normalized).
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_go_slim_trixie --> forge-builder-go-trixie' \
-  || fail "dep graph missing pre-builder/go-slim-trixie → forge-builder-go-trixie edge"
+  | grep -q 'pre-builder_go_slim_trixie --> builder/go-trixie' \
+  || fail "dep graph missing pre-builder/go-slim-trixie → builder/go-trixie edge"
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_node_slim_trixie --> forge-builder-node-trixie' \
-  || fail "dep graph missing pre-builder/node-slim-trixie → forge-builder-node-trixie edge"
+  | grep -q 'pre-builder_node_slim_trixie --> builder/node-trixie' \
+  || fail "dep graph missing pre-builder/node-slim-trixie → builder/node-trixie edge"
 pass "chain structure updated per FG-065"
 
 # --- (12) memory + design-decisions updated -----------------------------
@@ -194,10 +194,10 @@ else
     IMAGE_NAME=pre-builder/go-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-go-trixie >/dev/null 2>&1 \
-    || fail "forge-builder-go-trixie build failed (dogfood)"
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-node-trixie >/dev/null 2>&1 \
-    || fail "forge-builder-node-trixie build failed (dogfood)"
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh builder/go-trixie >/dev/null 2>&1 \
+    || fail "builder/go-trixie build failed (dogfood)"
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh builder/node-trixie >/dev/null 2>&1 \
+    || fail "builder/node-trixie build failed (dogfood)"
   pass "all three images built + smokes green"
 fi
 

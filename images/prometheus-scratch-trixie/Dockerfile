@@ -27,8 +27,8 @@
 # follow-up). Full audit in docs/plan/FG-053-prometheus-v3-cve-fix-plan.md.
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
-ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
-ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
+ARG BUILDER_NODE_REF=ghcr.io/bboortz/builder/node-trixie:latest
+ARG BUILDER_GO_REF=ghcr.io/bboortz/builder/go-trixie:latest
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # FG-053: FG-050 build.ref-latest-release pattern — empty default →
 # resolved at build time via GitHub Releases API. Pin explicitly via
@@ -46,7 +46,7 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 FROM ${HC_REF} AS hc
 
 # --- Stage 1: UI builder (Node) ----------------------------------------------
-FROM ${FORGE_BUILDER_NODE_REF} AS ui-builder
+FROM ${BUILDER_NODE_REF} AS ui-builder
 
 ARG PROMETHEUS_VERSION
 # hadolint ignore=DL3064
@@ -87,7 +87,7 @@ RUN set -eux; \
     bash scripts/compress_assets.sh
 
 # --- Stage 2: Go builder -----------------------------------------------------
-FROM ${FORGE_BUILDER_GO_REF} AS builder
+FROM ${BUILDER_GO_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

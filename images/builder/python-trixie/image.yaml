@@ -6,6 +6,7 @@
 #
 # FG-042: dogfoods python-slim-trixie (instead of python:3.14-slim-trixie upstream).
 # FG-066: syft sourced via mirror/syft (previously docker.io/anchore/syft).
+repo: builder/python-trixie
 tag: "0.1"
 platforms:
   - linux/amd64

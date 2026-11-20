@@ -56,10 +56,10 @@ _PRE_BUILDERS = [
     "pre-builder/zig-slim-trixie",
 ]
 _FORGE_BUILDERS = [
-    "forge-builder-go-trixie",
-    "forge-builder-node-trixie",
-    "forge-builder-python-trixie",
-    "forge-builder-zig-trixie",
+    "builder/go-trixie",
+    "builder/node-trixie",
+    "builder/python-trixie",
+    "builder/zig-trixie",
 ]
 _BASELINE = ["base/scratch-trixie", "base/python-trixie"]
 _UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet
@@ -411,7 +411,7 @@ def emit_mermaid_body(local_images: set[str]) -> str:
                 lines.append(f"        {name}:::prebuilder")
     lines.append("    end")
 
-    # L2 subgraph (builders). Not yet nested (FG-071 will move these).
+    # L2 subgraph (builders). Nested post-FG-071 (images/builder/<lang>-trixie/).
     lines.append('    subgraph L2_builders["Layer 2 — Forge builders (publish-builders — never runtime)"]')
     for name in sorted(_FORGE_BUILDERS):
         if name in local_images:

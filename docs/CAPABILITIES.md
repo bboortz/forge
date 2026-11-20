@@ -718,3 +718,17 @@ Architectural invariant: every `pre-builder/<name>/` L1 image is a thin apt-upgr
 
 - **Delivered by**: FG-070
 - **Covered by**: `tests/acceptance/test_FG_070_pre-builder-tier-migration.sh`, `docs/plan/tier-layering-model.md` §3 L1
+
+### build.builder-migrated
+
+Post-FG-071, the 4 L2 forge-builders live under `images/builder/<lang>-trixie/` with GHCR paths `ghcr.io/bboortz/builder/<lang>-trixie:<tag>`. Members: `builder/python-trixie`, `builder/go-trixie`, `builder/node-trixie`, `builder/zig-trixie`. Each image.yaml carries an explicit `repo: builder/<lang>-trixie` field (parallel with mirror/+base/+pre-builder/ convention). The 11 consumer Dockerfiles that FROM a forge-builder flip their ARG from `FORGE_BUILDER_*_REF` to `BUILDER_<LANG>_REF` and their default from `.../forge-builder-<lang>-trixie:...` to `.../builder/<lang>-trixie:...` (8 python consumers incl. base/*; 7 go consumers; 3 node consumers — set union = 11 unique Dockerfiles). PROMISES/EXPECTATIONS `image:` field uses the leaf name (`python-trixie`) matching the base/mirror convention. Closes the 7-tier physical layout opened by FG-067.
+
+- **Delivered by**: FG-071
+- **Covered by**: `tests/acceptance/test_FG_071_builder-tier-migration.sh`, `scripts/verify-dockerfile-conformance.py`, `scripts/image_from_graph.py`
+
+### arch.builder-tier-images
+
+Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-family toolchain that (a) dogfoods its sibling `pre-builder/<lang>-slim-trixie` (Rule 7 checks last FROM), (b) ships syft from `${SYFT_REF}` (mirror/syft; Rule 9 forbids non-forge Docker Hub pulls), (c) is never a runtime — only COPY-from target in multi-stage builds (consumer runtime stage is scratch or slim). Published in the `publish-builders` CI tier (depends on `publish-pre-builders` + `publish-mirrors`). The flat `forge-builder-<lang>-trixie` naming from FG-025/FG-046/FG-048/FG-072 is retired; tier semantic now lives in the `builder/` path prefix (decision O1 in tier-plan). No `FORGE_BUILDER_*_REF` ARG names remain in any Dockerfile — all 11 consumer slots use `BUILDER_<LANG>_REF`.
+
+- **Delivered by**: FG-071
+- **Covered by**: `tests/acceptance/test_FG_071_builder-tier-migration.sh`, `docs/plan/tier-layering-model.md` §3 L2

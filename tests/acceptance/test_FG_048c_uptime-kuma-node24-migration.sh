@@ -11,14 +11,14 @@ say()  { printf '\n\033[1;36m[FG-048c]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
-say "1. uptime-kuma Dockerfile: builder FROMs forge-builder-node-trixie"
+say "1. uptime-kuma Dockerfile: builder FROMs builder/node-trixie"
 dockerfile=images/uptime-kuma-slim-trixie/Dockerfile
 
-grep -qE 'FROM \$\{FORGE_BUILDER_NODE_REF\} AS builder' "$dockerfile" \
-  || fail "uptime-kuma builder stage must FROM \${FORGE_BUILDER_NODE_REF} (FG-048 migration)"
-grep -qE '^ARG FORGE_BUILDER_NODE_REF=ghcr\.io/bboortz/forge-builder-node-trixie:(latest|[0-9.]+)' "$dockerfile" \
-  || fail "uptime-kuma must declare ARG FORGE_BUILDER_NODE_REF with a ghcr.io/bboortz/forge-builder-node-trixie default"
-pass "uptime-kuma builder migrated to forge-builder-node-trixie"
+grep -qE 'FROM \$\{BUILDER_NODE_REF\} AS builder' "$dockerfile" \
+  || fail "uptime-kuma builder stage must FROM \${BUILDER_NODE_REF} (FG-048 migration)"
+grep -qE '^ARG BUILDER_NODE_REF=ghcr\.io/bboortz/builder/node-trixie:(latest|[0-9.]+)' "$dockerfile" \
+  || fail "uptime-kuma must declare ARG BUILDER_NODE_REF with a ghcr.io/bboortz/builder/node-trixie default"
+pass "uptime-kuma builder migrated to builder/node-trixie"
 
 say "2. uptime-kuma runtime FROMs the forge-rooted Node pre-builder (FG-061)"
 # FG-048 originally set ARG NODE_BASE=node:24-trixie-slim and the runtime
@@ -32,7 +32,7 @@ grep -qE '^ARG NODE_SLIM_REF=ghcr\.io/bboortz/pre-builder/node-slim-trixie:(late
   || fail "uptime-kuma must declare ARG NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:… (FG-061 migration)"
 pass "NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:… (Node 24 LTS via forge pre-builder)"
 
-say "3. uptime-kuma-slim-trixie builds via forge-builder-node-trixie"
+say "3. uptime-kuma-slim-trixie builds via builder/node-trixie"
 bash scripts/build-image.sh uptime-kuma-slim-trixie >/dev/null
 docker image inspect forge-local/uptime-kuma-slim-trixie:latest >/dev/null \
   || fail "forge-local/uptime-kuma-slim-trixie:latest did not materialize"

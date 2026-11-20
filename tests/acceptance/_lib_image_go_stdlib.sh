@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Helper: extract the Go stdlib version embedded in a binary inside a
-# docker image + fail if it's below go1.27 (FG-046's forge-builder-go-trixie
+# docker image + fail if it's below go1.27 (FG-046's builder/go-trixie
 # toolchain floor).
 #
 # Usage:  . tests/acceptance/_lib_image_go_stdlib.sh

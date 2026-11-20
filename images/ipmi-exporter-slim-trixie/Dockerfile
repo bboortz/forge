@@ -20,7 +20,7 @@
 # upstream). Resolved by scripts/build-image.sh.
 ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/pre-builder/debian-slim-trixie:latest
 # FG-046: shared Go builder base.
-ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
+ARG BUILDER_GO_REF=ghcr.io/bboortz/builder/go-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # FG-050: track upstream's latest GitHub release. Empty default → build-time
@@ -41,7 +41,7 @@ ARG GITHUB_TOKEN=
 FROM ${HC_REF} AS hc
 
 # --- Stage 1: Go builder — compile the exporter ------------------------------
-FROM ${FORGE_BUILDER_GO_REF} AS go-builder
+FROM ${BUILDER_GO_REF} AS go-builder
 
 ARG IPMI_EXPORTER_VERSION
 # hadolint ignore=DL3064

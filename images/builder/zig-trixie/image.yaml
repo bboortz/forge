@@ -12,6 +12,7 @@
 #
 # Zero consumers today. First consumer (hc migration into forge) is a
 # separate follow-up FG.
+repo: builder/zig-trixie
 tag: "0.1"
 platforms:
   - linux/amd64

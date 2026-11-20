@@ -19,10 +19,10 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 say "1. prometheus Dockerfile is the new dual-builder shape"
 dockerfile=images/prometheus-scratch-trixie/Dockerfile
 
-grep -qE 'FROM \$\{FORGE_BUILDER_NODE_REF\} AS ui-builder' "$dockerfile" \
-  || fail "prometheus Dockerfile missing 'FROM \${FORGE_BUILDER_NODE_REF} AS ui-builder' stage"
-grep -qE 'FROM \$\{FORGE_BUILDER_GO_REF\} AS (go-builder|builder)' "$dockerfile" \
-  || fail "prometheus Dockerfile missing a 'FROM \${FORGE_BUILDER_GO_REF}' stage"
+grep -qE 'FROM \$\{BUILDER_NODE_REF\} AS ui-builder' "$dockerfile" \
+  || fail "prometheus Dockerfile missing 'FROM \${BUILDER_NODE_REF} AS ui-builder' stage"
+grep -qE 'FROM \$\{BUILDER_GO_REF\} AS (go-builder|builder)' "$dockerfile" \
+  || fail "prometheus Dockerfile missing a 'FROM \${BUILDER_GO_REF}' stage"
 # FG-053: PROMETHEUS_VERSION is empty (FG-050 build.ref-latest-release
 # pattern); resolved at build time via GitHub Releases API.
 grep -qE '^ARG PROMETHEUS_VERSION=\s*$' "$dockerfile" \

@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path.cwd() / "scripts"))
 # Monkeypatch git_diff_names to return a synthetic diff.
 import affected_images as ai
-ai.git_diff_names = lambda base: ["images/forge-builder-python-trixie/Dockerfile"]
+ai.git_diff_names = lambda base: ["images/builder/python-trixie/Dockerfile"]
 # Monkeypatch load_promises_from_ref to avoid git-show round-trips that
 # would otherwise hit the real repo.
 ai.load_promises_from_ref = lambda ref, image: {}
@@ -32,8 +32,8 @@ PY
 )
 rc=$?
 [[ $rc -eq 0 ]] || fail "synthetic classify invocation exited ${rc}"
-echo "${out}" | grep -q '^direct:forge-builder-python-trixie$' \
-  || fail "classify: forge-builder-python-trixie should be direct; got: ${out}"
+echo "${out}" | grep -q '^direct:builder/python-trixie$' \
+  || fail "classify: builder/python-trixie should be direct; got: ${out}"
 echo "${out}" | grep -qE '^fanout:(python|nginx|redis|mosquitto|healthy)-scratch-trixie$' \
   || fail "classify: expected at least one fanout:<scratch-image>; got: ${out}"
 if echo "${out}" | grep -qE '^direct:(python|nginx|redis|mosquitto|healthy)-scratch-trixie$'; then

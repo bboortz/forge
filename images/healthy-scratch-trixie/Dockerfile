@@ -12,13 +12,13 @@
 # Result: ~500 KB image. Smaller than busybox:latest (~4.2 MB) by ~8×.
 
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
+ARG BUILDER_PYTHON_REF=ghcr.io/bboortz/builder/python-trixie:latest
 
 # --- Stage 0: hc binary source -----------------------------------------------
 FROM ${HC_REF} AS hc
 
 # --- Stage 1: SBOM builder (syft against the hc binary) ----------------------
-FROM ${FORGE_BUILDER_REF} AS builder
+FROM ${BUILDER_PYTHON_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

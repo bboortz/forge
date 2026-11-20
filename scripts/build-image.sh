@@ -44,46 +44,47 @@ while IFS= read -r dep; do
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" "${dep}"
 done < <(image_yaml_depends "${SRC}/image.yaml")
 
-# FG-025: forge-builder-python-trixie is a builder-stage dependency, not a scratch_base
-# COPY-from dependency. It's not listed in image.yaml depends_on (to preserve
-# the current CI publish ordering model), but it must exist locally before any
-# scratch-image build. Build it on demand if any scratch image is being built.
-_FORGE_BUILDER_DIR="${ROOT}/images/forge-builder-python-trixie"
+# FG-025 + FG-071: builder/python-trixie is a builder-stage dependency, not
+# a scratch_base COPY-from dependency. It's not listed in image.yaml depends_on
+# (to preserve the current CI publish ordering model), but it must exist
+# locally before any scratch-image build. Build it on demand if any scratch
+# image is being built.
+_FORGE_BUILDER_DIR="${ROOT}/images/builder/python-trixie"
 case "${IMAGE_DIR}" in
-  forge-builder-python-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|forge-builder-go-trixie|forge-builder-zig-trixie)
+  builder/python-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|builder/go-trixie|builder/zig-trixie|builder/node-trixie)
     _needs_forge_builder=0 ;;
   pre-builder/*|mirror/*)
     # FG-066: mirror images are zero-mod passthroughs; never need the
-    # forge-builder-python-trixie builder stage.
+    # builder/python-trixie builder stage.
     # FG-070: pre-builder/* are thin apt-upgrade layers; same reasoning.
     _needs_forge_builder=0 ;;
   *)
     _needs_forge_builder=1 ;;
 esac
 if [[ "${_needs_forge_builder}" == "1" && -d "${_FORGE_BUILDER_DIR}" ]]; then
-  echo "→ builder-stage dependency: forge-builder-python-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-python-trixie
+  echo "→ builder-stage dependency: builder/python-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" builder/python-trixie
 fi
 
-# FG-046: forge-builder-go-trixie is a builder-stage dependency for every
-# from-Go-source image. Same pattern as forge-builder-python-trixie above.
+# FG-046 + FG-071: builder/go-trixie is a builder-stage dependency for every
+# from-Go-source image. Same pattern as builder/python-trixie above.
 # Auto-build on demand when the current image's Dockerfile declares
-# FORGE_BUILDER_GO_REF.
-_FORGE_BUILDER_GO_DIR="${ROOT}/images/forge-builder-go-trixie"
+# BUILDER_GO_REF.
+_FORGE_BUILDER_GO_DIR="${ROOT}/images/builder/go-trixie"
 if [[ -d "${_FORGE_BUILDER_GO_DIR}" && -f "${SRC}/Dockerfile" ]] \
-   && grep -q "FORGE_BUILDER_GO_REF" "${SRC}/Dockerfile"; then
-  echo "→ builder-stage dependency: forge-builder-go-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-go-trixie
+   && grep -q "BUILDER_GO_REF" "${SRC}/Dockerfile"; then
+  echo "→ builder-stage dependency: builder/go-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" builder/go-trixie
 fi
 
-# FG-048: forge-builder-node-trixie is the Node analog — builder-stage
+# FG-048 + FG-071: builder/node-trixie is the Node analog — builder-stage
 # dep for prometheus-scratch (dual-builder) + uptime-kuma-slim-trixie.
-# Auto-build on demand when the Dockerfile declares FORGE_BUILDER_NODE_REF.
-_FORGE_BUILDER_NODE_DIR="${ROOT}/images/forge-builder-node-trixie"
+# Auto-build on demand when the Dockerfile declares BUILDER_NODE_REF.
+_FORGE_BUILDER_NODE_DIR="${ROOT}/images/builder/node-trixie"
 if [[ -d "${_FORGE_BUILDER_NODE_DIR}" && -f "${SRC}/Dockerfile" ]] \
-   && grep -q "FORGE_BUILDER_NODE_REF" "${SRC}/Dockerfile"; then
-  echo "→ builder-stage dependency: forge-builder-node-trixie"
-  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" forge-builder-node-trixie
+   && grep -q "BUILDER_NODE_REF" "${SRC}/Dockerfile"; then
+  echo "→ builder-stage dependency: builder/node-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" builder/node-trixie
 fi
 
 # FG-042: debian-slim-trixie is a runtime-base dependency for cadvisor-slim
@@ -189,41 +190,41 @@ else
 fi
 SCRATCH_BASE_REF="${REGISTRY}/base/scratch-trixie:${_BASELINE_TAG}"
 
-# FG-025: resolve FORGE_BUILDER_REF the same way — prefer the local tag if
-# present (we just built it above), else fall back to GHCR.
-_BUILDER_YAML="${ROOT}/images/forge-builder-python-trixie/image.yaml"
+# FG-025 + FG-071: resolve BUILDER_PYTHON_REF the same way — prefer the local
+# tag if present (we just built it above), else fall back to GHCR.
+_BUILDER_YAML="${ROOT}/images/builder/python-trixie/image.yaml"
 if [[ -f "${_BUILDER_YAML}" ]]; then
   _BUILDER_TAG=$(image_yaml_get "${_BUILDER_YAML}" tag)
 else
   _BUILDER_TAG="latest"
 fi
-FORGE_BUILDER_REF="${REGISTRY}/forge-builder-python-trixie:${_BUILDER_TAG}"
-if ! docker image inspect "${FORGE_BUILDER_REF}" >/dev/null 2>&1; then
-  FORGE_BUILDER_REF="ghcr.io/bboortz/forge-builder-python-trixie:${_BUILDER_TAG}"
+BUILDER_PYTHON_REF="${REGISTRY}/builder/python-trixie:${_BUILDER_TAG}"
+if ! docker image inspect "${BUILDER_PYTHON_REF}" >/dev/null 2>&1; then
+  BUILDER_PYTHON_REF="ghcr.io/bboortz/builder/python-trixie:${_BUILDER_TAG}"
 fi
 
-# FG-046: same for FORGE_BUILDER_GO_REF.
-_BUILDER_GO_YAML="${ROOT}/images/forge-builder-go-trixie/image.yaml"
+# FG-046 + FG-071: same for BUILDER_GO_REF.
+_BUILDER_GO_YAML="${ROOT}/images/builder/go-trixie/image.yaml"
 if [[ -f "${_BUILDER_GO_YAML}" ]]; then
   _BUILDER_GO_TAG=$(image_yaml_get "${_BUILDER_GO_YAML}" tag)
 else
   _BUILDER_GO_TAG="latest"
 fi
-FORGE_BUILDER_GO_REF="${REGISTRY}/forge-builder-go-trixie:${_BUILDER_GO_TAG}"
-if ! docker image inspect "${FORGE_BUILDER_GO_REF}" >/dev/null 2>&1; then
-  FORGE_BUILDER_GO_REF="ghcr.io/bboortz/forge-builder-go-trixie:${_BUILDER_GO_TAG}"
+BUILDER_GO_REF="${REGISTRY}/builder/go-trixie:${_BUILDER_GO_TAG}"
+if ! docker image inspect "${BUILDER_GO_REF}" >/dev/null 2>&1; then
+  BUILDER_GO_REF="ghcr.io/bboortz/builder/go-trixie:${_BUILDER_GO_TAG}"
 fi
 
-# FG-048: same for FORGE_BUILDER_NODE_REF.
-_BUILDER_NODE_YAML="${ROOT}/images/forge-builder-node-trixie/image.yaml"
+# FG-048 + FG-071: same for BUILDER_NODE_REF.
+_BUILDER_NODE_YAML="${ROOT}/images/builder/node-trixie/image.yaml"
 if [[ -f "${_BUILDER_NODE_YAML}" ]]; then
   _BUILDER_NODE_TAG=$(image_yaml_get "${_BUILDER_NODE_YAML}" tag)
 else
   _BUILDER_NODE_TAG="latest"
 fi
-FORGE_BUILDER_NODE_REF="${REGISTRY}/forge-builder-node-trixie:${_BUILDER_NODE_TAG}"
-if ! docker image inspect "${FORGE_BUILDER_NODE_REF}" >/dev/null 2>&1; then
-  FORGE_BUILDER_NODE_REF="ghcr.io/bboortz/forge-builder-node-trixie:${_BUILDER_NODE_TAG}"
+BUILDER_NODE_REF="${REGISTRY}/builder/node-trixie:${_BUILDER_NODE_TAG}"
+if ! docker image inspect "${BUILDER_NODE_REF}" >/dev/null 2>&1; then
+  BUILDER_NODE_REF="ghcr.io/bboortz/builder/node-trixie:${_BUILDER_NODE_TAG}"
 fi
 
 # FG-042: DEBIAN_SLIM_REF — forge-rooted Debian slim base for
@@ -332,17 +333,17 @@ if docker image inspect "${SCRATCH_BASE_REF}" >/dev/null 2>&1; then
 else
   SCRATCH_BASE_REF="ghcr.io/bboortz/base/scratch-trixie:latest"
 fi
-# FG-025: same guard for FORGE_BUILDER_REF. When it's forge-local/... we must
+# FG-025: same guard for BUILDER_PYTHON_REF. When it's forge-local/... we must
 # drop --pull regardless of SCRATCH_BASE_REF.
-if [[ "${FORGE_BUILDER_REF}" == forge-local/* ]]; then
+if [[ "${BUILDER_PYTHON_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
-# FG-046: same guard for FORGE_BUILDER_GO_REF.
-if [[ "${FORGE_BUILDER_GO_REF}" == forge-local/* ]]; then
+# FG-046: same guard for BUILDER_GO_REF.
+if [[ "${BUILDER_GO_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
-# FG-048: same guard for FORGE_BUILDER_NODE_REF.
-if [[ "${FORGE_BUILDER_NODE_REF}" == forge-local/* ]]; then
+# FG-048: same guard for BUILDER_NODE_REF.
+if [[ "${BUILDER_NODE_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 # FG-042: same guards for DEBIAN_SLIM_REF + PYTHON_SLIM_REF.
@@ -465,29 +466,29 @@ fi
 # builder container). Fall back to classic docker build if ANY FROM
 # reference this image will use resolves to a forge-local tag:
 #   - SCRATCH_BASE_REF for scratch derivatives (FG-021)
-#   - FORGE_BUILDER_REF for images whose builder stage FROMs forge-builder-python-trixie (FG-025)
+#   - BUILDER_PYTHON_REF for images whose builder stage FROMs forge-builder-python-trixie (FG-025)
 _HAS_LOCAL_DEP=0
 if [[ "${SCRATCH_BASE_REF}" == forge-local/* ]] \
    && image_yaml_depends "${SRC}/image.yaml" | grep -q .; then
   _HAS_LOCAL_DEP=1
 fi
 # FG-025: check Dockerfile actually references the forge-builder FROM. Only
-# images whose Dockerfile declares ARG FORGE_BUILDER_REF trigger this.
-if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_REF}" == forge-local/* ]] \
+# images whose Dockerfile declares ARG BUILDER_PYTHON_REF trigger this.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BUILDER_PYTHON_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
-   && grep -q "FORGE_BUILDER_REF" "${BUILD_DOCKERFILE}"; then
+   && grep -q "BUILDER_PYTHON_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
-# FG-046: same for FORGE_BUILDER_GO_REF.
-if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_GO_REF}" == forge-local/* ]] \
+# FG-046: same for BUILDER_GO_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BUILDER_GO_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
-   && grep -q "FORGE_BUILDER_GO_REF" "${BUILD_DOCKERFILE}"; then
+   && grep -q "BUILDER_GO_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
-# FG-048: same for FORGE_BUILDER_NODE_REF.
-if [[ "${_HAS_LOCAL_DEP}" == "0" && "${FORGE_BUILDER_NODE_REF}" == forge-local/* ]] \
+# FG-048: same for BUILDER_NODE_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BUILDER_NODE_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
-   && grep -q "FORGE_BUILDER_NODE_REF" "${BUILD_DOCKERFILE}"; then
+   && grep -q "BUILDER_NODE_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
 # FG-042: same for DEBIAN_SLIM_REF + PYTHON_SLIM_REF.
@@ -546,7 +547,7 @@ if [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" && "${_HAS_LOCAL_DEP}" == "0" 
   [[ -n "${BUILDX_CACHE_TO}" ]]   && CACHE_ARGS+=("--cache-to=${BUILDX_CACHE_TO}")
   echo "→ buildx cache: from=${BUILDX_CACHE_FROM:-<none>} to=${BUILDX_CACHE_TO:-<none>}"
 elif [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" ]]; then
-  echo "→ local base (SCRATCH_BASE_REF=${SCRATCH_BASE_REF}, FORGE_BUILDER_REF=${FORGE_BUILDER_REF}): skipping buildx cache (daemon-only FROM)"
+  echo "→ local base (SCRATCH_BASE_REF=${SCRATCH_BASE_REF}, BUILDER_PYTHON_REF=${BUILDER_PYTHON_REF}): skipping buildx cache (daemon-only FROM)"
 fi
 
 echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=${BUILD_CONTEXT}, revision=${RESOLVED_SHA})"
@@ -555,9 +556,9 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg GIT_SHA="${RESOLVED_SHA}" \
   --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
   --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
-  --build-arg FORGE_BUILDER_REF="${FORGE_BUILDER_REF}" \
-  --build-arg FORGE_BUILDER_GO_REF="${FORGE_BUILDER_GO_REF}" \
-  --build-arg FORGE_BUILDER_NODE_REF="${FORGE_BUILDER_NODE_REF}" \
+  --build-arg BUILDER_PYTHON_REF="${BUILDER_PYTHON_REF}" \
+  --build-arg BUILDER_GO_REF="${BUILDER_GO_REF}" \
+  --build-arg BUILDER_NODE_REF="${BUILDER_NODE_REF}" \
   --build-arg DEBIAN_SLIM_REF="${DEBIAN_SLIM_REF}" \
   --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}" \
   --build-arg UBUNTU_SLIM_NOBLE_REF="${UBUNTU_SLIM_NOBLE_REF}" \

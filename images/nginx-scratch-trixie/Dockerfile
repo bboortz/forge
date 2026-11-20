@@ -8,7 +8,7 @@
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image
 # (apt-upgraded + CA certs + syft pre-installed).
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
+ARG BUILDER_PYTHON_REF=ghcr.io/bboortz/builder/python-trixie:latest
 # FG-031: embed `hc` (static Zig healthcheck binary from bboortz/healthy) so
 # a docker-native HEALTHCHECK can replace the FG-030 sidecar companion.
 # Same pin as FG-030's healthy-scratch-trixie.
@@ -21,7 +21,7 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 FROM ${HC_REF} AS hc
 
 # --- Stage 1: builder ---------------------------------------------------------
-FROM ${FORGE_BUILDER_REF} AS builder
+FROM ${BUILDER_PYTHON_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

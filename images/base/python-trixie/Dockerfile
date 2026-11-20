@@ -9,10 +9,10 @@
 # works for wheel-only packages at runtime.
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
-# FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image
+# FG-025 Phase 2: builder stage FROMs the shared builder/python-trixie image
 # (apt-upgraded + CA certs + syft pre-installed). Local build overrides this
-# to forge-local/forge-builder-python-trixie:0.1 via scripts/build-image.sh.
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
+# to forge-local/builder/python-trixie:0.1 via scripts/build-image.sh.
+ARG BUILDER_PYTHON_REF=ghcr.io/bboortz/builder/python-trixie:latest
 # FG-031: embed `hc` (static Zig healthcheck binary from bboortz/healthy) so
 # consumer apps can wire a docker HEALTHCHECK at their own path/port without
 # a sidecar. We do NOT bake HEALTHCHECK here — consumer apps vary too much
@@ -23,7 +23,7 @@ ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # PYTHON_VERSION) because Docker Hub's python base image sets
 # `ENV PYTHON_VERSION=3.14.10`, and ENV wins over ARG in RUN shell
 # expansion — our ARG would be clobbered.
-# forge-builder-python-trixie independently tracks `python:3.14-slim-trixie`
+# builder/python-trixie independently tracks `python:3.14-slim-trixie`
 # as its DEBIAN_BASE; the two must move together.
 ARG PY_VERSION=3.14
 
@@ -34,7 +34,7 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 FROM ${HC_REF} AS hc
 
 # --- Stage 1: builder ---------------------------------------------------------
-FROM ${FORGE_BUILDER_REF} AS builder
+FROM ${BUILDER_PYTHON_REF} AS builder
 
 # Re-declare ARG inside the stage so the RUN steps below can expand it
 # (Docker ARG scoping: pre-FROM ARGs are only visible in FROM lines).
@@ -42,7 +42,7 @@ ARG PY_VERSION
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
-# apt lists are empty per forge-builder-python-trixie's PROMISES.apt.no-cache —
+# apt lists are empty per builder/python-trixie's PROMISES.apt.no-cache —
 # re-populate, then apply image-specific sid-pins before anything else.
 COPY sid-pins/ /etc/apt/preferences.d/
 
@@ -71,7 +71,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # FG-020: embedded SBOM from builder-stage dpkg. syft is pre-installed by
-# forge-builder-python-trixie (FG-025). We don't re-apt-upgrade — that's pre-done.
+# builder/python-trixie (FG-025). We don't re-apt-upgrade — that's pre-done.
 # Runs AFTER the FG-033 locale compile so the apt-install blip for `locales`
 # is purged before the catalog is taken (the generated /usr/lib/locale/*.utf8
 # files are the overlay artifact; the package isn't in runtime).
