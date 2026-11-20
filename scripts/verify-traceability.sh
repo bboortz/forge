@@ -15,7 +15,7 @@ if [[ ! -f "$caps_file" ]]; then
   exit 1
 fi
 
-mapfile -t known_caps < <(grep -E '^### [a-z]+\.[a-z-]+$' "$caps_file" | sed 's/^### //')
+mapfile -t known_caps < <(grep -E '^### [a-z]+\.[a-z0-9-]+$' "$caps_file" | sed 's/^### //')
 
 # 1. Every known CAP must have a 'Covered by:' pointer in its section.
 for cap in "${known_caps[@]}"; do
@@ -39,7 +39,7 @@ for test in tests/acceptance/test_FG_*.sh; do
     continue
   fi
   caps_block=$(awk '/^# *CAPs:/{flag=1} flag && /^#?[[:space:]]*$/{exit} flag' "$test" | sed 's/^#[[:space:]]*CAPs:[[:space:]]*//; s/^#//')
-  for cap_in_test in $(echo "$caps_block" | tr ',' '\n' | tr -s '[:space:]' '\n' | grep -E '^[a-z]+\.[a-z-]+$' || true); do
+  for cap_in_test in $(echo "$caps_block" | tr ',' '\n' | tr -s '[:space:]' '\n' | grep -E '^[a-z]+\.[a-z0-9-]+$' || true); do
     found=0
     for k in "${known_caps[@]}"; do
       if [[ "$k" == "$cap_in_test" ]]; then found=1; break; fi
@@ -59,7 +59,7 @@ for story in docs/stories/FG-*.md; do
     *) continue ;;
   esac
   # shellcheck disable=SC2016  # single-quoted grep pattern is intentional
-  if ! grep -E -q '^[[:space:]]*- (NEW|EXT) `[a-z]+\.[a-z-]+`' "$story"; then
+  if ! grep -E -q '^[[:space:]]*- (NEW|EXT) `[a-z]+\.[a-z0-9-]+`' "$story"; then
     echo "FAIL: $story (status $status) lacks CAP ids (NEW/EXT) in question 9" >&2
     fail=1
   fi

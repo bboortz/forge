@@ -675,3 +675,17 @@ The 7-tier model resolves every possible pair-overlap via an ordered set of sema
 
 - **Delivered by**: FG-067
 - **Covered by**: `tests/acceptance/test_FG_067_tier-layering-foundation.sh`, `docs/plan/tier-layering-model.md` §4
+
+### build.l0-1-source-inventory
+
+`scripts/_upstream_sources.py` enumerates every **L0.1 source** — git repository or release tarball — that Forge builds consume at build time. Each entry maps the canonical URL to the list of forge image-dir names (consumers) that reference it. `scripts/verify-source-inventory.py` enforces two-way sync: every `RUN git clone <URL>` + `image.yaml source.git: <URL>` reference in the repo must be in the inventory with the consumer declared; every inventory entry must have at least one declared consumer that actually references the URL. Wired into `make test-fast`. The dep-graph emitter (`scripts/image_from_graph.py`) reads the same inventory and emits an L0.1 subgraph with dashed edges from each source to its consumers — making the "where does this source code come from?" question grep-able + visualizable. Covers 10 sources today: `github.com/bboortz/beaconry` (3 FG-012 consumers), `github.com/google/cadvisor`, `github.com/prometheus/{prometheus,alertmanager,node_exporter}`, `github.com/prometheus-community/ipmi_exporter` (2 consumers), `github.com/tianon/gosu`, `github.com/louislam/uptime-kuma`, `github.com/actions/runner`, `ziglang.org/download`.
+
+- **Delivered by**: FG-068
+- **Covered by**: `tests/acceptance/test_FG_068_l0-1-source-tooling.sh`, `scripts/verify-source-inventory.py`
+
+### arch.l4-absorbs-from-source
+
+Architectural invariant (FG-067 docs + FG-068 enforcement): the L4 runtime tier absorbs all from-source and externally-sourced consumer-facing images. The construction mechanism — Debian apt-slim, from-Go-source via `builder/go-trixie`, FG-012 externally-sourced via `image.yaml source:`, or from-Zig-source via `builder/zig-trixie` — is a build-time detail of the derived L4 image. The upstream source repos themselves are classified as L0.1 (external, not under `images/`). This retires the previously-proposed L4.5 `source/` tier and codifies that from-source runtimes publish through the existing `publish-derivatives` CI tier at their flat `ghcr.io/bboortz/<name>:<tag>` paths. Enforced by Rule 11 (FG-067 — no `images/source/` allowed) + `verify-source-inventory.py` (every upstream source has an L0.1 inventory entry).
+
+- **Delivered by**: FG-068
+- **Covered by**: `tests/acceptance/test_FG_068_l0-1-source-tooling.sh`, `docs/plan/tier-layering-model.md` §3 L4

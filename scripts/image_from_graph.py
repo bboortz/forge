@@ -37,6 +37,14 @@ except ImportError:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IMAGES_DIR = REPO_ROOT / "images"
 
+# FG-068: import the L0.1 upstream-source inventory so the dep graph can
+# emit source nodes + edges to their declared consumers.
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+try:
+    from _upstream_sources import _UPSTREAM_SOURCES  # type: ignore
+except ImportError:  # inventory not present — degrade gracefully
+    _UPSTREAM_SOURCES = {}  # type: ignore
+
 # Role classification — mirrors scripts/discover-images.sh.
 _PRE_BUILDERS = [
     "debian-slim-sid",
@@ -325,6 +333,18 @@ def _style_of(image: str, external: set[str]) -> str:
     return "slim"
 
 
+def _source_node_id(url: str) -> str:
+    """Stable mermaid-safe node id for an L0.1 source URL.
+
+    Examples:
+      github.com/bboortz/beaconry → SRC_GH_BBOORTZ_BEACONRY
+      ziglang.org/download        → SRC_ZIGLANG_DOWNLOAD
+    """
+    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", url).upper()
+    sanitized = re.sub(r"^GITHUB_COM_", "GH_", sanitized)
+    return f"SRC_{sanitized}"
+
+
 def emit_mermaid_body(local_images: set[str]) -> str:
     """Just the ```mermaid ... ``` block (no surrounding markdown)."""
     forward, dashed_local, upstream_solid, upstream_dashed, external = build_full_graph(local_images)
@@ -355,6 +375,17 @@ def emit_mermaid_body(local_images: set[str]) -> str:
             continue
         lines.append(f'        {node_id}["{label}"]:::upstream')
     lines.append("    end")
+
+    # L0.1 subgraph (FG-068 — upstream source repos / tarballs, not images).
+    # Each source has dashed edges to its declared consumers (registered in
+    # scripts/_upstream_sources.py, verified by verify-source-inventory.py).
+    if _UPSTREAM_SOURCES:
+        lines.append('    subgraph L0_1_sources["Layer 0.1 — Upstream sources (git clone / tarball; build-time only)"]')
+        for src_url in sorted(_UPSTREAM_SOURCES):
+            node_id = _source_node_id(src_url)
+            label = src_url
+            lines.append(f'        {node_id}["{label}"]:::upstream_source')
+        lines.append("    end")
 
     # L0.5 subgraph (FG-066 — forge mirrors, zero-mod passthroughs).
     lines.append('    subgraph L0_5_mirrors["Layer 0.5 — Forge mirrors (zero-mod upstream passthroughs; publish-mirrors tier)"]')
@@ -430,10 +461,23 @@ def emit_mermaid_body(local_images: set[str]) -> str:
         for src, dst in sorted(upstream_dashed):
             lines.append(f"    {_upstream_id(src)} -.-> {_local_id(dst)}")
 
+    # L0.1 source → consumer edges (FG-068, dashed with "src" marker).
+    # Pulled from `_UPSTREAM_SOURCES` so this stays in sync with the
+    # verify-source-inventory.py gate automatically.
+    if _UPSTREAM_SOURCES:
+        lines.append("")
+        lines.append("    %% L0.1 source → consumer edges (dashed; build-time clone/download)")
+        for src_url in sorted(_UPSTREAM_SOURCES):
+            node = _source_node_id(src_url)
+            for consumer in sorted(_UPSTREAM_SOURCES[src_url]):
+                if consumer in local_images:
+                    lines.append(f"    {node} -.-> {_local_id(consumer)}")
+
     # Styling (verbatim palette — matches the current hand-maintained block).
     lines.append("")
     lines.append("    %% Styling")
     lines.append("    classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;")
+    lines.append("    classDef upstream_source fill:#fef3c7,stroke:#a16207,stroke-width:1px,color:#713f12,font-style:italic;")
     lines.append("    classDef prebuilder fill:#fed7aa,stroke:#c2410c,stroke-width:2px,color:#7c2d12;")
     lines.append("    classDef builder    fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a;")
     lines.append("    classDef baseline   fill:#bbf7d0,stroke:#166534,stroke-width:2px,color:#14532d;")

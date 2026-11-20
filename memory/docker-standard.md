@@ -18,6 +18,8 @@ Full definitions, 🔑 semantic tests, overlap-resolution matrix, decisions log:
 
 **Rule 11** (`scripts/verify-dockerfile-conformance.py`, FG-067): the retired L4.5 `source/` tier must never resurface. Any `images/source/` directory fails lint. L4 absorbs from-source + externally-sourced runtimes; upstream source repos live at L0.1. Decision context: tier-layering-model.md §O8.
 
+**L0.1 inventory** (`scripts/_upstream_sources.py`, FG-068): every upstream source repo / tarball URL referenced in Dockerfiles or `image.yaml source:` blocks is registered in `_UPSTREAM_SOURCES` with its declared consumers. `scripts/verify-source-inventory.py` enforces two-way sync (wired into `make test-fast`). The dep-graph emitter renders an L0.1 subgraph with dashed edges to each source's consumers. See `docs/plan/tier-layering-model.md` §10 for the current 10-entry inventory.
+
 ## Chain depth ≤ 5 (FG-042 invariant)
 
 Deepest trust chains post-FG-072 (Python, Go, Zig all at the cap):
