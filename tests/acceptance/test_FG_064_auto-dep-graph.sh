@@ -37,9 +37,18 @@ echo "${out}" | grep -q '^<details>' || fail "emitter missing <details> wrapper"
 missing_nodes=""
 while read -r img; do
   [[ -n "$img" ]] || continue
-  # Translate `base/python-trixie` → `base_python_trixie` for mermaid id matching
-  # (FG-066 initially for mirror/; FG-069 extends to base/).
-  id_variant="${img//\//_}"
+  # Translate `base/python-trixie` → `base_python_trixie` for mermaid id matching.
+  # The `_local_id` helper in image_from_graph.py replaces BOTH `/` (tier
+  # separator) and `-` (dashes inside the leaf) with `_`. The bash side
+  # needs to do the same: split on first `/`, keep tier verbatim, replace
+  # dashes in the leaf. For flat images (no `/`), id_variant == img.
+  if [[ "${img}" == */* ]]; then
+    tier="${img%%/*}"
+    leaf="${img#*/}"
+    id_variant="${tier}_${leaf//-/_}"
+  else
+    id_variant="${img}"
+  fi
   # Match any of:
   #   - node declaration:  `  <id>:::style`
   #   - node declaration with label:  `  <id>["<label>"]:::style`
