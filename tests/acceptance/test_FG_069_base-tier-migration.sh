@@ -17,7 +17,7 @@ test -d images/base/python-scratch-trixie  || fail "images/base/python-scratch-t
 test ! -e images/scratch-base-trixie || fail "images/scratch-base-trixie still exists"
 test ! -e images/python-scratch-trixie || fail "images/python-scratch-trixie still exists"
 # Full contract set in new locations (EXPECTATIONS only for images with deps).
-for name in scratch-trixie python-trixie; do
+for name in scratch-trixie python-scratch-trixie; do
   for req in Dockerfile image.yaml PROMISES.yaml scan-baseline.json sid-pins tests; do
     test -e "images/base/${name}/${req}" \
       || fail "images/base/${name}/${req} missing"
@@ -32,9 +32,9 @@ pass "base/ layout complete; old paths gone"
 say "2. PROMISES image: fields are leaf names (mirror/syft convention)"
 grep -qE '^image: scratch-trixie$' images/base/scratch-trixie/PROMISES.yaml \
   || fail "scratch-trixie/PROMISES.yaml: image: must be 'scratch-trixie' (not base/scratch-trixie)"
-grep -qE '^image: python-trixie$' images/base/python-scratch-trixie/PROMISES.yaml \
+grep -qE '^image: python-scratch-trixie$' images/base/python-scratch-trixie/PROMISES.yaml \
   || fail "python-trixie/PROMISES.yaml: image: must be 'python-trixie'"
-grep -qE '^image: python-trixie$' images/base/python-scratch-trixie/EXPECTATIONS.yaml \
+grep -qE '^image: python-scratch-trixie$' images/base/python-scratch-trixie/EXPECTATIONS.yaml \
   || fail "python-trixie/EXPECTATIONS.yaml: image: must be 'python-trixie'"
 pass "PROMISES image: fields correct"
 
@@ -112,8 +112,8 @@ say "8. dep graph: both base/ images under L3 subgraph with :::baseline styling"
 _graph=$(python3 scripts/image_from_graph.py --emit=mermaid)
 echo "${_graph}" | awk '/subgraph L3_baseline/,/^    end$/' | grep -q 'base_scratch_trixie\["base/scratch-trixie"\]:::baseline' \
   || fail "L3 subgraph missing base_scratch_trixie[\"base/scratch-trixie\"]:::baseline"
-echo "${_graph}" | awk '/subgraph L3_baseline/,/^    end$/' | grep -q 'base_python_trixie\["base/python-scratch-trixie"\]:::baseline' \
-  || fail "L3 subgraph missing base_python_trixie[\"base/python-scratch-trixie\"]:::baseline"
+echo "${_graph}" | awk '/subgraph L3_baseline/,/^    end$/' | grep -q 'base_python_scratch_trixie\["base/python-scratch-trixie"\]:::baseline' \
+  || fail "L3 subgraph missing base_python_scratch_trixie[\"base/python-scratch-trixie\"]:::baseline"
 # Also NOT in L4 as slim.
 echo "${_graph}" | awk '/subgraph L4_runtimes/,/^    end$/' | grep -qE 'base/(scratch|python)-trixie' \
   && fail "base/ image leaked into L4 subgraph"

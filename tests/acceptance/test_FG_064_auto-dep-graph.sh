@@ -120,13 +120,13 @@ pass "no intra-layer edges"
 
 # --- (8) external-sourced beaconry resolved via image.yaml depends_on -------
 say "8. external-sourced images (FG-012) show dashed edge from BEACONRY_SRC + solid from base/python-scratch-trixie"
-# FG-069: base/python-scratch-trixie's mermaid node id is `base_python_trixie`
-# (slash → underscore per _local_id normalization).
+# FG-075: base/python-scratch-trixie's mermaid node id is `base_python_scratch_trixie`
+# (slash → underscore + dash → underscore per _local_id normalization).
 for b in beaconry-hub beaconry-scout beaconry-telegram-mock; do
   grep -q "UP_BEACONRY -\\.-> ${b}" docs/image-dependency-graph.md \
     || fail "${b}: missing dashed UP_BEACONRY edge"
-  grep -q "base_python_trixie --> ${b}" docs/image-dependency-graph.md \
-    || fail "${b}: missing solid base_python_trixie edge"
+  grep -q "base_python_scratch_trixie --> ${b}" docs/image-dependency-graph.md \
+    || fail "${b}: missing solid base_python_scratch_trixie edge"
 done
 pass "external-sourced graph edges present"
 
