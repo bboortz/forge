@@ -18,7 +18,7 @@ cd "$(git rev-parse --show-toplevel)"
 say()  { printf '\n\033[1;36m[FG-023]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-IMAGE_DIR="python-slim-trixie"
+IMAGE_DIR="pre-builder/python-slim-trixie"
 STAMP="/tmp/forge-stamp-$$"
 BUILD_LOG="/tmp/forge-build-$$"
 trap 'rm -rf "${STAMP}" "${BUILD_LOG}" .make/stamps/_fg023_test_* 2>/dev/null' EXIT
