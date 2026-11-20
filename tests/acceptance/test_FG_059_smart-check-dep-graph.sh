@@ -28,8 +28,8 @@ pass "graph covers expected edges (builder/python-trixie, python-slim-trixie, ba
 say "2. --deps flag emits newline-separated deps for a single image"
 deps=$(python3 scripts/image_from_graph.py --deps builder/python-trixie | sort)
 # Should contain at least python-scratch-trixie (strongest signal)
-echo "$deps" | grep -qxF "base/python-trixie" \
-  || fail "--deps builder/python-trixie should include base/python-trixie; got: $(echo "$deps" | tr '\n' ',')"
+echo "$deps" | grep -qxF "base/python-scratch-trixie" \
+  || fail "--deps builder/python-trixie should include base/python-scratch-trixie; got: $(echo "$deps" | tr '\n' ',')"
 pass "--deps flag returns the expected list"
 
 say "3. affected_images.py fans out via FROM-graph on a simulated base-image change"
@@ -59,7 +59,7 @@ PY
 )
 echo "${out}" | grep -q "builder/python-trixie" || fail "affected missing the trigger image"
 # python-scratch-trixie MUST be in affected — key downstream
-echo "${out}" | grep -q "base/python-trixie" || fail "affected missing base/python-trixie (expected FROM fan-out)"
+echo "${out}" | grep -q "base/python-scratch-trixie" || fail "affected missing base/python-scratch-trixie (expected FROM fan-out)"
 # cadvisor-slim-trixie is NOT affected (it uses forge-builder-go, not python)
 if echo "${out}" | grep -q "cadvisor-slim-trixie"; then
   fail "affected should NOT include cadvisor-slim-trixie (unrelated branch)"

@@ -52,9 +52,9 @@ pass "all ${#_img_dirs[@]} images have scan-baseline.json"
 # Section 2 — scan-regression against unchanged image passes
 # -----------------------------------------------------------------------------
 say "2. scan-regression on an unchanged image → ok"
-bash scripts/build-image.sh base/python-trixie >/dev/null
-python3 scripts/scan-regression.py base/python-trixie >/dev/null
-pass "scan-regression: ok on base/python-trixie"
+bash scripts/build-image.sh base/python-scratch-trixie >/dev/null
+python3 scripts/scan-regression.py base/python-scratch-trixie >/dev/null
+pass "scan-regression: ok on base/python-scratch-trixie"
 
 # -----------------------------------------------------------------------------
 # Section 3 — synthetic new CRITICAL via baseline mutation → FAIL
@@ -87,7 +87,7 @@ GRYPE
 chmod +x "${tmp}/grype"
 
 set +e
-PATH="${tmp}:${PATH}" python3 scripts/scan-regression.py base/python-trixie >"${tmp}/out" 2>&1
+PATH="${tmp}:${PATH}" python3 scripts/scan-regression.py base/python-scratch-trixie >"${tmp}/out" 2>&1
 rc=$?
 set -e
 if [[ ${rc} -ne 1 ]] || ! grep -q 'CVE-TEST-0001' "${tmp}/out"; then
@@ -101,8 +101,8 @@ pass "new CRITICAL CVE-TEST-0001 → scan-regression FAILed with the CVE id name
 # Section 4 — same CVE waivered in PROMISES.yaml → scan-regression PASSes
 # -----------------------------------------------------------------------------
 say "4. waivered CRITICAL via PROMISES.yaml → scan-regression PASSes"
-cp images/base/python-trixie/PROMISES.yaml "${tmp}/PROMISES.yaml.bak"
-python3 - images/base/python-trixie/PROMISES.yaml <<'PY'
+cp images/base/python-scratch-trixie/PROMISES.yaml "${tmp}/PROMISES.yaml.bak"
+python3 - images/base/python-scratch-trixie/PROMISES.yaml <<'PY'
 import sys, yaml, pathlib, datetime
 p = pathlib.Path(sys.argv[1])
 data = yaml.safe_load(p.read_text())
@@ -116,14 +116,14 @@ for promise in data['promises']:
         break
 p.write_text(yaml.safe_dump(data, sort_keys=False))
 PY
-PATH="${tmp}:${PATH}" python3 scripts/scan-regression.py base/python-trixie >/dev/null
+PATH="${tmp}:${PATH}" python3 scripts/scan-regression.py base/python-scratch-trixie >/dev/null
 pass "waiver (CVE-TEST-0001, until +30d) → scan-regression PASSes"
 
 # -----------------------------------------------------------------------------
 # Section 5 — expired waiver → verify-contracts FAILs
 # -----------------------------------------------------------------------------
 say "5. expired waiver → verify-contracts FAILs"
-python3 - images/base/python-trixie/PROMISES.yaml <<'PY'
+python3 - images/base/python-scratch-trixie/PROMISES.yaml <<'PY'
 import sys, yaml, pathlib, datetime
 p = pathlib.Path(sys.argv[1])
 data = yaml.safe_load(p.read_text())
@@ -144,31 +144,31 @@ set -e
 if [[ ${rc} -ne 1 ]] || ! grep -q 'expired' <<<"${out}"; then
   echo "  ✗ expected verify-contracts to fail on expired waiver (rc=${rc})" >&2
   echo "${out}" >&2
-  cp "${tmp}/PROMISES.yaml.bak" images/base/python-trixie/PROMISES.yaml
+  cp "${tmp}/PROMISES.yaml.bak" images/base/python-scratch-trixie/PROMISES.yaml
   exit 1
 fi
-cp "${tmp}/PROMISES.yaml.bak" images/base/python-trixie/PROMISES.yaml
+cp "${tmp}/PROMISES.yaml.bak" images/base/python-scratch-trixie/PROMISES.yaml
 pass "verify-contracts rejects expired waiver"
 
 # -----------------------------------------------------------------------------
 # Section 6 — missing baseline auto-bootstraps
 # -----------------------------------------------------------------------------
 say "6. missing baseline auto-bootstraps (Q4=a)"
-cp images/base/python-trixie/scan-baseline.json "${tmp}/scan-baseline.json.bak"
-rm images/base/python-trixie/scan-baseline.json
-python3 scripts/scan-regression.py base/python-trixie >"${tmp}/boot.out" 2>&1
-test -f images/base/python-trixie/scan-baseline.json || {
+cp images/base/python-scratch-trixie/scan-baseline.json "${tmp}/scan-baseline.json.bak"
+rm images/base/python-scratch-trixie/scan-baseline.json
+python3 scripts/scan-regression.py base/python-scratch-trixie >"${tmp}/boot.out" 2>&1
+test -f images/base/python-scratch-trixie/scan-baseline.json || {
   echo "  ✗ expected auto-bootstrap of scan-baseline.json" >&2
-  cp "${tmp}/scan-baseline.json.bak" images/base/python-trixie/scan-baseline.json
+  cp "${tmp}/scan-baseline.json.bak" images/base/python-scratch-trixie/scan-baseline.json
   exit 1
 }
 grep -q 'auto-bootstrapped' "${tmp}/boot.out" || {
   echo "  ✗ expected 'auto-bootstrapped' message in output" >&2
   cat "${tmp}/boot.out" >&2
-  cp "${tmp}/scan-baseline.json.bak" images/base/python-trixie/scan-baseline.json
+  cp "${tmp}/scan-baseline.json.bak" images/base/python-scratch-trixie/scan-baseline.json
   exit 1
 }
-cp "${tmp}/scan-baseline.json.bak" images/base/python-trixie/scan-baseline.json
+cp "${tmp}/scan-baseline.json.bak" images/base/python-scratch-trixie/scan-baseline.json
 pass "missing baseline auto-bootstrapped with current CRITICAL set"
 
 # -----------------------------------------------------------------------------

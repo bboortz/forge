@@ -99,16 +99,16 @@ pass "all expectations resolve to declared promises"
 # Section 3 — nonexistent promise reference fails verify-contracts
 # -----------------------------------------------------------------------------
 say "3. verify-contracts flags references to nonexistent promises"
-cp images/base/python-trixie/EXPECTATIONS.yaml "${tmp}/EXPECTATIONS.yaml.bak"
+cp images/base/python-scratch-trixie/EXPECTATIONS.yaml "${tmp}/EXPECTATIONS.yaml.bak"
 # Inject a bogus promise reference
-python3 - "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml <<'PY'
+python3 - "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-scratch-trixie/EXPECTATIONS.yaml <<'PY'
 import sys, yaml, pathlib
 src, dst = sys.argv[1], sys.argv[2]
 data = yaml.safe_load(pathlib.Path(src).read_text())
 data['dependencies'][0]['expectations'].append({
     'promise': 'nonexistent.widget',
     'reason': 'injected-by-FG-010-test',
-    'preflight': ['images/base/python-trixie/tests/smoke_imports.sh'],
+    'preflight': ['images/base/python-scratch-trixie/tests/smoke_imports.sh'],
 })
 pathlib.Path(dst).write_text(yaml.safe_dump(data, sort_keys=False))
 PY
@@ -121,10 +121,10 @@ if [[ ${rc} -ne 0 ]] && grep -q 'nonexistent.widget' "${tmp}/v3.out"; then
 else
   echo "✗ verifier did not flag nonexistent.widget (rc=${rc})" >&2
   cat "${tmp}/v3.out" >&2
-  cp "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
+  cp "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-scratch-trixie/EXPECTATIONS.yaml
   exit 1
 fi
-cp "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
+cp "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-scratch-trixie/EXPECTATIONS.yaml
 python3 "${VERIFY}" >/dev/null
 pass "graph recovers after repair"
 
@@ -162,8 +162,8 @@ pass "graph recovers after baseline repair"
 # Section 5 — version mismatch
 # -----------------------------------------------------------------------------
 say "5. verifier rejects dependency constraints the baseline can't satisfy"
-cp images/base/python-trixie/EXPECTATIONS.yaml "${tmp}/py.yaml.bak"
-python3 - "${tmp}/py.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml <<'PY'
+cp images/base/python-scratch-trixie/EXPECTATIONS.yaml "${tmp}/py.yaml.bak"
+python3 - "${tmp}/py.yaml.bak" images/base/python-scratch-trixie/EXPECTATIONS.yaml <<'PY'
 import sys, yaml, pathlib
 src, dst = sys.argv[1], sys.argv[2]
 data = yaml.safe_load(pathlib.Path(src).read_text())
@@ -179,10 +179,10 @@ if [[ ${rc} -ne 0 ]] && grep -q 'does not satisfy constraint' "${tmp}/v5.out"; t
 else
   echo "✗ version constraint error not surfaced (rc=${rc})" >&2
   cat "${tmp}/v5.out" >&2
-  cp "${tmp}/py.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
+  cp "${tmp}/py.yaml.bak" images/base/python-scratch-trixie/EXPECTATIONS.yaml
   exit 1
 fi
-cp "${tmp}/py.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
+cp "${tmp}/py.yaml.bak" images/base/python-scratch-trixie/EXPECTATIONS.yaml
 python3 "${VERIFY}" >/dev/null
 pass "graph recovers after version repair"
 

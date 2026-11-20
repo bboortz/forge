@@ -1,0 +1,5 @@
+benni      44463 3103248  0 15:26 pts/7    00:00:00 watch ps -ef | grep git                                                                          
+benni     267840   44463  0 15:49 pts/7    00:00:00 watch ps -ef | grep git                                                                          
+benni     267841  267840  0 15:49 pts/7    00:00:00 sh -c -- ps -ef | grep git                                                                       
+benni     267843  267841  0 15:49 pts/7    00:00:00 grep git                                                                                         
+benni    2859454    1712  0 Nov02 ?        01:06:45 /home/benni/.npm-global/bin/claude -p You are running a read-only audit of git branch 'feat/beaco
