@@ -46,6 +46,18 @@ graph TD
         UP_PYTHON["python:3.14-slim-trixie<br/>docker.io"]:::upstream
         UP_UBUNTU["ubuntu:24.04<br/>docker.io"]:::upstream
     end
+    subgraph L0_1_sources["Layer 0.1 — Upstream sources (git clone / tarball; build-time only)"]
+        SRC_GH_ACTIONS_RUNNER["github.com/actions/runner"]:::upstream_source
+        SRC_GH_BBOORTZ_BEACONRY["github.com/bboortz/beaconry"]:::upstream_source
+        SRC_GH_GOOGLE_CADVISOR["github.com/google/cadvisor"]:::upstream_source
+        SRC_GH_LOUISLAM_UPTIME_KUMA["github.com/louislam/uptime-kuma"]:::upstream_source
+        SRC_GH_PROMETHEUS_COMMUNITY_IPMI_EXPORTER["github.com/prometheus-community/ipmi_exporter"]:::upstream_source
+        SRC_GH_PROMETHEUS_ALERTMANAGER["github.com/prometheus/alertmanager"]:::upstream_source
+        SRC_GH_PROMETHEUS_NODE_EXPORTER["github.com/prometheus/node_exporter"]:::upstream_source
+        SRC_GH_PROMETHEUS_PROMETHEUS["github.com/prometheus/prometheus"]:::upstream_source
+        SRC_GH_TIANON_GOSU["github.com/tianon/gosu"]:::upstream_source
+        SRC_ZIGLANG_ORG_DOWNLOAD["ziglang.org/download"]:::upstream_source
+    end
     subgraph L0_5_mirrors["Layer 0.5 — Forge mirrors (zero-mod upstream passthroughs; publish-mirrors tier)"]
         mirror_syft["mirror/syft"]:::mirror
     end
@@ -156,8 +168,24 @@ graph TD
     UP_HC -.-> python-scratch-trixie
     UP_HC -.-> uptime-kuma-slim-trixie
 
+    %% L0.1 source → consumer edges (dashed; build-time clone/download)
+    SRC_GH_ACTIONS_RUNNER -.-> github-runner-noble
+    SRC_GH_BBOORTZ_BEACONRY -.-> beaconry-hub
+    SRC_GH_BBOORTZ_BEACONRY -.-> beaconry-scout
+    SRC_GH_BBOORTZ_BEACONRY -.-> beaconry-telegram-mock
+    SRC_GH_GOOGLE_CADVISOR -.-> cadvisor-slim-trixie
+    SRC_GH_LOUISLAM_UPTIME_KUMA -.-> uptime-kuma-slim-trixie
+    SRC_GH_PROMETHEUS_COMMUNITY_IPMI_EXPORTER -.-> ipmi-exporter-scratch-trixie
+    SRC_GH_PROMETHEUS_COMMUNITY_IPMI_EXPORTER -.-> ipmi-exporter-slim-trixie
+    SRC_GH_PROMETHEUS_ALERTMANAGER -.-> alertmanager-scratch-trixie
+    SRC_GH_PROMETHEUS_NODE_EXPORTER -.-> node-exporter-scratch-trixie
+    SRC_GH_PROMETHEUS_PROMETHEUS -.-> prometheus-scratch-trixie
+    SRC_GH_TIANON_GOSU -.-> postgres-slim-trixie
+    SRC_ZIGLANG_ORG_DOWNLOAD -.-> zig-slim-trixie
+
     %% Styling
     classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;
+    classDef upstream_source fill:#fef3c7,stroke:#a16207,stroke-width:1px,color:#713f12,font-style:italic;
     classDef prebuilder fill:#fed7aa,stroke:#c2410c,stroke-width:2px,color:#7c2d12;
     classDef builder    fill:#dbeafe,stroke:#1e40af,stroke-width:2px,color:#1e3a8a;
     classDef baseline   fill:#bbf7d0,stroke:#166534,stroke-width:2px,color:#14532d;

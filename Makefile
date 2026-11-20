@@ -116,6 +116,12 @@ verify-contracts:
 verify-image-dirs:
 	@bash scripts/verify-image-dirs.sh
 
+# FG-068: two-way check that every Dockerfile / image.yaml source URL has an
+# inventory entry in scripts/_upstream_sources.py AND every inventory entry
+# is referenced by at least one declared consumer.
+verify-source-inventory:
+	@python3 scripts/verify-source-inventory.py
+
 # FG-042 follow-up: catch any new Dockerfile that FROMs python:3.14-slim-trixie
 # or debian:trixie-slim directly instead of going through the forge-rooted
 # pre-builders (python-slim-trixie / debian-slim-trixie). Pre-commit guard;
@@ -203,7 +209,7 @@ test-acceptance:
 test-images:
 	@bash scripts/test-images.sh
 
-test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift verify-dockerfile-conformance verify-dep-graph-fresh
+test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-source-inventory verify-no-upstream-drift verify-dockerfile-conformance verify-dep-graph-fresh
 
 check: test-fast test-acceptance test-images
 
