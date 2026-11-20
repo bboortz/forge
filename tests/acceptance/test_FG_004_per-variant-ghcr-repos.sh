@@ -30,16 +30,24 @@ LATEST_ARCH="latest-amd64"
 # -----------------------------------------------------------------------------
 # Section 1 — Scenario: image.yaml drops repo:
 # -----------------------------------------------------------------------------
-say "1. image.yaml no longer carries a repo: field"
+say "1. image.yaml drops repo: unless the dir is nested (FG-066 / FG-069 convention)"
+# FG-004 originally required EVERY image.yaml to omit `repo:` (derived from
+# basename). FG-066 + FG-069 introduced nested dirs (`mirror/<name>/`,
+# `base/<name>/`) where basename alone would collapse to the leaf and
+# lose the tier prefix — those explicitly carry a `repo:` field
+# (documented in-file). Scope the assertion to FLAT-path image.yamls.
 for v in "${VARIANTS[@]}"; do
   f="images/${v}/image.yaml"
   test -f "${f}" || { echo "  ✗ ${f} missing" >&2; exit 1; }
-  if grep -qE '^repo:' "${f}"; then
-    echo "  ✗ ${f} still has a repo: line — should be derived from dir name" >&2
-    exit 1
+  # Only enforce "no repo:" on flat (non-nested) dirs.
+  if [[ "${v}" != */* ]]; then
+    if grep -qE '^repo:' "${f}"; then
+      echo "  ✗ ${f} still has a repo: line — flat dirs must derive from basename" >&2
+      exit 1
+    fi
   fi
 done
-pass "neither image.yaml carries repo:"
+pass "flat-dir image.yamls derive repo from basename; nested dirs carry explicit repo: per convention"
 
 # -----------------------------------------------------------------------------
 # Section 2 — Scenario: scripts derive repo from dir name

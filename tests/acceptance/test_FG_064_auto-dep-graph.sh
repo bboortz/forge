@@ -37,9 +37,15 @@ echo "${out}" | grep -q '^<details>' || fail "emitter missing <details> wrapper"
 missing_nodes=""
 while read -r img; do
   [[ -n "$img" ]] || continue
-  # Translate `mirror/syft` → `mirror_syft` for mermaid id matching.
+  # Translate `base/python-trixie` → `base_python_trixie` for mermaid id matching
+  # (FG-066 initially for mirror/; FG-069 extends to base/).
   id_variant="${img//\//_}"
-  if ! echo "${out}" | grep -qE "^[[:space:]]*(${img}|${id_variant}):::|(${img}|${id_variant}) -->|(${img}|${id_variant}) -\\.->|--> (${img}|${id_variant})|-\\.-> (${img}|${id_variant})"; then
+  # Match any of:
+  #   - node declaration:  `  <id>:::style`
+  #   - node declaration with label:  `  <id>["<label>"]:::style`
+  #   - edge source:  `<id> -->` / `<id> -.->`
+  #   - edge target:  `--> <id>` / `-.-> <id>`
+  if ! echo "${out}" | grep -qE "^[[:space:]]*(${img}|${id_variant})(\\[|:::|$)|(${img}|${id_variant}) -->|(${img}|${id_variant}) -\\.->|--> (${img}|${id_variant})|-\\.-> (${img}|${id_variant})"; then
     missing_nodes="${missing_nodes} ${img}"
   fi
 done < <(
