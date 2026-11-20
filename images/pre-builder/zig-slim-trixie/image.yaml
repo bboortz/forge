@@ -11,4 +11,4 @@ repo: pre-builder/zig-slim-trixie
 platforms:
   - linux/amd64
 depends_on:
-  - debian-slim-trixie
+  - pre-builder/debian-slim-trixie

@@ -6,7 +6,7 @@ spec_version: 1
 image: forge-builder-python-trixie
 
 dependencies:
-  - image: python-slim-trixie
+  - image: pre-builder/python-slim-trixie
     version: ">=0.1"
     expectations:
       - promise: runtime.python3

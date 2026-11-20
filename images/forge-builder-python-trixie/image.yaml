@@ -10,5 +10,5 @@ tag: "0.1"
 platforms:
   - linux/amd64
 depends_on:
-  - python-slim-trixie
+  - pre-builder/python-slim-trixie
   - mirror/syft

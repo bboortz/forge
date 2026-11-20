@@ -9,7 +9,7 @@ spec_version: 1
 image: zig-slim-trixie
 
 dependencies:
-  - image: debian-slim-trixie
+  - image: pre-builder/debian-slim-trixie
     version: ">=0.1"
     expectations:
       - promise: files.ca-certificates
