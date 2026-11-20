@@ -152,15 +152,14 @@ grep -q 'L0.1 inventory' memory/docker-standard.md \
   || fail "memory/docker-standard.md missing 'L0.1 inventory' reference"
 pass "CAPs + memory present"
 
-# --- (8) no image directory moved ---
-say "8. images/ tree is byte-identical to origin/dev"
-git fetch origin dev --quiet 2>/dev/null || true
-if git diff --name-status origin/dev...HEAD -- images/ 2>/dev/null | grep -qE '^(R|A|D)'; then
-  echo "diff vs origin/dev — images/ should have NO additions, deletions, or renames:" >&2
-  git diff --name-status origin/dev...HEAD -- images/ | head -10 >&2
-  fail "images/ tree changed in this PR (FG-068 must be zero image moves)"
-fi
-pass "images/ tree is byte-identical to origin/dev"
+# --- (8) [retired FG-069] FG-068 originally asserted "no image dirs moved
+# in this PR" — a PR-scoped check that false-positives on every later PR
+# that legitimately moves images (starting with FG-069). The assertion
+# belonged in the one-time pre-ship audit, not a permanent acceptance
+# test. FG-068's real deliverables (L0.1 inventory + verifier + dep-graph
+# subgraph + Makefile wiring) are asserted in §§1-7 above.
+say "8. FG-068 deliverables remain present (asserted in §§1-7)"
+pass "FG-068 asserts its own deliverables, not external state"
 
 echo
 echo "FG-068 acceptance: all sections passed."

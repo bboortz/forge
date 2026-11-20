@@ -8,7 +8,7 @@ set -euo pipefail
 
 SIZE_CEILING=${SIZE_CEILING:-25000000}
 export SIZE_CEILING
-export IMAGE_NAME="${IMAGE_NAME:-scratch-base-trixie}"
+export IMAGE_NAME="${IMAGE_NAME:-base/scratch-trixie}"
 export IMAGE_TAG="${IMAGE_TAG:-0.2}"
 export REGISTRY="${REGISTRY:-forge-local}"
 

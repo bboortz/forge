@@ -12,4 +12,8 @@ export IMAGE_NAME="${IMAGE_NAME:-python}"
 export IMAGE_TAG="${IMAGE_TAG:-3.14-scratch-trixie}"
 export REGISTRY="${REGISTRY:-forge-local}"
 
-exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../python-slim-trixie/tests" && pwd)/smoke_size.sh"
+# FG-069: this file moved from images/python-scratch-trixie/tests/ to
+# images/base/python-trixie/tests/. The target (python-slim-trixie)
+# remained at images/python-slim-trixie/ (L1 pre-builder, not moved).
+# Walk up 3 levels now instead of 2.
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../python-slim-trixie/tests" && pwd)/smoke_size.sh"

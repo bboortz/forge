@@ -6,7 +6,7 @@
 # Delivers: FG-005 Scenario "baseline contains the expected file surface".
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-scratch-base-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-base/scratch-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-0.2}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

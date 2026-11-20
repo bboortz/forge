@@ -110,10 +110,10 @@ pass "discover-images classification correct"
 # --- (8) dep graph renders both base/ images at L3 ---
 say "8. dep graph: both base/ images under L3 subgraph with :::baseline styling"
 _graph=$(python3 scripts/image_from_graph.py --emit=mermaid)
-echo "${_graph}" | awk '/subgraph L3_baseline/,/^    end$/' | grep -q 'base/scratch-trixie:::baseline' \
-  || fail "L3 subgraph missing base/scratch-trixie:::baseline"
-echo "${_graph}" | awk '/subgraph L3_baseline/,/^    end$/' | grep -q 'base/python-trixie:::baseline' \
-  || fail "L3 subgraph missing base/python-trixie:::baseline"
+echo "${_graph}" | awk '/subgraph L3_baseline/,/^    end$/' | grep -q 'base_scratch_trixie\["base/scratch-trixie"\]:::baseline' \
+  || fail "L3 subgraph missing base_scratch_trixie[\"base/scratch-trixie\"]:::baseline"
+echo "${_graph}" | awk '/subgraph L3_baseline/,/^    end$/' | grep -q 'base_python_trixie\["base/python-trixie"\]:::baseline' \
+  || fail "L3 subgraph missing base_python_trixie[\"base/python-trixie\"]:::baseline"
 # Also NOT in L4 as slim.
 echo "${_graph}" | awk '/subgraph L4_runtimes/,/^    end$/' | grep -qE 'base/(scratch|python)-trixie' \
   && fail "base/ image leaked into L4 subgraph"
