@@ -21,9 +21,9 @@
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-046: Go builder for the exporter binary.
-ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
+ARG BUILDER_GO_REF=ghcr.io/bboortz/builder/go-trixie:latest
 # FG-025: Debian builder for the C freeipmi tools.
-ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
+ARG BUILDER_PYTHON_REF=ghcr.io/bboortz/builder/python-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # FG-050: track upstream's latest GitHub release. Empty default → build-time
@@ -47,7 +47,7 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 FROM ${HC_REF} AS hc
 
 # --- Stage 1: Go builder — compile the exporter ------------------------------
-FROM ${FORGE_BUILDER_GO_REF} AS go-builder
+FROM ${BUILDER_GO_REF} AS go-builder
 
 ARG IPMI_EXPORTER_VERSION
 # hadolint ignore=DL3064
@@ -97,7 +97,7 @@ RUN set -eux; \
 RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 
 # --- Stage 2: C builder — install freeipmi tools -----------------------------
-FROM ${FORGE_BUILDER_REF} AS c-builder
+FROM ${BUILDER_PYTHON_REF} AS c-builder
 
 COPY sid-pins/ /etc/apt/preferences.d/
 

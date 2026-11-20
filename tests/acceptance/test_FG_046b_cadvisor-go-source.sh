@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Covers: FG-046 (part b — cadvisor migration from golang:X-trixie direct → forge-builder-go-trixie)
+# Covers: FG-046 (part b — cadvisor migration from golang:X-trixie direct → builder/go-trixie)
 # CAPs:   build.from-go-source, image.cadvisor-serves-metrics
 
 set -euo pipefail
@@ -14,12 +14,12 @@ pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 say "1. Dockerfile FROMs the shared Go base (not golang:X-trixie direct)"
-grep -q "FORGE_BUILDER_GO_REF" images/cadvisor-slim-trixie/Dockerfile \
-  || fail "cadvisor Dockerfile doesn't reference FORGE_BUILDER_GO_REF"
+grep -q "BUILDER_GO_REF" images/cadvisor-slim-trixie/Dockerfile \
+  || fail "cadvisor Dockerfile doesn't reference BUILDER_GO_REF"
 if grep -q "ARG GO_BASE=golang" images/cadvisor-slim-trixie/Dockerfile; then
-  fail "cadvisor still has ARG GO_BASE=golang (should FROM forge-builder-go-trixie)"
+  fail "cadvisor still has ARG GO_BASE=golang (should FROM builder/go-trixie)"
 fi
-pass "Dockerfile FROMs forge-builder-go-trixie"
+pass "Dockerfile FROMs builder/go-trixie"
 
 say "2. Builds with stdlib go1.27+"
 bash scripts/build-image.sh cadvisor-slim-trixie >/dev/null

@@ -36,7 +36,7 @@ if ! docker image inspect forge-local/healthy-scratch-trixie:2 >/dev/null 2>&1; 
   if docker image inspect forge-local/hc:0.1.0 >/dev/null 2>&1; then
     docker build \
       --build-arg HC_REF=forge-local/hc:0.1.0 \
-      --build-arg FORGE_BUILDER_REF=forge-local/forge-builder-python-trixie:0.1 \
+      --build-arg BUILDER_PYTHON_REF=forge-local/builder/python-trixie:0.1 \
       --build-arg GIT_SHA="$(git rev-parse HEAD)" \
       --build-arg BUILD_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       -t forge-local/healthy-scratch-trixie:2 \

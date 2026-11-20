@@ -51,39 +51,39 @@ grep -q 'sha256sum' images/pre-builder/zig-slim-trixie/Dockerfile \
   || fail "zig-slim-trixie must verify SHA256 of the downloaded tarball"
 pass "ziglang.org tarball install + sha256 verify present"
 
-# --- (4) forge-builder-zig-trixie dogfoods zig-slim-trixie ----------------
-say "4. forge-builder-zig-trixie dogfoods zig-slim-trixie"
+# --- (4) builder/zig-trixie dogfoods zig-slim-trixie ----------------
+say "4. builder/zig-trixie dogfoods zig-slim-trixie"
 for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json sid-pins \
          tests/smoke_has_zig.sh tests/smoke_has_syft.sh \
          tests/smoke_ca_bundle.sh tests/smoke_no_apt_cache.sh \
          tests/smoke_release_tools.sh; do
-  test -e "images/forge-builder-zig-trixie/${f}" \
-    || fail "images/forge-builder-zig-trixie/${f} missing"
+  test -e "images/builder/zig-trixie/${f}" \
+    || fail "images/builder/zig-trixie/${f} missing"
 done
 grep -qE '^ARG ZIG_SLIM_REF=ghcr\.io/bboortz/pre-builder/zig-slim-trixie:(latest|[0-9.]+)' \
-  images/forge-builder-zig-trixie/Dockerfile \
-  || fail "forge-builder-zig-trixie must declare ARG ZIG_SLIM_REF default ghcr.io/bboortz/pre-builder/zig-slim-trixie:…"
-runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/forge-builder-zig-trixie/Dockerfile)
+  images/builder/zig-trixie/Dockerfile \
+  || fail "builder/zig-trixie must declare ARG ZIG_SLIM_REF default ghcr.io/bboortz/pre-builder/zig-slim-trixie:…"
+runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/builder/zig-trixie/Dockerfile)
 # shellcheck disable=SC2016
 [[ "${runtime_from}" == *'${ZIG_SLIM_REF}'* ]] \
-  || fail "forge-builder-zig-trixie runtime FROM is '${runtime_from}', want '... \${ZIG_SLIM_REF}'"
+  || fail "builder/zig-trixie runtime FROM is '${runtime_from}', want '... \${ZIG_SLIM_REF}'"
 # Belt-and-suspenders: no literal `FROM debian:trixie-slim` anywhere, and no
 # direct FROM to debian-slim-trixie — must go through its own pre-builder.
-if grep -qE '^FROM debian:trixie-slim' images/forge-builder-zig-trixie/Dockerfile; then
-  fail "forge-builder-zig-trixie must NOT FROM debian:trixie-slim directly"
+if grep -qE '^FROM debian:trixie-slim' images/builder/zig-trixie/Dockerfile; then
+  fail "builder/zig-trixie must NOT FROM debian:trixie-slim directly"
 fi
-grep -q 'SYFT_REF' images/forge-builder-zig-trixie/Dockerfile \
-  || fail "forge-builder-zig-trixie must COPY syft from \${SYFT_REF} (FG-066 mirror)"
+grep -q 'SYFT_REF' images/builder/zig-trixie/Dockerfile \
+  || fail "builder/zig-trixie must COPY syft from \${SYFT_REF} (FG-066 mirror)"
 pass "FBZ dogfoods zig-slim-trixie + mirror/syft"
 
 # --- (5) image.yaml depends_on wiring -------------------------------------
 say "5. image.yaml depends_on wiring for both images"
 grep -q 'debian-slim-trixie' images/pre-builder/zig-slim-trixie/image.yaml \
   || fail "zig-slim-trixie/image.yaml must list debian-slim-trixie in depends_on"
-grep -q 'zig-slim-trixie' images/forge-builder-zig-trixie/image.yaml \
-  || fail "forge-builder-zig-trixie/image.yaml must list zig-slim-trixie in depends_on"
-grep -q 'mirror/syft' images/forge-builder-zig-trixie/image.yaml \
-  || fail "forge-builder-zig-trixie/image.yaml must list mirror/syft in depends_on"
+grep -q 'zig-slim-trixie' images/builder/zig-trixie/image.yaml \
+  || fail "builder/zig-trixie/image.yaml must list zig-slim-trixie in depends_on"
+grep -q 'mirror/syft' images/builder/zig-trixie/image.yaml \
+  || fail "builder/zig-trixie/image.yaml must list mirror/syft in depends_on"
 pass "depends_on wiring present on both"
 
 # --- (6) pre-builder count 6 → 7, builder count 3 → 4 ---------------------
@@ -96,8 +96,8 @@ echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/zig-s
 out=$(bash scripts/discover-images.sh builders)
 got=$(echo "${out}" | jq '.include | length')
 [[ "${got}" -eq 4 ]] || fail "builders tier returned ${got} entries (want 4)"
-echo "${out}" | jq -e '.include | map(.image_dir) | contains(["forge-builder-zig-trixie"])' >/dev/null \
-  || fail "builders tier missing forge-builder-zig-trixie"
+echo "${out}" | jq -e '.include | map(.image_dir) | contains(["builder/zig-trixie"])' >/dev/null \
+  || fail "builders tier missing builder/zig-trixie"
 pass "7 pre-builders + 4 builders including the Zig pair"
 
 # --- (7) verify-no-upstream-drift stays at _EXPECTED=6 --------------------
@@ -112,8 +112,8 @@ pass "drift guard green at _EXPECTED=6"
 say "8. arch.language-family-image-pair invariant holds for Zig"
 grep -q 'zig-slim-trixie' scripts/verify-dockerfile-conformance.py \
   || fail "verify-dockerfile-conformance.py must list zig-slim-trixie in _PRE_BUILDERS"
-grep -q 'forge-builder-zig-trixie' scripts/verify-dockerfile-conformance.py \
-  || fail "verify-dockerfile-conformance.py must list forge-builder-zig-trixie in _FORGE_BUILDERS"
+grep -q 'builder/zig-trixie' scripts/verify-dockerfile-conformance.py \
+  || fail "verify-dockerfile-conformance.py must list builder/zig-trixie in _FORGE_BUILDERS"
 grep -q 'ZIG_SLIM_REF' scripts/verify-dockerfile-conformance.py \
   || fail "_KNOWN_REF_ARGS must include ZIG_SLIM_REF"
 python3 scripts/verify-dockerfile-conformance.py >/dev/null \
@@ -128,8 +128,8 @@ python3 scripts/image_from_graph.py --emit=mermaid \
   | grep -q 'pre-builder_debian_slim_trixie --> pre-builder_zig_slim_trixie' \
   || fail "dep graph missing pre-builder/debian-slim-trixie → pre-builder/zig-slim-trixie edge"
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_zig_slim_trixie --> forge-builder-zig-trixie' \
-  || fail "dep graph missing pre-builder/zig-slim-trixie → forge-builder-zig-trixie edge"
+  | grep -q 'pre-builder_zig_slim_trixie --> builder_zig_trixie' \
+  || fail "dep graph missing pre-builder/zig-slim-trixie → builder/zig-trixie edge"
 # Belt-and-suspenders: no direct upstream edge to the Zig pre-builder.
 if python3 scripts/image_from_graph.py --emit=mermaid | grep -qE 'UP_[A-Z]+ --> pre-builder_zig_slim_trixie'; then
   fail "dep graph has an upstream → pre-builder/zig-slim-trixie edge (must go via pre-builder/debian-slim-trixie)"
@@ -149,7 +149,7 @@ grep -q 'build.shared-zig-builder' docs/CAPABILITIES.md \
 pass "memory + CAPABILITIES document the Zig pair"
 
 # --- (11) Full build + smoke suite (skip in fast-mode) -------------------
-say "11. Build + smokes for zig-slim-trixie + forge-builder-zig-trixie (skip in fast-mode)"
+say "11. Build + smokes for zig-slim-trixie + builder/zig-trixie (skip in fast-mode)"
 if [[ "${FORGE_FAST:-0}" == "1" ]]; then
   pass "skipped per FORGE_FAST=1"
 else
@@ -159,10 +159,10 @@ else
     IMAGE_NAME=pre-builder/zig-slim-trixie IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-zig-trixie >/dev/null 2>&1 \
-    || fail "forge-builder-zig-trixie build failed (dogfood)"
-  for s in images/forge-builder-zig-trixie/tests/smoke_*.sh; do
-    IMAGE_NAME=forge-builder-zig-trixie IMAGE_TAG=0.1 bash "${s}" >/dev/null \
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh builder/zig-trixie >/dev/null 2>&1 \
+    || fail "builder/zig-trixie build failed (dogfood)"
+  for s in images/builder/zig-trixie/tests/smoke_*.sh; do
+    IMAGE_NAME=builder/zig-trixie IMAGE_TAG=0.1 bash "${s}" >/dev/null \
       || fail "smoke failed: ${s}"
   done
   pass "both images built + all smokes green"

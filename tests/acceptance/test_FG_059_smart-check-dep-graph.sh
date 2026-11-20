@@ -12,24 +12,24 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 say "1. image_from_graph.py reports each image's reverse-dependency set"
 graph_json=$(python3 scripts/image_from_graph.py)
-echo "$graph_json" | jq -e '.["forge-builder-python-trixie"]' >/dev/null \
-  || fail "graph missing forge-builder-python-trixie entry"
-# At least one of python-scratch / nginx-scratch / redis-scratch depends on forge-builder-python-trixie
-echo "$graph_json" | jq -e '.["forge-builder-python-trixie"] | map(select(test("scratch"))) | length > 0' >/dev/null \
-  || fail "forge-builder-python-trixie should fan out to scratch derivatives"
-# python-slim-trixie → forge-builder-python-trixie (dogfood)
-echo "$graph_json" | jq -e '.["pre-builder/python-slim-trixie"] | contains(["forge-builder-python-trixie"])' >/dev/null \
-  || fail "python-slim-trixie should fan out to forge-builder-python-trixie (dogfood edge)"
+echo "$graph_json" | jq -e '.["builder/python-trixie"]' >/dev/null \
+  || fail "graph missing builder/python-trixie entry"
+# At least one of python-scratch / nginx-scratch / redis-scratch depends on builder/python-trixie
+echo "$graph_json" | jq -e '.["builder/python-trixie"] | map(select(test("scratch"))) | length > 0' >/dev/null \
+  || fail "builder/python-trixie should fan out to scratch derivatives"
+# python-slim-trixie → builder/python-trixie (dogfood)
+echo "$graph_json" | jq -e '.["pre-builder/python-slim-trixie"] | contains(["builder/python-trixie"])' >/dev/null \
+  || fail "python-slim-trixie should fan out to builder/python-trixie (dogfood edge)"
 # scratch-base-trixie → the scratch fleet
 echo "$graph_json" | jq -e '.["base/scratch-trixie"] | length >= 3' >/dev/null \
   || fail "base/scratch-trixie should fan out to many scratch derivatives"
-pass "graph covers expected edges (forge-builder-python-trixie, python-slim-trixie, base/scratch-trixie)"
+pass "graph covers expected edges (builder/python-trixie, python-slim-trixie, base/scratch-trixie)"
 
 say "2. --deps flag emits newline-separated deps for a single image"
-deps=$(python3 scripts/image_from_graph.py --deps forge-builder-python-trixie | sort)
+deps=$(python3 scripts/image_from_graph.py --deps builder/python-trixie | sort)
 # Should contain at least python-scratch-trixie (strongest signal)
 echo "$deps" | grep -qxF "base/python-trixie" \
-  || fail "--deps forge-builder-python-trixie should include base/python-trixie; got: $(echo "$deps" | tr '\n' ',')"
+  || fail "--deps builder/python-trixie should include base/python-trixie; got: $(echo "$deps" | tr '\n' ',')"
 pass "--deps flag returns the expected list"
 
 say "3. affected_images.py fans out via FROM-graph on a simulated base-image change"
@@ -42,8 +42,8 @@ from pathlib import Path
 root = Path.cwd()
 r = subprocess.run(["python3", str(root / "scripts/image_from_graph.py")], capture_output=True, text=True, check=True)
 graph = json.loads(r.stdout)
-# Simulate: forge-builder-python-trixie directly affected.
-direct = {"forge-builder-python-trixie"}
+# Simulate: builder/python-trixie directly affected.
+direct = {"builder/python-trixie"}
 affected = set(direct)
 pending = list(direct)
 for _ in range(5):
@@ -57,14 +57,14 @@ for _ in range(5):
 print(",".join(sorted(affected)))
 PY
 )
-echo "${out}" | grep -q "forge-builder-python-trixie" || fail "affected missing the trigger image"
+echo "${out}" | grep -q "builder/python-trixie" || fail "affected missing the trigger image"
 # python-scratch-trixie MUST be in affected — key downstream
 echo "${out}" | grep -q "base/python-trixie" || fail "affected missing base/python-trixie (expected FROM fan-out)"
 # cadvisor-slim-trixie is NOT affected (it uses forge-builder-go, not python)
 if echo "${out}" | grep -q "cadvisor-slim-trixie"; then
   fail "affected should NOT include cadvisor-slim-trixie (unrelated branch)"
 fi
-pass "affected fans out correctly: forge-builder-python-trixie → scratch derivatives, not go-side images"
+pass "affected fans out correctly: builder/python-trixie → scratch derivatives, not go-side images"
 
 say "4. smart-check.sh: core script change → full-run"
 # Dry-run smart-check with a stubbed CHANGED env var is awkward; easier to

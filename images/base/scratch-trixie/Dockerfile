@@ -24,12 +24,12 @@
 
 # FG-025: builder base pre-loads apt-upgrade + ca-certificates + syft. The
 # ARG default lets a cold local dev build fall back to python:3.14-slim-trixie
-# directly; CI + scripts/build-image.sh override FORGE_BUILDER_REF to the
+# directly; CI + scripts/build-image.sh override BUILDER_PYTHON_REF to the
 # forge-local (or ghcr.io/bboortz) tag of forge-builder-python-trixie.
-ARG FORGE_BUILDER_REF=forge-local/forge-builder-python-trixie:0.1
+ARG BUILDER_PYTHON_REF=forge-local/builder/python-trixie:0.1
 
 # --- Stage 1: builder ---------------------------------------------------------
-FROM ${FORGE_BUILDER_REF} AS builder
+FROM ${BUILDER_PYTHON_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

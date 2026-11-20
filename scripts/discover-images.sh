@@ -77,12 +77,12 @@ _is_pre_builder() {
   return 1
 }
 
-# FG-025 + FG-046 + FG-048: forge-builder-python-trixie + forge-builder-go-trixie
-# + forge-builder-node-trixie are pre-base builder images. Every scratch /
-# from-Go / from-Node derivative's builder stage FROMs one of them. They
-# must publish BEFORE anything that depends on them. Centralizing the
-# special-case here keeps build.yml table-driven.
-_FORGE_BUILDERS=(forge-builder-python-trixie forge-builder-go-trixie forge-builder-node-trixie forge-builder-zig-trixie)
+# FG-025 + FG-046 + FG-048 + FG-071: builder/python-trixie + builder/go-trixie
+# + builder/node-trixie + builder/zig-trixie are pre-base builder images. Every
+# scratch / from-Go / from-Node / from-Zig derivative's builder stage FROMs one
+# of them. They must publish BEFORE anything that depends on them. Centralizing
+# the special-case here keeps build.yml table-driven.
+_FORGE_BUILDERS=(builder/python-trixie builder/go-trixie builder/node-trixie builder/zig-trixie)
 _is_builder() {
   local name="$1"
   for b in "${_FORGE_BUILDERS[@]}"; do

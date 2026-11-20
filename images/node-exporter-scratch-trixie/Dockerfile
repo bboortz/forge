@@ -15,7 +15,7 @@
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-046: shared Go builder base (apt-upgraded + Go 1.27 + git + syft).
-ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
+ARG BUILDER_GO_REF=ghcr.io/bboortz/builder/go-trixie:latest
 # FG-031 pattern: embed /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # FG-050: pinned to upstream v1.12.1 (bumped from v1.9.0). v1.10-v1.12
@@ -34,7 +34,7 @@ FROM ${SCRATCH_BASE_REF} AS scratch_base
 FROM ${HC_REF} AS hc
 
 # --- Stage 1: Go builder -----------------------------------------------------
-FROM ${FORGE_BUILDER_GO_REF} AS builder
+FROM ${BUILDER_GO_REF} AS builder
 
 ARG NODE_EXPORTER_VERSION
 ARG GIT_SHA=unknown

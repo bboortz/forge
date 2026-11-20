@@ -66,7 +66,7 @@ pass "node-exporter-scratch-trixie: ARG=v1.12.1, image.yaml tag=1.12"
 # --- alertmanager-scratch-trixie: RESOLVED by FG-052 ---
 # FG-050 originally deferred this bump because upstream v0.32.0+ needs a
 # Node.js UI build pipeline (ui/web.go embeds ui/app/dist/ via //go:embed).
-# FG-048 shipped forge-builder-node-trixie; FG-052 then applied the
+# FG-048 shipped builder/node-trixie; FG-052 then applied the
 # dual-builder pattern and flipped alertmanager to floating :latest (same
 # shape as cadvisor + ipmi-exporter + uptime-kuma). The Dockerfile must
 # now have an EMPTY ALERTMANAGER_VERSION default (FG-050 pattern) and the
@@ -79,8 +79,8 @@ if ! grep -qE '^ARG ALERTMANAGER_VERSION=\s*$' "$dockerfile"; then
 fi
 tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' "$imageyaml")
 [[ "$tag" == "latest" ]] || fail "${imageyaml}: tag = '${tag}' (want 'latest' per FG-052)"
-if ! grep -qE 'FG-048|FG-052|forge-builder-node-trixie' "$dockerfile"; then
-  fail "${dockerfile} must reference FG-052 / FG-048 / forge-builder-node-trixie (dual-builder migration context)"
+if ! grep -qE 'FG-048|FG-052|builder/node-trixie' "$dockerfile"; then
+  fail "${dockerfile} must reference FG-052 / FG-048 / builder/node-trixie (dual-builder migration context)"
 fi
 pass "alertmanager-scratch-trixie: resolved by FG-052 (floating :latest via dual-builder)"
 
@@ -130,8 +130,8 @@ pass "all 4 affected images built + smoked green"
 say "4. Alertmanager deferral + FG-048 blocker documented in plan"
 
 plan=docs/plan/FG-050-freshen-upstream-pins-plan.md
-if ! grep -qE 'FG-048|forge-builder-node-trixie' "$plan"; then
-  fail "${plan}: expected a reference to FG-048 / forge-builder-node-trixie (the UI-pipeline blocker that defers alertmanager v0.35)"
+if ! grep -qE 'FG-048|builder/node-trixie' "$plan"; then
+  fail "${plan}: expected a reference to FG-048 / builder/node-trixie (the UI-pipeline blocker that defers alertmanager v0.35)"
 fi
 if ! grep -q 'app/dist' "$plan"; then
   fail "${plan}: plan must name the specific build-time failure (ui/web.go embedding app/dist/ that upstream no longer ships)"

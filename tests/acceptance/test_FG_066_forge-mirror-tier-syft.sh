@@ -36,7 +36,7 @@ pass "mirror/syft Dockerfile is zero-mod (FROM + ARG + LABEL only)"
 
 # --- (3) all 3 forge-builders source syft from mirror/syft ----------------
 say "3. all three forge-builders source syft via \${SYFT_REF} (not Docker Hub)"
-for b in forge-builder-python-trixie forge-builder-go-trixie forge-builder-node-trixie; do
+for b in builder/python-trixie builder/go-trixie builder/node-trixie; do
   grep -qE '^ARG SYFT_REF=ghcr\.io/bboortz/mirror/syft:' "images/${b}/Dockerfile" \
     || fail "${b} must declare ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:…"
   # shellcheck disable=SC2016
@@ -144,12 +144,12 @@ else
     IMAGE_NAME=mirror/syft IMAGE_TAG=latest bash "${s}" >/dev/null \
       || fail "mirror/syft smoke failed: ${s}"
   done
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-python-trixie >/dev/null 2>&1 \
-    || fail "forge-builder-python-trixie build failed (mirror/syft consumer)"
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-go-trixie >/dev/null 2>&1 \
-    || fail "forge-builder-go-trixie build failed"
-  FORGE_NO_SKIP=1 bash scripts/build-image.sh forge-builder-node-trixie >/dev/null 2>&1 \
-    || fail "forge-builder-node-trixie build failed"
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh builder/python-trixie >/dev/null 2>&1 \
+    || fail "builder/python-trixie build failed (mirror/syft consumer)"
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh builder/go-trixie >/dev/null 2>&1 \
+    || fail "builder/go-trixie build failed"
+  FORGE_NO_SKIP=1 bash scripts/build-image.sh builder/node-trixie >/dev/null 2>&1 \
+    || fail "builder/node-trixie build failed"
   pass "all 4 images built + mirror/syft smokes green"
 fi
 

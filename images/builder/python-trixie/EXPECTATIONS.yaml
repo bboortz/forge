@@ -1,0 +1,33 @@
+# What forge-builder-python-trixie requires from its dependencies.
+# FG-042: dogfoods python-slim-trixie.
+# FG-066: syft sourced via mirror/syft (previously docker.io/anchore/syft).
+
+spec_version: 1
+image: python-trixie
+
+dependencies:
+  - image: pre-builder/python-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: runtime.python3
+        reason: Builder inherits the Python 3 interpreter from the pre-builder; adds its own apt-install on top (ca-certificates).
+        preflight:
+          - images/builder/python-trixie/tests/smoke_ca_bundle.sh
+
+      - promise: files.tls-stack
+        reason: Pre-builder provides libssl + CA bundle so the builder's syft install + any TLS-using apt-install Just Works without re-apt-installing ca-certificates.
+        preflight:
+          - images/builder/python-trixie/tests/smoke_ca_bundle.sh
+
+  - image: syft
+    version: ">=0.1"
+    expectations:
+      - promise: files.syft-binary
+        reason: The /syft binary is COPYed from this mirror stage into /usr/local/bin/syft of the builder runtime.
+        preflight:
+          - images/builder/python-trixie/tests/smoke_has_syft.sh
+
+      - promise: shape.zero-mod
+        reason: mirror/syft must be a zero-mod passthrough — any downstream builder expects the exact upstream syft behavior, not a modified derivative.
+        preflight:
+          - images/builder/python-trixie/tests/smoke_has_syft.sh

@@ -23,9 +23,9 @@
 
 ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-046: shared Go builder base.
-ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
+ARG BUILDER_GO_REF=ghcr.io/bboortz/builder/go-trixie:latest
 # FG-048 + FG-052: shared Node builder base for the UI compile step.
-ARG FORGE_BUILDER_NODE_REF=ghcr.io/bboortz/forge-builder-node-trixie:latest
+ARG BUILDER_NODE_REF=ghcr.io/bboortz/builder/node-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # FG-050 pattern: empty → GitHub Releases API resolve at build time.
@@ -47,7 +47,7 @@ FROM ${HC_REF} AS hc
 # into ui/app/dist/, which the Go build stage embeds via -tags builtinassets.
 # The Elm compiler is an npm devDependency ("elm": "0.19.1-6" in
 # ui/app/package.json) — `npm ci` installs it automatically.
-FROM ${FORGE_BUILDER_NODE_REF} AS ui-builder
+FROM ${BUILDER_NODE_REF} AS ui-builder
 
 ARG ALERTMANAGER_VERSION
 # hadolint ignore=DL3064
@@ -79,7 +79,7 @@ RUN set -eux; \
     cd ui/mantine-ui && npm ci && npm run build
 
 # --- Stage 2: Go builder -----------------------------------------------------
-FROM ${FORGE_BUILDER_GO_REF} AS builder
+FROM ${BUILDER_GO_REF} AS builder
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
