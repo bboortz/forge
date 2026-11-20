@@ -1,5 +1,23 @@
 *Dockerfile and build-time conventions for Forge images. Every image under `images/<name>/` conforms to this.*
 
+## 7-tier layering model (FG-067)
+
+Every Forge image belongs to exactly one tier, encoded by its directory prefix under `images/` (or flat position for L0 externals + L4 runtimes):
+
+| Tier | Prefix | Role |
+|------|--------|------|
+| **L0** | — (external) | Upstream container images consumed by Forge (docker.io/*, ghcr.io/other-orgs/*) |
+| **L0.1** | — (external) | Upstream source repos / release tarballs cloned-or-curled by Forge builds at build time |
+| **L0.5** | `mirror/` | Forge-signed **zero-mod** passthroughs of external tool images (enforced by Rule 10) |
+| **L1** | `pre-builder/` | Forge-signed thin variants of upstream OS bases: `apt-upgrade` + CA + `dumb-init` on top. Keeps shell + apt. |
+| **L2** | `builder/` | Development toolchains for from-source compiles — **never runs in production**, only COPY-from target in multi-stage builds |
+| **L3** | `base/` | Scratch-assembled runtime foundations consumed by other forge images (≥1 forge-internal consumer) |
+| **L4** | — (flat) | Consumer-facing runtimes with **zero** forge-internal consumers. Includes apt-installed, from-source, and externally-sourced runtimes. |
+
+Full definitions, 🔑 semantic tests, overlap-resolution matrix, decisions log: `docs/plan/tier-layering-model.md` §3 + §4 + §6.
+
+**Rule 11** (`scripts/verify-dockerfile-conformance.py`, FG-067): the retired L4.5 `source/` tier must never resurface. Any `images/source/` directory fails lint. L4 absorbs from-source + externally-sourced runtimes; upstream source repos live at L0.1. Decision context: tier-layering-model.md §O8.
+
 ## Chain depth ≤ 5 (FG-042 invariant)
 
 Deepest trust chains post-FG-072 (Python, Go, Zig all at the cap):

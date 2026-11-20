@@ -661,3 +661,17 @@ New daily-cron CI publish tier `publish-mirrors` — runs **in parallel with** `
 
 - **Delivered by**: FG-066
 - **Covered by**: `tests/acceptance/test_FG_066_forge-mirror-tier-syft.sh`, `images/mirror/syft/tests/smoke_*.sh`
+
+### arch.tier-prefix-convention
+
+Every Forge image belongs to exactly one of the 7 tiers in the layering model, and its tier is encoded in its `images/` path prefix (or flat position). The 4 forge-owned tier prefixes are `mirror/` (L0.5), `pre-builder/` (L1), `builder/` (L2), `base/` (L3); flat `images/<name>/` denotes L4 consumer-facing runtimes. L0 (upstream images) + L0.1 (upstream source repos / tarballs) are external — they are consumed by Forge builds but don't live under `images/`. The retired L4.5 `source/` tier is a lint failure if it resurfaces (Rule 11, FG-067). Full definitions + 🔑 semantic tests + overlap-resolution matrix live in `docs/plan/tier-layering-model.md`. This CAP documents the invariant that tier identity is grep-able from the path alone — operators + tooling never need to consult a sidecar classification set. Current state (post-FG-067): 1 mirror, 7 pre-builders, 4 builders, 2 base-tier images at flat paths (scratch-base-trixie + python-scratch-trixie — renamed by FG-069), ~17 L4 runtimes at flat paths.
+
+- **Delivered by**: FG-067
+- **Covered by**: `tests/acceptance/test_FG_067_tier-layering-foundation.sh`, `docs/plan/tier-layering-model.md` §2 + §3
+
+### arch.layer-overlap-resolution
+
+The 7-tier model resolves every possible pair-overlap via an ordered set of semantic tests (so no image can accidentally be classified into two tiers). Tests, ordered top-down, from `docs/plan/tier-layering-model.md` §4: (1) **L0 vs L0.1** — transport: `docker pull` → image (L0), `git clone`/`curl .tar.xz` → source (L0.1). (2) **L0.5 Mirror vs L1 Pre-builder** — Rule 10: zero content modifications → mirror; any `RUN` → pre-builder or lower. (3) **L2 Builder** — "runs at runtime?" — no (only COPY-from target) → builder. (4) **L3 Base vs L4 Runtime** — "has ≥ 1 forge-internal consumer?" — yes → base; zero → runtime. (5) **L4 absorbs both apt-installed AND from-source AND externally-sourced** — construction mechanism is build-time detail; runtime role is the tier semantic. (6) **L0 Upstream image vs everything else** — publish identity: not under `ghcr.io/bboortz/<tier>/` + not a flat forge L4 image → upstream image. This CAP exists so new contributors (and lint authors) can answer "which tier does this image belong to?" in bounded time by executing the tests in order.
+
+- **Delivered by**: FG-067
+- **Covered by**: `tests/acceptance/test_FG_067_tier-layering-foundation.sh`, `docs/plan/tier-layering-model.md` §4
