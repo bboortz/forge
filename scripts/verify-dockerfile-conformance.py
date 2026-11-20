@@ -36,7 +36,13 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-IMAGES_DIR = REPO_ROOT / "images"
+# FG-067: allow FORGE_IMAGES_DIR override so the FG-067 acceptance test can
+# exercise Rule 11 against a synthetic images/source/ tree without touching
+# the real images/ root. Default stays repo-local.
+import os  # noqa: E402
+
+_images_override = os.environ.get("FORGE_IMAGES_DIR")
+IMAGES_DIR = Path(_images_override).resolve() if _images_override else (REPO_ROOT / "images")
 
 # Mirrors scripts/discover-images.sh _PRE_BUILDERS / _FORGE_BUILDERS.
 # Keep in sync via the FG-064 acceptance test §1.
@@ -425,6 +431,37 @@ def _check_file(df: Path, local_images: set[str]) -> list[str]:
     return errors
 
 
+def _check_rule_11_no_source_tier() -> list[str]:
+    """FG-067 Rule 11: the retired L4.5 `source/` tier must never resurface.
+
+    Decision context: docs/plan/tier-layering-model.md §O8 — the `source/`
+    prefix was proposed to carry externally-sourced + from-source runtimes,
+    then retired because that construction mechanism is a build-time
+    detail of L4 runtimes. L4 absorbs from-source + externally-sourced
+    runtimes directly; upstream source repos live at the external L0.1
+    tier. Any new `images/source/` directory is almost certainly an
+    author re-introducing the dead concept — fail lint so the choice is
+    made explicit (flat L4 placement or L0.1 inventory entry).
+    """
+    errors: list[str] = []
+    source_dir = IMAGES_DIR / "source"
+    if source_dir.exists() and source_dir.is_dir():
+        # Grab the offending leaf names for a helpful error.
+        leaves = sorted(p.name for p in source_dir.iterdir() if p.is_dir())
+        errors.append(
+            f"images/source/ is a retired tier (Rule 11 / FG-067). "
+            f"Found {len(leaves)} offending sub-dir(s): {leaves or '(empty)'}. "
+            f"L4.5 `source/` was retired when from-source + externally-sourced "
+            f"runtimes were absorbed into L4 (flat path) and upstream source "
+            f"repos moved to the external L0.1 tier. Resolve by either: "
+            f"(a) moving the image(s) to a flat `images/<name>/` path (L4 "
+            f"runtime), OR (b) if this is an upstream source repo being "
+            f"vendored, document it in the L0.1 inventory (see FG-068). "
+            f"Full decision log: docs/plan/tier-layering-model.md §O8."
+        )
+    return errors
+
+
 def _check_language_family_invariant(local_images: set[str]) -> list[str]:
     """FG-065 arch.language-family-image-pair invariant.
 
@@ -472,6 +509,7 @@ def main() -> int:
     for df in _all_dockerfiles():
         all_errors.extend(_check_file(df, local_images))
     all_errors.extend(_check_language_family_invariant(local_images))
+    all_errors.extend(_check_rule_11_no_source_tier())
 
     if all_errors:
         sys.stderr.write("verify-dockerfile-conformance: FAIL\n")
@@ -480,7 +518,7 @@ def main() -> int:
         return 1
 
     n = len(_all_dockerfiles())
-    print(f"verify-dockerfile-conformance: ok ({n} Dockerfile(s) conform to FG-064; FG-065 language-pair invariant + FG-066 mirror-tier invariant satisfied).")
+    print(f"verify-dockerfile-conformance: ok ({n} Dockerfile(s) conform to FG-064; FG-065 language-pair invariant + FG-066 mirror-tier invariant + FG-067 tier-prefix convention satisfied).")
     return 0
 
 
