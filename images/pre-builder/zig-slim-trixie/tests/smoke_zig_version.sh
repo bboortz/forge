@@ -2,7 +2,7 @@
 # Smoke — /usr/local/bin/zig exists + reports a 0.x pre-1.0 version.
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-zig-slim-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-pre-builder/zig-slim-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

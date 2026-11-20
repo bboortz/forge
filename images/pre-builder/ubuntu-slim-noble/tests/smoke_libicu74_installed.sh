@@ -3,7 +3,7 @@
 # .NET 6 runtime). Also verifies apt state is fresh (post-apt-upgrade).
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-ubuntu-slim-noble}"
+IMAGE_NAME="${IMAGE_NAME:-pre-builder/ubuntu-slim-noble}"
 IMAGE_TAG="${IMAGE_TAG:-24.04}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

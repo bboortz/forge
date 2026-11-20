@@ -22,7 +22,7 @@ fail() { printf '  \033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 say "1. source files encode the FG-032 contract"
 
 # Both image.yaml tags are 3.14
-for d in python-slim-trixie base/python-trixie; do
+for d in pre-builder/python-slim-trixie base/python-trixie; do
   tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' "images/${d}/image.yaml")
   [[ "${tag}" == "3.14" ]] || fail "images/${d}/image.yaml: tag=${tag} (want 3.14)"
 done
@@ -55,7 +55,7 @@ pass "all static invariants in place"
 # Section 2 — build
 # -----------------------------------------------------------------------------
 say "2. build forge-builder-python-trixie + python-slim-trixie + base/python-trixie"
-for d in forge-builder-python-trixie python-slim-trixie base/python-trixie; do
+for d in forge-builder-python-trixie pre-builder/python-slim-trixie base/python-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
 done
 docker image inspect forge-local/pre-builder/python-slim-trixie:3.14 >/dev/null
@@ -101,7 +101,7 @@ pass "FG-031 (hc-in-service-images) passes"
 # -----------------------------------------------------------------------------
 say "5. scan-baseline.json carries the 3.14 closure (no drift in-PR)"
 # scan-regression.py returns 0 when the baseline matches the current scan.
-for d in python-slim-trixie base/python-trixie; do
+for d in pre-builder/python-slim-trixie base/python-trixie; do
   python3 scripts/scan-regression.py "${d}" >/dev/null 2>&1 \
     || fail "scan-regression against images/${d}/scan-baseline.json fails"
 done

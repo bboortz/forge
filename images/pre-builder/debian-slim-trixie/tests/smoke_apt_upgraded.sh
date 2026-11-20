@@ -2,7 +2,7 @@
 # Smoke: apt-upgrade has been applied. Proxy: no package has a pending
 # upgrade (`apt list --upgradable` returns only the header line).
 set -euo pipefail
-: "${IMAGE_NAME:=debian-slim-trixie}"
+: "${IMAGE_NAME:=pre-builder/debian-slim-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

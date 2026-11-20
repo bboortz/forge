@@ -21,7 +21,7 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-004]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-VARIANTS=("python-slim-trixie" "base/python-trixie")
+VARIANTS=("pre-builder/python-slim-trixie" "base/python-trixie")
 TAG="3.14"
 ARCH_TAG="3.14-amd64"
 LATEST="latest"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke: /var/lib/apt/lists/ carries no Packages/Release files.
 set -euo pipefail
-: "${IMAGE_NAME:=debian-slim-trixie}"
+: "${IMAGE_NAME:=pre-builder/debian-slim-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-IMAGE_NAME="${IMAGE_NAME:-node-slim-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-pre-builder/node-slim-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

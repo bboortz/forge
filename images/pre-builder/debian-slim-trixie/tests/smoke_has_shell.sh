@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke: /bin/sh is present (slim contract).
 set -euo pipefail
-: "${IMAGE_NAME:=debian-slim-trixie}"
+: "${IMAGE_NAME:=pre-builder/debian-slim-trixie}"
 : "${IMAGE_TAG:=0.1}"
 : "${REGISTRY:=forge-local}"
 

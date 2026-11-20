@@ -2,7 +2,7 @@
 # Smoke — /bin/sh and /bin/bash are present (slim contract).
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-debian-slim-sid}"
+IMAGE_NAME="${IMAGE_NAME:-pre-builder/debian-slim-sid}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

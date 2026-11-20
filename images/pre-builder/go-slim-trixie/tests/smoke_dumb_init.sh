@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke — /usr/bin/dumb-init exists + works.
 set -euo pipefail
-IMAGE_NAME="${IMAGE_NAME:-go-slim-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-pre-builder/go-slim-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
