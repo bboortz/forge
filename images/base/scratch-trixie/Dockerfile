@@ -15,7 +15,7 @@
 # interpreters, libpcre, libicu, libkrb5, libldap, libxml, libreadline, etc.
 #
 # Derivatives consume it via:
-#   ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+#   ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 #   FROM ${SCRATCH_BASE_REF} AS scratch_base
 #   ...
 #   FROM scratch AS runtime

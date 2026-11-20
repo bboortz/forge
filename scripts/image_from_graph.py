@@ -61,7 +61,7 @@ _FORGE_BUILDERS = [
     "forge-builder-python-trixie",
     "forge-builder-zig-trixie",
 ]
-_BASELINE = ["scratch-base-trixie"]
+_BASELINE = ["base/scratch-trixie", "base/python-trixie"]
 _UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet
 # FG-066: forge mirror tier — zero-mod passthroughs under images/mirror/<name>/.
 _FORGE_MIRRORS = ["mirror/syft"]
@@ -391,9 +391,10 @@ def emit_mermaid_body(local_images: set[str]) -> str:
     lines.append('    subgraph L0_5_mirrors["Layer 0.5 — Forge mirrors (zero-mod upstream passthroughs; publish-mirrors tier)"]')
     for name in sorted(_FORGE_MIRRORS):
         if name in local_images:
-            # Node id can't contain "/"; use the leaf name with a mirror_ prefix for id,
-            # but display the full canonical name as the label.
-            node_id = "mirror_" + name.split("/", 1)[1].replace("-", "_")
+            # Node id can't contain "/"; derive <tier>_<leaf-dashes-to-under>
+            # same way _local_id does below.
+            tier, leaf = name.split("/", 1)
+            node_id = f"{tier}_{leaf.replace('-', '_')}"
             lines.append(f'        {node_id}["{name}"]:::mirror')
     lines.append("    end")
 
@@ -415,7 +416,12 @@ def emit_mermaid_body(local_images: set[str]) -> str:
     lines.append('    subgraph L3_baseline["Layer 3 — Forge baseline (publish-base — scratch overlay)"]')
     for name in sorted(_BASELINE):
         if name in local_images:
-            lines.append(f"        {name}:::baseline")
+            if "/" in name:
+                tier, leaf = name.split("/", 1)
+                node_id = f"{tier}_{leaf.replace('-', '_')}"
+                lines.append(f'        {node_id}["{name}"]:::baseline')
+            else:
+                lines.append(f"        {name}:::baseline")
     lines.append("    end")
 
     # L4 subgraph (runtimes: slim + scratch + external).
@@ -432,9 +438,13 @@ def emit_mermaid_body(local_images: set[str]) -> str:
         return node_id
 
     def _local_id(name: str) -> str:
-        # Mermaid node ids can't contain '/'; mirror/<leaf> → mirror_<leaf>.
+        # Mermaid node ids can't contain '/'. Nested paths: <tier>/<leaf>
+        # → <tier>_<leaf-with-dashes-as-underscores>.
+        # Historical FG-066: mirror/<leaf> encoded as `mirror_<leaf>`.
+        # FG-069 generalizes: base/<leaf> → `base_<leaf>`, etc.
         if "/" in name:
-            return "mirror_" + name.split("/", 1)[1].replace("-", "_")
+            tier, leaf = name.split("/", 1)
+            return f"{tier}_{leaf.replace('-', '_')}"
         return name
 
     # Solid FROM edges. `forward` includes BOTH solid (FROM-with-content)

@@ -69,9 +69,17 @@ import sys, pathlib, yaml
 root = pathlib.Path('.').resolve()
 promises = {}
 # FG-066: walk flat + 1-nested so images/mirror/<name>/PROMISES.yaml is included.
+# FG-069: index PROMISES by BOTH the image: field (usually the leaf name per
+# mirror/syft convention) AND the canonical directory path (base/<leaf> etc.)
+# so EXPECTATIONS dependencies pointing at the nested canonical path resolve.
 for p in list((root / 'images').glob('*/PROMISES.yaml')) + list((root / 'images').glob('*/*/PROMISES.yaml')):
     data = yaml.safe_load(p.read_text())
-    promises[data['image']] = {pr['id'] for pr in data.get('promises', [])}
+    ids = {pr['id'] for pr in data.get('promises', [])}
+    # Image name from PROMISES (leaf per convention).
+    promises[data['image']] = ids
+    # Canonical dir path relative to images/.
+    canonical = p.parent.relative_to(root / 'images').as_posix()
+    promises[canonical] = ids
 errs = []
 for p in list((root / 'images').glob('*/EXPECTATIONS.yaml')) + list((root / 'images').glob('*/*/EXPECTATIONS.yaml')):
     data = yaml.safe_load(p.read_text())
@@ -85,22 +93,22 @@ if errs:
     for e in errs: print(e, file=sys.stderr)
     sys.exit(1)
 PY
-pass "all 23 expectations resolve to declared promises"
+pass "all expectations resolve to declared promises"
 
 # -----------------------------------------------------------------------------
 # Section 3 — nonexistent promise reference fails verify-contracts
 # -----------------------------------------------------------------------------
 say "3. verify-contracts flags references to nonexistent promises"
-cp images/python-scratch-trixie/EXPECTATIONS.yaml "${tmp}/EXPECTATIONS.yaml.bak"
+cp images/base/python-trixie/EXPECTATIONS.yaml "${tmp}/EXPECTATIONS.yaml.bak"
 # Inject a bogus promise reference
-python3 - "${tmp}/EXPECTATIONS.yaml.bak" images/python-scratch-trixie/EXPECTATIONS.yaml <<'PY'
+python3 - "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml <<'PY'
 import sys, yaml, pathlib
 src, dst = sys.argv[1], sys.argv[2]
 data = yaml.safe_load(pathlib.Path(src).read_text())
 data['dependencies'][0]['expectations'].append({
     'promise': 'nonexistent.widget',
     'reason': 'injected-by-FG-010-test',
-    'preflight': ['images/python-scratch-trixie/tests/smoke_imports.sh'],
+    'preflight': ['images/base/python-trixie/tests/smoke_imports.sh'],
 })
 pathlib.Path(dst).write_text(yaml.safe_dump(data, sort_keys=False))
 PY
@@ -113,10 +121,10 @@ if [[ ${rc} -ne 0 ]] && grep -q 'nonexistent.widget' "${tmp}/v3.out"; then
 else
   echo "✗ verifier did not flag nonexistent.widget (rc=${rc})" >&2
   cat "${tmp}/v3.out" >&2
-  cp "${tmp}/EXPECTATIONS.yaml.bak" images/python-scratch-trixie/EXPECTATIONS.yaml
+  cp "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
   exit 1
 fi
-cp "${tmp}/EXPECTATIONS.yaml.bak" images/python-scratch-trixie/EXPECTATIONS.yaml
+cp "${tmp}/EXPECTATIONS.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
 python3 "${VERIFY}" >/dev/null
 pass "graph recovers after repair"
 
@@ -124,9 +132,9 @@ pass "graph recovers after repair"
 # Section 4 — baseline surface shrinks → every dependent fires
 # -----------------------------------------------------------------------------
 say "4. removing a baseline promise fires one error per dependent"
-cp images/scratch-base-trixie/PROMISES.yaml "${tmp}/base.yaml.bak"
+cp images/base/scratch-trixie/PROMISES.yaml "${tmp}/base.yaml.bak"
 # Remove files.time from baseline
-python3 - "${tmp}/base.yaml.bak" images/scratch-base-trixie/PROMISES.yaml <<'PY'
+python3 - "${tmp}/base.yaml.bak" images/base/scratch-trixie/PROMISES.yaml <<'PY'
 import sys, yaml, pathlib
 src, dst = sys.argv[1], sys.argv[2]
 data = yaml.safe_load(pathlib.Path(src).read_text())
@@ -143,10 +151,10 @@ if [[ ${rc} -ne 0 ]] && grep -q 'files.time' "${tmp}/v4.out"; then
 else
   echo "✗ removing files.time did not surface in verifier output (rc=${rc})" >&2
   cat "${tmp}/v4.out" >&2
-  cp "${tmp}/base.yaml.bak" images/scratch-base-trixie/PROMISES.yaml
+  cp "${tmp}/base.yaml.bak" images/base/scratch-trixie/PROMISES.yaml
   exit 1
 fi
-cp "${tmp}/base.yaml.bak" images/scratch-base-trixie/PROMISES.yaml
+cp "${tmp}/base.yaml.bak" images/base/scratch-trixie/PROMISES.yaml
 python3 "${VERIFY}" >/dev/null
 pass "graph recovers after baseline repair"
 
@@ -154,8 +162,8 @@ pass "graph recovers after baseline repair"
 # Section 5 — version mismatch
 # -----------------------------------------------------------------------------
 say "5. verifier rejects dependency constraints the baseline can't satisfy"
-cp images/python-scratch-trixie/EXPECTATIONS.yaml "${tmp}/py.yaml.bak"
-python3 - "${tmp}/py.yaml.bak" images/python-scratch-trixie/EXPECTATIONS.yaml <<'PY'
+cp images/base/python-trixie/EXPECTATIONS.yaml "${tmp}/py.yaml.bak"
+python3 - "${tmp}/py.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml <<'PY'
 import sys, yaml, pathlib
 src, dst = sys.argv[1], sys.argv[2]
 data = yaml.safe_load(pathlib.Path(src).read_text())
@@ -171,10 +179,10 @@ if [[ ${rc} -ne 0 ]] && grep -q 'does not satisfy constraint' "${tmp}/v5.out"; t
 else
   echo "✗ version constraint error not surfaced (rc=${rc})" >&2
   cat "${tmp}/v5.out" >&2
-  cp "${tmp}/py.yaml.bak" images/python-scratch-trixie/EXPECTATIONS.yaml
+  cp "${tmp}/py.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
   exit 1
 fi
-cp "${tmp}/py.yaml.bak" images/python-scratch-trixie/EXPECTATIONS.yaml
+cp "${tmp}/py.yaml.bak" images/base/python-trixie/EXPECTATIONS.yaml
 python3 "${VERIFY}" >/dev/null
 pass "graph recovers after version repair"
 
@@ -184,8 +192,8 @@ pass "graph recovers after version repair"
 say "6. contracts-semver-check requires a minor bump when a promise is added"
 # The semver checker's --compare mode is purpose-built for testing without
 # faking git state. Pass OLD and NEW explicitly.
-cp images/scratch-base-trixie/PROMISES.yaml "${tmp}/old.yaml"
-cp images/scratch-base-trixie/PROMISES.yaml "${tmp}/new.yaml"
+cp images/base/scratch-trixie/PROMISES.yaml "${tmp}/old.yaml"
+cp images/base/scratch-trixie/PROMISES.yaml "${tmp}/new.yaml"
 python3 - "${tmp}/new.yaml" <<'PY'
 import sys, yaml, pathlib
 p = pathlib.Path(sys.argv[1])
@@ -194,7 +202,7 @@ data['promises'].append({
     'id': 'files.new-widget',
     'description': 'injected by FG-010 acceptance test',
     'caps': ['build.scratch-baseline'],
-    'tests': ['images/scratch-base-trixie/tests/smoke_contents_required_files.sh'],
+    'tests': ['images/base/scratch-trixie/tests/smoke_contents_required_files.sh'],
 })
 # keep version 0.2 (should be rejected)
 p.write_text(yaml.safe_dump(data, sort_keys=False))
@@ -237,8 +245,8 @@ pass "semver gate is silent when there is no change"
 # Section 7 — removed promise requires dependents to re-attest
 # -----------------------------------------------------------------------------
 say "7. semver gate flags removal as breaking without --allow-breaking"
-cp images/scratch-base-trixie/PROMISES.yaml "${tmp}/old2.yaml"
-cp images/scratch-base-trixie/PROMISES.yaml "${tmp}/new2.yaml"
+cp images/base/scratch-trixie/PROMISES.yaml "${tmp}/old2.yaml"
+cp images/base/scratch-trixie/PROMISES.yaml "${tmp}/new2.yaml"
 python3 - "${tmp}/new2.yaml" <<'PY'
 import sys, yaml, pathlib
 p = pathlib.Path(sys.argv[1])

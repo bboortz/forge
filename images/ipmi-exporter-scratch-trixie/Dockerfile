@@ -19,7 +19,7 @@
 # `ipmimonitoring` is a Debian shell-script wrapper that can't run on
 # scratch (FG-043 homelab lesson 2026-11-10).
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-046: Go builder for the exporter binary.
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-025: Debian builder for the C freeipmi tools.

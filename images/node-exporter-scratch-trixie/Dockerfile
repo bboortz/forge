@@ -13,7 +13,7 @@
 #
 # Does NOT initiate outbound TLS (scrape-only exporter).
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-046: shared Go builder base (apt-upgraded + Go 1.27 + git + syft).
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-031 pattern: embed /hc for docker-native HEALTHCHECK.

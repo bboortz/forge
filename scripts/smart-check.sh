@@ -98,7 +98,7 @@ _CORE_SCRIPTS=(
 )
 
 # Always-full triggers: Makefile, pre-commit, workflow, scratch-base dir.
-FULL_RE='^(Makefile$|\.pre-commit-config\.yaml$|\.github/workflows/|images/scratch-base-trixie/)'
+FULL_RE='^(Makefile$|\.pre-commit-config\.yaml$|\.github/workflows/|images/base/scratch-trixie/)'
 BAILOUT_HIT=$(echo "${CHANGED}" | grep -E "${FULL_RE}" | head -1 || true)
 if [[ -n "${BAILOUT_HIT}" ]]; then
   say "full-run bailout — ${BAILOUT_HIT} touched"

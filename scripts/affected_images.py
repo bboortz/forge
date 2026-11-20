@@ -145,12 +145,29 @@ def main() -> int:
     if not changed:
         return 0
 
-    # Direct: any image whose files changed
+    # Direct: any image whose files changed.
+    # FG-066 (mirror/) + FG-069 (base/) introduced one-level-nested image
+    # dirs. "all_images" collects both flat `images/<name>/` and nested
+    # `images/<tier>/<name>/` canonical names.
     direct: set[str] = set()
-    all_images = {p.name for p in IMAGES_DIR.iterdir() if p.is_dir()}
+    all_images: set[str] = set()
+    for p in IMAGES_DIR.iterdir():
+        if not p.is_dir():
+            continue
+        if (p / "image.yaml").is_file() or (p / "Dockerfile").is_file():
+            all_images.add(p.name)
+        for sub in p.iterdir():
+            if sub.is_dir() and ((sub / "image.yaml").is_file() or (sub / "Dockerfile").is_file()):
+                all_images.add(f"{p.name}/{sub.name}")
     for line in changed:
-        parts = line.split("/", 2)
-        if len(parts) >= 2 and parts[0] == "images" and parts[1] in all_images:
+        parts = line.split("/")
+        if len(parts) < 3 or parts[0] != "images":
+            continue
+        # Try canonical `<tier>/<name>` first; fall back to flat `<name>`.
+        nested = f"{parts[1]}/{parts[2]}" if len(parts) >= 3 else None
+        if nested and nested in all_images:
+            direct.add(nested)
+        elif parts[1] in all_images:
             direct.add(parts[1])
 
     affected = set(direct)

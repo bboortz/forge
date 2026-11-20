@@ -39,16 +39,16 @@ pass "builders/base split correct"
 # -----------------------------------------------------------------------------
 # Section 3 — scratch-base-trixie's Dockerfile FROMs forge-builder-python-trixie
 # -----------------------------------------------------------------------------
-say "3. scratch-base-trixie's builder stage uses forge-builder-python-trixie"
-grep -q 'ARG FORGE_BUILDER_REF' images/scratch-base-trixie/Dockerfile \
-  || { echo "  ✗ scratch-base-trixie Dockerfile missing FORGE_BUILDER_REF arg" >&2; exit 1; }
-grep -q 'forge-builder-python-trixie' images/scratch-base-trixie/Dockerfile \
-  || { echo "  ✗ scratch-base-trixie Dockerfile doesn't reference forge-builder-python-trixie" >&2; exit 1; }
+say "3. base/scratch-trixie's builder stage uses forge-builder-python-trixie"
+grep -q 'ARG FORGE_BUILDER_REF' images/base/scratch-trixie/Dockerfile \
+  || { echo "  ✗ base/scratch-trixie Dockerfile missing FORGE_BUILDER_REF arg" >&2; exit 1; }
+grep -q 'forge-builder-python-trixie' images/base/scratch-trixie/Dockerfile \
+  || { echo "  ✗ base/scratch-trixie Dockerfile doesn't reference forge-builder-python-trixie" >&2; exit 1; }
 # The apt-upgrade step should be GONE from scratch-base (now in forge-builder)
-if grep -q 'apt-get -y --no-install-recommends upgrade' images/scratch-base-trixie/Dockerfile; then
-  echo "  ✗ scratch-base-trixie still runs apt-upgrade (should be in forge-builder)" >&2; exit 1
+if grep -q 'apt-get -y --no-install-recommends upgrade' images/base/scratch-trixie/Dockerfile; then
+  echo "  ✗ base/scratch-trixie still runs apt-upgrade (should be in forge-builder)" >&2; exit 1
 fi
-pass "scratch-base-trixie delegates builder-stage boilerplate to forge-builder-python-trixie"
+pass "base/scratch-trixie delegates builder-stage boilerplate to forge-builder-python-trixie"
 
 # -----------------------------------------------------------------------------
 # Section 4 — build-image.sh pre-builds forge-builder-python-trixie for scratch images

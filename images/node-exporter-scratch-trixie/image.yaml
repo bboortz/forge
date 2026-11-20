@@ -6,4 +6,4 @@ platforms:
   - linux/amd64
 # FG-005: derives from scratch-base-trixie via COPY --from=.
 depends_on:
-  - scratch-base-trixie
+  - base/scratch-trixie

@@ -1,12 +1,12 @@
 # Forge scratch baseline — contract
 
-**Image**: `ghcr.io/bboortz/scratch-base-trixie`
+**Image**: `ghcr.io/bboortz/base/scratch-trixie`
 **Current version**: `0.2` (also published as `:latest`)
 **Verify identity**: `https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main`
 
-> **Authoritative surface**: this is the human-readable narrative. The machine-checkable contract — what `scripts/verify-contracts.py` and every consumer's `EXPECTATIONS.yaml` resolve against — is [`images/scratch-base-trixie/PROMISES.yaml`](../images/scratch-base-trixie/PROMISES.yaml). When this file and PROMISES.yaml drift, PROMISES.yaml wins. See FG-010.
+> **Authoritative surface**: this is the human-readable narrative. The machine-checkable contract — what `scripts/verify-contracts.py` and every consumer's `EXPECTATIONS.yaml` resolve against — is [`images/base/scratch-trixie/PROMISES.yaml`](../images/base/scratch-trixie/PROMISES.yaml). When this file and PROMISES.yaml drift, PROMISES.yaml wins. See FG-010.
 
-This document is the audit surface for every Forge scratch image. Every derivative composes by `COPY --from=ghcr.io/bboortz/scratch-base-trixie:latest / /` on top of `FROM scratch`, so the guarantees below hold for python-scratch-trixie, nginx-scratch-trixie, postgres-scratch-trixie, and every future scratch variant automatically.
+This document is the audit surface for every Forge scratch image. Every derivative composes by `COPY --from=ghcr.io/bboortz/base/scratch-trixie:latest / /` on top of `FROM scratch`, so the guarantees below hold for base/python-trixie, nginx-scratch-trixie, postgres-scratch-trixie, and every future scratch variant automatically.
 
 ## File-layout API (guaranteed to exist)
 
@@ -76,7 +76,7 @@ Every Forge scratch derivative's runtime stage follows this exact shape:
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 FROM ${SCRATCH_BASE_REF} AS scratch_base
 
 FROM <debian-builder-base> AS builder
@@ -128,7 +128,7 @@ Reproduce the scan yourself:
 cosign verify \
   --certificate-identity https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/bboortz/scratch-base-trixie:latest
+  ghcr.io/bboortz/base/scratch-trixie:latest
 ```
 
 Pin by digest in production.

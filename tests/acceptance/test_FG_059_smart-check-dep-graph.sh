@@ -21,15 +21,15 @@ echo "$graph_json" | jq -e '.["forge-builder-python-trixie"] | map(select(test("
 echo "$graph_json" | jq -e '.["python-slim-trixie"] | contains(["forge-builder-python-trixie"])' >/dev/null \
   || fail "python-slim-trixie should fan out to forge-builder-python-trixie (dogfood edge)"
 # scratch-base-trixie → the scratch fleet
-echo "$graph_json" | jq -e '.["scratch-base-trixie"] | length >= 3' >/dev/null \
-  || fail "scratch-base-trixie should fan out to many scratch derivatives"
-pass "graph covers expected edges (forge-builder-python-trixie, python-slim-trixie, scratch-base-trixie)"
+echo "$graph_json" | jq -e '.["base/scratch-trixie"] | length >= 3' >/dev/null \
+  || fail "base/scratch-trixie should fan out to many scratch derivatives"
+pass "graph covers expected edges (forge-builder-python-trixie, python-slim-trixie, base/scratch-trixie)"
 
 say "2. --deps flag emits newline-separated deps for a single image"
 deps=$(python3 scripts/image_from_graph.py --deps forge-builder-python-trixie | sort)
 # Should contain at least python-scratch-trixie (strongest signal)
-echo "$deps" | grep -qxF "python-scratch-trixie" \
-  || fail "--deps forge-builder-python-trixie should include python-scratch-trixie; got: $(echo "$deps" | tr '\n' ',')"
+echo "$deps" | grep -qxF "base/python-trixie" \
+  || fail "--deps forge-builder-python-trixie should include base/python-trixie; got: $(echo "$deps" | tr '\n' ',')"
 pass "--deps flag returns the expected list"
 
 say "3. affected_images.py fans out via FROM-graph on a simulated base-image change"
@@ -59,7 +59,7 @@ PY
 )
 echo "${out}" | grep -q "forge-builder-python-trixie" || fail "affected missing the trigger image"
 # python-scratch-trixie MUST be in affected — key downstream
-echo "${out}" | grep -q "python-scratch-trixie" || fail "affected missing python-scratch-trixie (expected FROM fan-out)"
+echo "${out}" | grep -q "base/python-trixie" || fail "affected missing base/python-trixie (expected FROM fan-out)"
 # cadvisor-slim-trixie is NOT affected (it uses forge-builder-go, not python)
 if echo "${out}" | grep -q "cadvisor-slim-trixie"; then
   fail "affected should NOT include cadvisor-slim-trixie (unrelated branch)"

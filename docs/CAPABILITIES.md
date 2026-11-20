@@ -689,3 +689,18 @@ Architectural invariant (FG-067 docs + FG-068 enforcement): the L4 runtime tier 
 
 - **Delivered by**: FG-068
 - **Covered by**: `tests/acceptance/test_FG_068_l0-1-source-tooling.sh`, `docs/plan/tier-layering-model.md` §3 L4
+
+### build.base-tier
+
+The L3 base tier formalized by FG-069. Members live at `images/base/<name>/`, publish to `ghcr.io/bboortz/base/<name>:<tag>`, and satisfy two invariants (Rule 12): (a) final-stage FROM is `scratch` — base images are scratch-assembled runtime foundations; (b) at least one forge-internal consumer references the image in its `image.yaml depends_on:`. Current members (post-FG-069): `base/scratch-trixie` (9 consumers — the scratch-runtime overlay) + `base/python-trixie` (3 consumers — beaconry-hub/scout/telegram-mock via FG-012 externally-sourced Dockerfiles). Names drop the redundant `-base-` / `-scratch-` tokens — the tier prefix encodes that semantic (see tier-plan §O2+O3). Published in the existing `publish-base` CI tier; `base/python-trixie` depends on `base/scratch-trixie` via `depends_on:` so build ordering flows through `scripts/build-image.sh`'s recursive dep walk.
+
+- **Delivered by**: FG-069
+- **Covered by**: `tests/acceptance/test_FG_069_base-tier-migration.sh`, `scripts/verify-dockerfile-conformance.py` (Rule 12), `images/base/{scratch-trixie,python-trixie}/tests/smoke_*.sh`
+
+### arch.base-tier-images
+
+Architectural invariant: every L3 image lives under `images/base/` (encoded in the directory prefix), has `image:` field in PROMISES.yaml equal to the leaf name only (parallel with `mirror/syft`'s `image: syft`), and is reachable at the canonical `base/<leaf>` path via the tooling (discover-images.sh, verify-contracts.py, image_from_graph.py). The rename from `scratch-base-trixie` → `base/scratch-trixie` and `python-scratch-trixie` → `base/python-trixie` is locked per tier-plan §O2+O3. Legacy GHCR repos at the flat paths stop being updated after FG-069 lands + the next release promotion publishes to the new paths; external consumers (Beaconry) pair their FROM updates per §O5.
+
+- **Delivered by**: FG-069
+- **Extended by**: *(reserved for future base-tier additions — e.g., base/node-trixie if a from-Node-source scratch runtime ever justifies it)*
+- **Covered by**: `tests/acceptance/test_FG_069_base-tier-migration.sh`, `docs/plan/tier-layering-model.md` §3 L3

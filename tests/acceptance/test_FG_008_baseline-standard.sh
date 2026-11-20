@@ -12,7 +12,7 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-008]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-BASELINE_DIR="scratch-base-trixie"
+BASELINE_DIR="base/scratch-trixie"
 BASELINE_IMAGE="forge-local/${BASELINE_DIR}:0.2"
 
 # -----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ pass "all 8 baseline smokes green"
 # -----------------------------------------------------------------------------
 say "3. docs/baseline-contract.md published"
 test -f docs/baseline-contract.md
-for term in 'scratch-base-trixie' 'nonroot' '65532' '65534' 'www-data' 'postgres' \
+for term in 'base/scratch-trixie' 'nonroot' '65532' '65534' 'www-data' 'postgres' \
             'SSL_CERT_FILE' '/etc/services' '/etc/localtime' '/var/tmp' \
             'Composition contract' 'Non-guarantees' 'Reserved UIDs'; do
   if ! grep -q "${term}" docs/baseline-contract.md; then
@@ -58,7 +58,7 @@ pass "baseline-contract.md references every required term"
 # Section 4 — existing scratch derivatives still pass against 0.2
 # -----------------------------------------------------------------------------
 say "4. existing derivatives build + smoke green against 0.2 baseline"
-for d in python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie; do
+for d in base/python-trixie nginx-scratch-trixie postgres-scratch-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
   # FG-017 B: skip per-derivative smokes under `make check` (test-images runs globally).
   if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then

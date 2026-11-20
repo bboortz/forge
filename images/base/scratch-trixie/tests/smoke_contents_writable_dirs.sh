@@ -7,7 +7,7 @@
 # Delivers: FG-008 Scenario "baseline provides writable /tmp, /var/tmp, /nonroot".
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-scratch-base-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-base/scratch-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-0.2}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

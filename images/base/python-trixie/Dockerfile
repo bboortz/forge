@@ -8,7 +8,7 @@
 # No shell, no apt, no dpkg database. Pip bundled so `pip install --target`
 # works for wheel-only packages at runtime.
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-025 Phase 2: builder stage FROMs the shared forge-builder-python-trixie image
 # (apt-upgraded + CA certs + syft pre-installed). Local build overrides this
 # to forge-local/forge-builder-python-trixie:0.1 via scripts/build-image.sh.

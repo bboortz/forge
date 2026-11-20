@@ -6,7 +6,7 @@ tag: "0.1"
 platforms:
   - linux/amd64
 depends_on:
-  - python-scratch-trixie
+  - base/python-trixie
 source:
   git: https://github.com/bboortz/beaconry
   # FG-013: daily cron tracks beaconry main HEAD; resolved sha baked into revision label.

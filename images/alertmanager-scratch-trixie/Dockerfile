@@ -21,7 +21,7 @@
 # re-declared (FG-009), webhooks fail with x509: certificate signed by
 # unknown authority — covered by smoke_ssl_cert_env.sh.
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 # FG-046: shared Go builder base.
 ARG FORGE_BUILDER_GO_REF=ghcr.io/bboortz/forge-builder-go-trixie:latest
 # FG-048 + FG-052: shared Node builder base for the UI compile step.

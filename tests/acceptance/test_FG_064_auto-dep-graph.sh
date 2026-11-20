@@ -37,9 +37,24 @@ echo "${out}" | grep -q '^<details>' || fail "emitter missing <details> wrapper"
 missing_nodes=""
 while read -r img; do
   [[ -n "$img" ]] || continue
-  # Translate `mirror/syft` → `mirror_syft` for mermaid id matching.
-  id_variant="${img//\//_}"
-  if ! echo "${out}" | grep -qE "^[[:space:]]*(${img}|${id_variant}):::|(${img}|${id_variant}) -->|(${img}|${id_variant}) -\\.->|--> (${img}|${id_variant})|-\\.-> (${img}|${id_variant})"; then
+  # Translate `base/python-trixie` → `base_python_trixie` for mermaid id matching.
+  # The `_local_id` helper in image_from_graph.py replaces BOTH `/` (tier
+  # separator) and `-` (dashes inside the leaf) with `_`. The bash side
+  # needs to do the same: split on first `/`, keep tier verbatim, replace
+  # dashes in the leaf. For flat images (no `/`), id_variant == img.
+  if [[ "${img}" == */* ]]; then
+    tier="${img%%/*}"
+    leaf="${img#*/}"
+    id_variant="${tier}_${leaf//-/_}"
+  else
+    id_variant="${img}"
+  fi
+  # Match any of:
+  #   - node declaration:  `  <id>:::style`
+  #   - node declaration with label:  `  <id>["<label>"]:::style`
+  #   - edge source:  `<id> -->` / `<id> -.->`
+  #   - edge target:  `--> <id>` / `-.-> <id>`
+  if ! echo "${out}" | grep -qE "^[[:space:]]*(${img}|${id_variant})(\\[|:::|$)|(${img}|${id_variant}) -->|(${img}|${id_variant}) -\\.->|--> (${img}|${id_variant})|-\\.-> (${img}|${id_variant})"; then
     missing_nodes="${missing_nodes} ${img}"
   fi
 done < <(
@@ -104,12 +119,14 @@ fi
 pass "no intra-layer edges"
 
 # --- (8) external-sourced beaconry resolved via image.yaml depends_on -------
-say "8. external-sourced images (FG-012) show dashed edge from BEACONRY_SRC + solid from python-scratch-trixie"
+say "8. external-sourced images (FG-012) show dashed edge from BEACONRY_SRC + solid from base/python-trixie"
+# FG-069: base/python-trixie's mermaid node id is `base_python_trixie`
+# (slash → underscore per _local_id normalization).
 for b in beaconry-hub beaconry-scout beaconry-telegram-mock; do
   grep -q "UP_BEACONRY -\\.-> ${b}" docs/image-dependency-graph.md \
     || fail "${b}: missing dashed UP_BEACONRY edge"
-  grep -q "python-scratch-trixie --> ${b}" docs/image-dependency-graph.md \
-    || fail "${b}: missing solid python-scratch-trixie edge"
+  grep -q "base_python_trixie --> ${b}" docs/image-dependency-graph.md \
+    || fail "${b}: missing solid base_python_trixie edge"
 done
 pass "external-sourced graph edges present"
 

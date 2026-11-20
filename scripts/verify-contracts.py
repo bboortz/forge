@@ -426,15 +426,20 @@ def main() -> int:
                     if not os.access(pp, os.X_OK):
                         err(errors, f"{ie.source_file}: expectation on {pid!r} references non-executable preflight {p}")
                         continue
-                    # Preflight must live under images/*/tests/ so test-images picks it up.
+                    # Preflight must live under images/*/tests/ OR images/*/*/tests/
+                    # (FG-066: mirror/<name>/tests/; FG-069: base/<name>/tests/).
                     try:
                         rel = pp.relative_to(IMAGES_DIR)
                     except ValueError:
                         err(errors, f"{ie.source_file}: preflight {p} must live under images/*/tests/ (so make test-images runs it)")
                         continue
                     parts = rel.parts
-                    if len(parts) < 3 or parts[1] != "tests":
-                        err(errors, f"{ie.source_file}: preflight {p} must live under images/*/tests/")
+                    # Accept either images/<name>/tests/<script> (3+ parts, tests at idx 1)
+                    # OR  images/<tier>/<name>/tests/<script> (4+ parts, tests at idx 2).
+                    ok = (len(parts) >= 3 and parts[1] == "tests") or \
+                         (len(parts) >= 4 and parts[2] == "tests")
+                    if not ok:
+                        err(errors, f"{ie.source_file}: preflight {p} must live under images/*/tests/ or images/*/*/tests/")
 
     if errors:
         sys.stderr.write("verify-contracts: FAIL ({} violation(s))\n".format(len(errors)))

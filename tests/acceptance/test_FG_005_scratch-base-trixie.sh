@@ -4,7 +4,7 @@
 # CAPs:   build.scratch-baseline, test.scratch-contents,
 #         image.zero-os-cves, test.size-budget, test.image-smoke-suite
 #
-# Red before implementation: images/scratch-base-trixie/ absent, python/
+# Red before implementation: images/base/scratch-trixie/ absent, python/
 # nginx/postgres Dockerfiles still inline their shared closure. Green when
 # baseline exists, derivatives COPY from it, and every existing smoke
 # test still passes against the refactored images.
@@ -15,12 +15,12 @@ cd "$(git rev-parse --show-toplevel)"
 say() { printf '\n\033[1;36m[FG-005]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
-BASE_DIR="scratch-base-trixie"
+BASE_DIR="base/scratch-trixie"
 # Resolve baseline tag from image.yaml so FG-005 keeps passing across version
 # bumps (0.1 → 0.2 → …). Future-proof per FG-008.
 BASE_TAG=$(awk '/^tag:/ {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${BASE_DIR}/image.yaml")
 BASE_IMAGE="forge-local/${BASE_DIR}:${BASE_TAG}"
-DERIVATIVES=(python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie)
+DERIVATIVES=(base/python-trixie nginx-scratch-trixie postgres-scratch-trixie)
 
 # -----------------------------------------------------------------------------
 # Section 1 — baseline scaffolding
@@ -47,7 +47,7 @@ done
 # -----------------------------------------------------------------------------
 # Section 4 — each derivative's Dockerfile actually consumes the baseline
 # -----------------------------------------------------------------------------
-say "4. each scratch derivative derives from scratch-base-trixie"
+say "4. each scratch derivative derives from base/scratch-trixie"
 for d in "${DERIVATIVES[@]}"; do
   df="images/${d}/Dockerfile"
   if ! grep -q 'SCRATCH_BASE_REF' "${df}"; then
@@ -63,7 +63,7 @@ for d in "${DERIVATIVES[@]}"; do
     exit 1
   fi
 done
-pass "all 3 derivatives wired to scratch-base-trixie"
+pass "all 3 derivatives wired to base/scratch-trixie"
 
 # -----------------------------------------------------------------------------
 # Section 5 — each derivative builds (depends_on auto-chains baseline) + smokes green
@@ -95,8 +95,8 @@ pass "baseline size ${size}B ≤ 25 MB ceiling"
 # Section 7 — differentiators doc explains the baseline layer
 # -----------------------------------------------------------------------------
 say "7. differentiators.md mentions the baseline"
-if ! grep -q 'scratch-base-trixie' docs/differentiators.md; then
-  echo "  ✗ docs/differentiators.md doesn't reference scratch-base-trixie" >&2
+if ! grep -q 'base/scratch-trixie' docs/differentiators.md; then
+  echo "  ✗ docs/differentiators.md doesn't reference base/scratch-trixie" >&2
   exit 1
 fi
 pass "differentiators.md documents the baseline layer"

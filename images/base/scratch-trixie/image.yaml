@@ -1,0 +1,11 @@
+# Shared signed foundation for every Forge scratch image.
+# `repo:` is EXPLICIT because the image dir is nested (`images/base/
+# scratch-trixie/` per FG-069) — the default-repo helper would collapse
+# to the leaf `scratch-trixie` and drop the `base/` tier prefix. Same
+# pattern as mirror/syft (FG-066).
+# Semantic versioning (FG-005): bump tag when the surface changes; 0.x until
+# we have real consumer dependence.
+tag: "0.2"
+repo: base/scratch-trixie
+platforms:
+  - linux/amd64

@@ -46,7 +46,7 @@ jobs:
   #    (dogfood) so needs pre-builders first. All four forge-builders dogfood
   #    their respective pre-builders per FG-065 arch.language-family-image-pair
   #    (FG-072 extends from 3 → 4 satisfying language families).
-  # 3. base (scratch-base-trixie, remaining slim variants, externally-sourced
+  # 3. base (base/scratch-trixie + base/python-trixie — L3 per FG-069; plus
   #    leaf images) — publish in parallel.
   # 4. derivatives (scratch image variants, beaconry hub/scout) — FROM bases.
   discover:

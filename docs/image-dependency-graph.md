@@ -77,7 +77,8 @@ graph TD
         forge-builder-zig-trixie:::builder
     end
     subgraph L3_baseline["Layer 3 — Forge baseline (publish-base — scratch overlay)"]
-        scratch-base-trixie:::baseline
+        base_python_trixie["base/python-trixie"]:::baseline
+        base_scratch_trixie["base/scratch-trixie"]:::baseline
     end
     subgraph L4_runtimes["Layer 4 — Runtimes (publish-base tail + publish-derivatives)"]
         alertmanager-scratch-trixie:::scratch
@@ -95,7 +96,6 @@ graph TD
         postgres-scratch-trixie:::scratch
         postgres-slim-trixie:::slim
         prometheus-scratch-trixie:::scratch
-        python-scratch-trixie:::scratch
         redis-scratch-trixie:::scratch
         uptime-kuma-slim-trixie:::slim
     end
@@ -111,9 +111,11 @@ graph TD
     UP_UBUNTU --> ubuntu-slim-noble
     forge-builder-go-trixie --> alertmanager-scratch-trixie
     forge-builder-node-trixie --> alertmanager-scratch-trixie
-    python-scratch-trixie --> beaconry-hub
-    python-scratch-trixie --> beaconry-scout
-    python-scratch-trixie --> beaconry-telegram-mock
+    forge-builder-python-trixie --> base_python_trixie
+    forge-builder-python-trixie --> base_scratch_trixie
+    base_python_trixie --> beaconry-hub
+    base_python_trixie --> beaconry-scout
+    base_python_trixie --> beaconry-telegram-mock
     debian-slim-trixie --> cadvisor-slim-trixie
     forge-builder-go-trixie --> cadvisor-slim-trixie
     go-slim-trixie --> forge-builder-go-trixie
@@ -133,31 +135,30 @@ graph TD
     forge-builder-go-trixie --> postgres-slim-trixie
     forge-builder-go-trixie --> prometheus-scratch-trixie
     forge-builder-node-trixie --> prometheus-scratch-trixie
-    forge-builder-python-trixie --> python-scratch-trixie
     forge-builder-python-trixie --> redis-scratch-trixie
-    forge-builder-python-trixie --> scratch-base-trixie
     forge-builder-node-trixie --> uptime-kuma-slim-trixie
     node-slim-trixie --> uptime-kuma-slim-trixie
     debian-slim-trixie --> zig-slim-trixie
 
     %% COPY --from= edges (dashed)
+    base_scratch_trixie -.-> alertmanager-scratch-trixie
+    base_scratch_trixie -.-> base_python_trixie
+    base_scratch_trixie -.-> ipmi-exporter-scratch-trixie
+    base_scratch_trixie -.-> mosquitto-scratch-trixie
+    base_scratch_trixie -.-> nginx-scratch-trixie
+    base_scratch_trixie -.-> node-exporter-scratch-trixie
+    base_scratch_trixie -.-> postgres-scratch-trixie
+    base_scratch_trixie -.-> prometheus-scratch-trixie
+    base_scratch_trixie -.-> redis-scratch-trixie
     mirror_syft -.-> forge-builder-go-trixie
     mirror_syft -.-> forge-builder-node-trixie
     mirror_syft -.-> forge-builder-python-trixie
     mirror_syft -.-> forge-builder-zig-trixie
-    scratch-base-trixie -.-> alertmanager-scratch-trixie
-    scratch-base-trixie -.-> ipmi-exporter-scratch-trixie
-    scratch-base-trixie -.-> mosquitto-scratch-trixie
-    scratch-base-trixie -.-> nginx-scratch-trixie
-    scratch-base-trixie -.-> node-exporter-scratch-trixie
-    scratch-base-trixie -.-> postgres-scratch-trixie
-    scratch-base-trixie -.-> prometheus-scratch-trixie
-    scratch-base-trixie -.-> python-scratch-trixie
-    scratch-base-trixie -.-> redis-scratch-trixie
     UP_BEACONRY -.-> beaconry-hub
     UP_BEACONRY -.-> beaconry-scout
     UP_BEACONRY -.-> beaconry-telegram-mock
     UP_HC -.-> alertmanager-scratch-trixie
+    UP_HC -.-> base_python_trixie
     UP_HC -.-> cadvisor-slim-trixie
     UP_HC -.-> healthy-scratch-trixie
     UP_HC -.-> ipmi-exporter-scratch-trixie
@@ -165,7 +166,6 @@ graph TD
     UP_HC -.-> nginx-scratch-trixie
     UP_HC -.-> node-exporter-scratch-trixie
     UP_HC -.-> prometheus-scratch-trixie
-    UP_HC -.-> python-scratch-trixie
     UP_HC -.-> uptime-kuma-slim-trixie
 
     %% L0.1 source → consumer edges (dashed; build-time clone/download)

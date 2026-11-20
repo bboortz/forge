@@ -8,7 +8,7 @@
 # Delivers: FG-009 Scenario "python-scratch defaults to USER 65532".
 set -euo pipefail
 
-IMAGE_NAME="${IMAGE_NAME:-python-scratch-trixie}"
+IMAGE_NAME="${IMAGE_NAME:-base/python-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-3.14}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"

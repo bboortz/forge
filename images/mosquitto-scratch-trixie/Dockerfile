@@ -12,7 +12,7 @@
 # config-less `docker run` works for dev. Production consumers mount
 # their own config at the same path.
 
-ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest
+ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:latest
 ARG FORGE_BUILDER_REF=ghcr.io/bboortz/forge-builder-python-trixie:latest
 
 # --- Stage 0: baseline reference ---------------------------------------------
