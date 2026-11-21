@@ -27,22 +27,23 @@ ARG PSITRANSFER_VERSION=latest
 
 # --- Stage 0: fetch source via git clone ------------------------------------
 FROM ${BUILDER_NODE_REF} AS src
+# hadolint ignore=DL3002
 USER 0
 WORKDIR /src
-# hadolint ignore=DL3059
+# hadolint ignore=DL3059,DL3003
 RUN set -eux; \
     if [ "${PSITRANSFER_VERSION:-latest}" = "latest" ]; then \
       git clone --depth=1 https://github.com/psi-4ward/psitransfer /src/psitransfer; \
     else \
       git clone https://github.com/psi-4ward/psitransfer /src/psitransfer; \
-      cd /src/psitransfer; \
-      git checkout "${PSITRANSFER_VERSION}"; \
+      git -C /src/psitransfer checkout "${PSITRANSFER_VERSION}"; \
     fi; \
     git -C /src/psitransfer rev-parse HEAD > /src/REVISION; \
     echo "resolved psitransfer SHA: $(cat /src/REVISION)"
 
 # --- Stage 1: frontend build (Vue 2 bundle under public/app) ----------------
 FROM ${BUILDER_NODE_REF} AS frontend
+# hadolint ignore=DL3002
 USER 0
 WORKDIR /build
 COPY --from=src /src/psitransfer /build/psitransfer
@@ -51,6 +52,7 @@ RUN npm ci && npm run build
 
 # --- Stage 2: backend deps install (production only) ------------------------
 FROM ${BUILDER_NODE_REF} AS backend
+# hadolint ignore=DL3002
 USER 0
 WORKDIR /build
 COPY --from=src /src/psitransfer /build/psitransfer
@@ -59,6 +61,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 # --- Stage 3: SBOM over backend node_modules + source -----------------------
 FROM ${BUILDER_NODE_REF} AS sbom
+# hadolint ignore=DL3002
 USER 0
 WORKDIR /sbom-input
 COPY --from=backend /build/psitransfer/package.json /sbom-input/
