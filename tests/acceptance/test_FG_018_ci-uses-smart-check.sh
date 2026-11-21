@@ -42,7 +42,7 @@ fi
 # run locally in developers' pre-push hook. Validate the SHAPE, not the spec
 # that it lives inside a job named full-check.
 say "2. some job in ci.yml uses fetch-depth: 0 for smart-check"
-grep -A4 'actions/checkout@v4' .github/workflows/ci.yml | grep -q 'fetch-depth: 0' || {
+grep -EA4 'actions/checkout@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci.yml | grep -q 'fetch-depth: 0' || {
   echo "  ✗ no actions/checkout invocation uses fetch-depth: 0" >&2; exit 1;
 }
 pass "fetch-depth: 0 present on a checkout invocation"

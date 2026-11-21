@@ -55,11 +55,15 @@ grep -qE '\$\{\{ *matrix\.(test|fg_id) *\}\}' .github/workflows/ci.yml || {
   echo "  ✗ acceptance-matrix doesn't reference matrix.test / matrix.fg_id" >&2; exit 1;
 }
 # Must include buildx + grype cache + tool install + GHCR login
-for pattern in "docker/setup-buildx-action" "docker/login-action" "actions/cache@v4" "FORGE_CACHE_FROM_PREFIX"; do
+for pattern in "docker/setup-buildx-action" "docker/login-action" "FORGE_CACHE_FROM_PREFIX"; do
   grep -q "${pattern}" .github/workflows/ci.yml || {
     echo "  ✗ acceptance-matrix missing: ${pattern}" >&2; exit 1;
   }
 done
+# actions/cache can be any pinned version (v4, v6, SHA, …). Match the family.
+grep -Eq 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci.yml || {
+  echo "  ✗ acceptance-matrix missing: actions/cache" >&2; exit 1;
+}
 pass "acceptance-matrix job: matrix dispatch + buildx + grype cache + cache env"
 
 # -----------------------------------------------------------------------------
