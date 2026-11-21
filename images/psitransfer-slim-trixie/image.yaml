@@ -1,0 +1,7 @@
+# FG-078: psitransfer rebuilt on Forge's Node chain. Replaces homelab's
+# local docker/psitransfer/ recipe.
+tag: "latest"
+platforms:
+  - linux/amd64
+depends_on:
+  - base/node-slim-trixie
