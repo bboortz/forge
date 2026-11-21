@@ -103,8 +103,13 @@ pass "Rule 12 fires on synthetic base/bad; fleet passes"
 say "7. discover-images.sh places base/ entries correctly"
 bash scripts/discover-images.sh base 2>&1 | jq -e '.include | map(.image_dir) | contains(["base/scratch-trixie"])' >/dev/null \
   || fail "discover-images.sh base mode doesn't contain base/scratch-trixie"
+# FG-077: base/* members (including python-scratch-trixie) now ALL route
+# to `base` mode regardless of depends_on, so publish-base finishes
+# before publish-derivatives starts. Assert that explicitly.
+bash scripts/discover-images.sh base 2>&1 | jq -e '.include | map(.image_dir) | contains(["base/python-scratch-trixie"])' >/dev/null \
+  || fail "discover-images.sh base mode doesn't contain base/python-scratch-trixie (FG-077 routes all base/* here)"
 bash scripts/discover-images.sh derivatives 2>&1 | jq -e '.include | map(.image_dir) | contains(["base/python-scratch-trixie"])' >/dev/null \
-  || fail "discover-images.sh derivatives mode doesn't contain base/python-scratch-trixie"
+  && fail "discover-images.sh derivatives must NOT contain base/python-scratch-trixie post-FG-077"
 pass "discover-images classification correct"
 
 # --- (8) dep graph renders both base/ images at L3 ---
