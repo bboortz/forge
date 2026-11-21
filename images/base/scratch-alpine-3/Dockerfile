@@ -22,8 +22,8 @@
 ARG BASE_ALPINE_REF=ghcr.io/bboortz/base/alpine-3:3
 
 # --- Stage 1: builder (stage curated closure into /out) ---------------------
-# hadolint ignore=DL3002
 FROM ${BASE_ALPINE_REF} AS builder
+# hadolint ignore=DL3002
 USER 0
 
 ARG GIT_SHA=unknown

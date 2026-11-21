@@ -22,8 +22,8 @@ FROM ${BASE_SCRATCH_ALPINE_REF} AS scratch_base_alpine
 FROM ${HC_REF} AS hc
 
 # --- Stage 2: nginx builder --------------------------------------------------
-# hadolint ignore=DL3002
 FROM ${BASE_ALPINE_REF} AS builder
+# hadolint ignore=DL3002
 USER 0
 
 ARG GIT_SHA=unknown
@@ -83,8 +83,8 @@ RUN set -eux; \
     chown -R 65532:65532 /out/var/cache/nginx /out/var/log/nginx /out/var/lib/nginx /out/run /out/run/nginx
 
 # --- Stage 3: SBOM -----------------------------------------------------------
-# hadolint ignore=DL3002
 FROM ${BASE_ALPINE_REF} AS sbom
+# hadolint ignore=DL3002
 USER 0
 # hadolint ignore=DL3018
 RUN apk add --no-cache syft
@@ -105,6 +105,7 @@ LABEL org.opencontainers.image.revision="${GIT_SHA}"
 LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
 
 # Overlay first (musl + CA + nss + /etc identity + zoneinfo + /tmp).
+# hadolint ignore=DL3067
 COPY --from=scratch_base_alpine / /
 
 # Then the nginx runtime overlay.
