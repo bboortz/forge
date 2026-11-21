@@ -104,7 +104,7 @@ jobs:
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         timeout-minutes: 3
         continue-on-error: true
         with:
@@ -177,7 +177,7 @@ jobs:
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         timeout-minutes: 3
         continue-on-error: true
         with:
@@ -283,7 +283,7 @@ jobs:
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         # FG-038: 3-min cap + continue-on-error — cache action hangs on
         # GHA service slowness should fail fast; grype re-downloads DB.
         timeout-minutes: 3
@@ -390,7 +390,7 @@ jobs:
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       # FG-022: cache grype CVE DB.
       - name: Cache grype DB
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         # FG-038: 3-min cap + continue-on-error — cache action hangs on
         # GHA service slowness should fail fast; grype re-downloads DB.
         timeout-minutes: 3
@@ -499,7 +499,7 @@ jobs:
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         # FG-038: 3-min cap + continue-on-error — cache action hangs on
         # GHA service slowness should fail fast; grype re-downloads DB.
         timeout-minutes: 3
