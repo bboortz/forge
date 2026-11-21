@@ -20,13 +20,14 @@ grep -qE '^repo: base/alpine-3$' images/base/alpine-3/image.yaml \
   || fail "base/alpine-3/image.yaml missing 'repo: base/alpine-3'"
 pass "both images present with explicit repo:"
 
-# --- (2) verify-no-upstream-drift bumped 6 → 7 ---
-say "2. verify-no-upstream-drift _EXPECTED=7 (bumped from 6)"
-grep -qE '^_EXPECTED=7$' scripts/verify-no-upstream-drift.sh \
-  || fail "verify-no-upstream-drift _EXPECTED must be 7"
+# --- (2) verify-no-upstream-drift bumped 6 → ≥7 ---
+say "2. verify-no-upstream-drift _EXPECTED ≥ 7 (bumped from 6 at FG-079)"
+_actual=$(awk -F= '/^_EXPECTED=/ {print $2; exit}' scripts/verify-no-upstream-drift.sh)
+[[ "${_actual}" -ge 7 ]] \
+  || fail "verify-no-upstream-drift _EXPECTED must be >= 7 (got: ${_actual})"
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails"
-pass "drift guard at _EXPECTED=7"
+pass "drift guard at _EXPECTED=${_actual} (≥ 7)"
 
 # --- (3) both images build + smokes pass ---
 say "3. both images build + their smokes pass"
