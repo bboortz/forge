@@ -77,9 +77,12 @@ graph TD
         builder_zig_trixie["builder/zig-trixie"]:::builder
     end
     subgraph L3_baseline["Layer 3 — Forge baseline (publish-base — scratch overlay)"]
+        base_debian_slim_trixie["base/debian-slim-trixie"]:::baseline
+        base_node_slim_trixie["base/node-slim-trixie"]:::baseline
         base_python_scratch_trixie["base/python-scratch-trixie"]:::baseline
         base_python_slim_trixie["base/python-slim-trixie"]:::baseline
         base_scratch_trixie["base/scratch-trixie"]:::baseline
+        base_ubuntu_slim_noble["base/ubuntu-slim-noble"]:::baseline
     end
     subgraph L4_runtimes["Layer 4 — Runtimes (publish-base tail + publish-derivatives)"]
         alertmanager-scratch-trixie:::scratch
@@ -132,9 +135,12 @@ graph TD
     UP_UBUNTU ==> pre-builder_ubuntu_slim_noble
     builder_go_trixie --> alertmanager-scratch-trixie
     builder_node_trixie --> alertmanager-scratch-trixie
+    pre-builder_debian_slim_trixie ==> base_debian_slim_trixie
+    pre-builder_node_slim_trixie ==> base_node_slim_trixie
     builder_python_trixie --> base_python_scratch_trixie
     pre-builder_python_slim_trixie ==> base_python_slim_trixie
     builder_python_trixie --> base_scratch_trixie
+    pre-builder_ubuntu_slim_noble ==> base_ubuntu_slim_noble
     base_python_scratch_trixie --> beaconry-hub
     base_python_scratch_trixie --> beaconry-scout
     base_python_scratch_trixie --> beaconry-telegram-mock
@@ -142,14 +148,14 @@ graph TD
     pre-builder_node_slim_trixie ==> builder_node_trixie
     pre-builder_python_slim_trixie ==> builder_python_trixie
     pre-builder_zig_slim_trixie ==> builder_zig_trixie
+    base_debian_slim_trixie ==> cadvisor-slim-trixie
     builder_go_trixie --> cadvisor-slim-trixie
-    pre-builder_debian_slim_trixie ==> cadvisor-slim-trixie
-    pre-builder_ubuntu_slim_noble ==> github-runner-noble
+    base_ubuntu_slim_noble ==> github-runner-noble
     builder_python_trixie --> healthy-scratch-trixie
     builder_go_trixie --> ipmi-exporter-scratch-trixie
     builder_python_trixie --> ipmi-exporter-scratch-trixie
+    base_debian_slim_trixie ==> ipmi-exporter-slim-trixie
     builder_go_trixie --> ipmi-exporter-slim-trixie
-    pre-builder_debian_slim_trixie ==> ipmi-exporter-slim-trixie
     builder_python_trixie --> mosquitto-scratch-trixie
     builder_python_trixie --> nginx-scratch-trixie
     builder_go_trixie --> node-exporter-scratch-trixie
@@ -159,8 +165,8 @@ graph TD
     builder_go_trixie --> prometheus-scratch-trixie
     builder_node_trixie --> prometheus-scratch-trixie
     builder_python_trixie --> redis-scratch-trixie
+    base_node_slim_trixie ==> uptime-kuma-slim-trixie
     builder_node_trixie --> uptime-kuma-slim-trixie
-    pre-builder_node_slim_trixie ==> uptime-kuma-slim-trixie
     base_scratch_trixie -.-> alertmanager-scratch-trixie
     base_scratch_trixie -.-> base_python_scratch_trixie
     base_scratch_trixie -.-> ipmi-exporter-scratch-trixie
@@ -175,8 +181,11 @@ graph TD
     mirror_syft -.-> builder_python_trixie
     mirror_syft -.-> builder_zig_trixie
     UP_HC -.-> alertmanager-scratch-trixie
+    UP_HC -.-> base_debian_slim_trixie
+    UP_HC -.-> base_node_slim_trixie
     UP_HC -.-> base_python_scratch_trixie
     UP_HC -.-> base_python_slim_trixie
+    UP_HC -.-> base_ubuntu_slim_noble
     UP_HC -.-> cadvisor-slim-trixie
     UP_HC -.-> healthy-scratch-trixie
     UP_HC -.-> ipmi-exporter-scratch-trixie
@@ -215,51 +224,51 @@ graph TD
     linkStyle 12 stroke:#D81B60,stroke-width:5px;
     linkStyle 13 stroke:#1E88E5,stroke-width:4px;
     linkStyle 14 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 15 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 15 stroke:#43A047,stroke-width:5px;
     linkStyle 16 stroke:#43A047,stroke-width:5px;
     linkStyle 17 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 18 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 19 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 20 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 21 stroke:#43A047,stroke-width:5px;
-    linkStyle 22 stroke:#43A047,stroke-width:5px;
-    linkStyle 23 stroke:#43A047,stroke-width:5px;
+    linkStyle 18 stroke:#43A047,stroke-width:5px;
+    linkStyle 19 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 20 stroke:#43A047,stroke-width:5px;
+    linkStyle 21 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 22 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 23 stroke:#6D4C41,stroke-width:4px;
     linkStyle 24 stroke:#43A047,stroke-width:5px;
-    linkStyle 25 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 25 stroke:#43A047,stroke-width:5px;
     linkStyle 26 stroke:#43A047,stroke-width:5px;
     linkStyle 27 stroke:#43A047,stroke-width:5px;
-    linkStyle 28 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 28 stroke:#6D4C41,stroke-width:5px;
     linkStyle 29 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 30 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 30 stroke:#6D4C41,stroke-width:5px;
     linkStyle 31 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 32 stroke:#43A047,stroke-width:5px;
+    linkStyle 32 stroke:#1E88E5,stroke-width:4px;
     linkStyle 33 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 34 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 34 stroke:#6D4C41,stroke-width:5px;
     linkStyle 35 stroke:#1E88E5,stroke-width:4px;
     linkStyle 36 stroke:#1E88E5,stroke-width:4px;
     linkStyle 37 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 38 stroke:#43A047,stroke-width:5px;
+    linkStyle 38 stroke:#1E88E5,stroke-width:4px;
     linkStyle 39 stroke:#1E88E5,stroke-width:4px;
     linkStyle 40 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 41 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 41 stroke:#43A047,stroke-width:5px;
     linkStyle 42 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 43 stroke:#43A047,stroke-width:5px;
-    linkStyle 44 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 45 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 46 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 43 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 44 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 45 stroke:#6D4C41,stroke-width:5px;
+    linkStyle 46 stroke:#1E88E5,stroke-width:4px;
     linkStyle 47 stroke:#6D4C41,stroke-width:4px;
     linkStyle 48 stroke:#6D4C41,stroke-width:4px;
     linkStyle 49 stroke:#6D4C41,stroke-width:4px;
     linkStyle 50 stroke:#6D4C41,stroke-width:4px;
     linkStyle 51 stroke:#6D4C41,stroke-width:4px;
     linkStyle 52 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 53 stroke:#FBC02D,stroke-width:4px;
-    linkStyle 54 stroke:#FBC02D,stroke-width:4px;
-    linkStyle 55 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 53 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 54 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 55 stroke:#6D4C41,stroke-width:4px;
     linkStyle 56 stroke:#FBC02D,stroke-width:4px;
-    linkStyle 57 stroke:#D81B60,stroke-width:4px;
-    linkStyle 58 stroke:#D81B60,stroke-width:4px;
-    linkStyle 59 stroke:#D81B60,stroke-width:4px;
+    linkStyle 57 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 58 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 59 stroke:#FBC02D,stroke-width:4px;
     linkStyle 60 stroke:#D81B60,stroke-width:4px;
     linkStyle 61 stroke:#D81B60,stroke-width:4px;
     linkStyle 62 stroke:#D81B60,stroke-width:4px;
@@ -268,12 +277,12 @@ graph TD
     linkStyle 65 stroke:#D81B60,stroke-width:4px;
     linkStyle 66 stroke:#D81B60,stroke-width:4px;
     linkStyle 67 stroke:#D81B60,stroke-width:4px;
-    linkStyle 68 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 69 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 70 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 71 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 72 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 73 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 68 stroke:#D81B60,stroke-width:4px;
+    linkStyle 69 stroke:#D81B60,stroke-width:4px;
+    linkStyle 70 stroke:#D81B60,stroke-width:4px;
+    linkStyle 71 stroke:#D81B60,stroke-width:4px;
+    linkStyle 72 stroke:#D81B60,stroke-width:4px;
+    linkStyle 73 stroke:#D81B60,stroke-width:4px;
     linkStyle 74 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 75 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 76 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
@@ -281,6 +290,12 @@ graph TD
     linkStyle 78 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 79 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 80 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 81 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 82 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 83 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 84 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 85 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 86 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
 
     %% Node styling
     classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;

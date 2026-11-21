@@ -1,0 +1,10 @@
+# FG-077: Ubuntu 24.04 (noble) slim foundation. Public API surface for
+# consumers that need Ubuntu-specific libraries (libicu74 — see
+# memory/design-decisions.md § Ubuntu exception). FG-051 github-runner-noble
+# is the current driver.
+repo: base/ubuntu-slim-noble
+tag: "0.1"
+platforms:
+  - linux/amd64
+depends_on:
+  - pre-builder/ubuntu-slim-noble

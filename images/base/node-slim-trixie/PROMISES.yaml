@@ -1,0 +1,46 @@
+# Authoritative contract for base/node-slim-trixie.
+#
+# FG-077 public-API slim Node foundation. Shell + apt + npm/corepack
+# retained from pre-builder/node-slim-trixie; adds /hc + nonroot uid +
+# node entrypoint.
+
+spec_version: 1
+image: node-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.node
+    description: /usr/local/bin/node is Node 24 LTS; `node --version` resolves.
+    caps: [image.node-slim-foundation]
+    tests:
+      - images/base/node-slim-trixie/tests/smoke_node_version.sh
+
+  - id: runtime.entrypoint-node
+    description: Image ENTRYPOINT = ["node"]. `docker run <image> script.js` executes node directly.
+    caps: [image.node-slim-foundation]
+    tests:
+      - images/base/node-slim-trixie/tests/smoke_entrypoint.sh
+
+  - id: runtime.user-nonroot
+    description: Container runs as uid 65532 by default.
+    caps: [image.node-slim-foundation]
+    tests:
+      - images/base/node-slim-trixie/tests/smoke_user_nonroot.sh
+
+  - id: files.hc-embedded
+    description: /hc is present + executable.
+    caps: [image.node-slim-foundation]
+    tests:
+      - images/base/node-slim-trixie/tests/smoke_hc_embedded.sh
+
+  - id: files.tls-stack
+    description: /etc/ssl/certs/ca-certificates.crt present (inherited from pre-builder/node-slim-trixie).
+    caps: [image.node-slim-foundation]
+    tests:
+      - images/base/node-slim-trixie/tests/smoke_ca_bundle.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ pre-builder/node-slim-trixie × 1.15.
+    caps: [image.node-slim-foundation]
+    tests:
+      - images/base/node-slim-trixie/tests/smoke_size.sh

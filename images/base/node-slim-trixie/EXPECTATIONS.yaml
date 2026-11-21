@@ -1,0 +1,12 @@
+# What base/node-slim-trixie requires from its upstream dep.
+spec_version: 1
+image: node-slim-trixie
+
+dependencies:
+  - image: node-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "Consumers building Node apps expect outbound HTTPS to work (npm install, fetch, etc.)."
+        preflight:
+          - images/base/node-slim-trixie/tests/smoke_ca_bundle.sh

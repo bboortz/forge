@@ -25,7 +25,7 @@
 # GITHUB_ORG + GITHUB_RUNNER_PAT + RUNNER_NAME + RUNNER_LABELS; registers
 # at first start via GitHub API; subsequent starts skip to run.sh.
 
-ARG UBUNTU_SLIM_NOBLE_REF=ghcr.io/bboortz/pre-builder/ubuntu-slim-noble:24.04
+ARG BASE_UBUNTU_SLIM_NOBLE_REF=ghcr.io/bboortz/base/ubuntu-slim-noble:0.1
 
 # Upstream-resolved versions (bump via Forge PR; daily cron bakes newer
 # versions on each publish).
@@ -40,11 +40,17 @@ ARG RUNNER_VERSION=
 # hadolint ignore=DL3064
 ARG GITHUB_TOKEN=
 
-FROM ${UBUNTU_SLIM_NOBLE_REF}
+FROM ${BASE_UBUNTU_SLIM_NOBLE_REF}
 
 ARG HADOLINT_VERSION
 ARG TERRAFORM_VERSION
 ARG RUNNER_VERSION
+
+# FG-077: base/*-slim-trixie defaults USER 65532 (nonroot). Override to
+# USER 0 because this image needs root (apt install at build; runtime
+# requires device/filesystem access typical of system services).
+# hadolint ignore=DL3002
+USER 0
 # hadolint ignore=DL3064
 ARG GITHUB_TOKEN
 ARG GIT_SHA=unknown
