@@ -61,7 +61,7 @@ jobs:
       base: ${{ steps.disc.outputs.base }}
       derivatives: ${{ steps.disc.outputs.derivatives }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: disc
         env:
           # FG-057: workflow_dispatch may pass `images=<name|csv|glob>`.
@@ -98,7 +98,7 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
       - name: Current UTC day (for grype DB cache key)
         id: dt
@@ -171,7 +171,7 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
       - name: Current UTC day (for grype DB cache key)
         id: dt
@@ -277,7 +277,7 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v3
       - name: Current UTC day (for grype DB cache key)
         id: dt
@@ -382,7 +382,7 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # FG-021: buildx + GHCR cache.
       - uses: docker/setup-buildx-action@v3
       - name: Current UTC day (for grype DB cache key)
@@ -492,7 +492,7 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # FG-021 + FG-022: same cache setup as publish-base.
       - uses: docker/setup-buildx-action@v3
       - name: Current UTC day

@@ -30,7 +30,7 @@ jobs:
     # FG-038: 5-min cap. Typical 30s (dev CI assertion + fast-forward).
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
