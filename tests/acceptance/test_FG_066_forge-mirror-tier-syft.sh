@@ -94,12 +94,16 @@ echo "${publish_builders_needs}" | grep -q publish-pre-builders \
   || fail "publish-builders needs: must still include publish-pre-builders"
 pass "build.yml publish-mirrors is parallel with publish-pre-builders + both block publish-builders"
 
-# --- (7) verify-no-upstream-drift stays at _EXPECTED=6 --------------------
-say "7. verify-no-upstream-drift stays at _EXPECTED=6 (unchanged by FG-066)"
-grep -qE '^_EXPECTED=6$' scripts/verify-no-upstream-drift.sh \
-  || fail "_EXPECTED should stay 6 — mirrors are classified separately from pre-builders"
+# --- (7) verify-no-upstream-drift ---------------------------------------
+# FG-066 originally locked _EXPECTED=6 (mirrors don't count as pre-builders).
+# FG-079 bumped it to 7 (Alpine). The invariant FG-066 cares about —
+# mirrors don't inflate _EXPECTED — holds either way.
+say "7. verify-no-upstream-drift clean (mirrors don't inflate _EXPECTED)"
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails — anchore/syft in mirror/syft/Dockerfile is NOT counted (not in _UPSTREAM_ANCHORS)"
+# Spot-check: anchore/syft should NOT be in _UPSTREAM_ANCHORS.
+grep -qE "anchore/syft" scripts/verify-no-upstream-drift.sh \
+  && fail "anchore/syft must NOT be in _UPSTREAM_ANCHORS — mirrors are classified separately"
 pass "drift guard still clean"
 
 # --- (8) hc stays at ghcr.io/bboortz/hc (NOT under mirror/) --------------

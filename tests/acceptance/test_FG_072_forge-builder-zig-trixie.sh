@@ -86,11 +86,13 @@ grep -q 'mirror/syft' images/builder/zig-trixie/image.yaml \
   || fail "builder/zig-trixie/image.yaml must list mirror/syft in depends_on"
 pass "depends_on wiring present on both"
 
-# --- (6) pre-builder count 6 → 7, builder count 3 → 4 ---------------------
-say "6. discover-images.sh pre-builders = 7, builders = 4"
+# --- (6) pre-builder count ≥ 7 (includes zig-slim-trixie), builder count = 4 ---
+# FG-072 originally locked pre-builders = 7. FG-079 adds pre-builder/alpine-3
+# so the count grows. Assert ≥ 7 + zig-slim-trixie is present.
+say "6. discover-images.sh pre-builders ≥ 7 (includes zig-slim-trixie), builders = 4"
 out=$(bash scripts/discover-images.sh pre-builders)
 got=$(echo "${out}" | jq '.include | length')
-[[ "${got}" -eq 7 ]] || fail "pre-builders tier returned ${got} entries (want 7)"
+[[ "${got}" -ge 7 ]] || fail "pre-builders tier returned ${got} entries (want ≥ 7)"
 echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/zig-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing zig-slim-trixie"
 out=$(bash scripts/discover-images.sh builders)
