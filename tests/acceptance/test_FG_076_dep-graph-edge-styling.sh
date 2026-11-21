@@ -65,7 +65,7 @@ _count=$(echo "${_colors}" | grep -c . || true)
 [[ "${_count}" -ge 6 ]] || { echo "${_colors}" >&2; fail "want ≥ 6 distinct stroke colors, got ${_count}"; }
 # Every observed color MUST be in the palette.
 while IFS= read -r line; do
-  hex=$(echo "${line}" | sed 's/^stroke://')
+  hex="${line#stroke:}"
   found=0
   for p in ${_PALETTE}; do
     if [[ "${hex,,}" == "${p,,}" ]]; then found=1; break; fi
