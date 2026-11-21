@@ -123,8 +123,10 @@ say "8. external-sourced images (FG-012) show dashed edge from BEACONRY_SRC + so
 # FG-075: base/python-scratch-trixie's mermaid node id is `base_python_scratch_trixie`
 # (slash → underscore + dash → underscore per _local_id normalization).
 for b in beaconry-hub beaconry-scout beaconry-telegram-mock; do
-  grep -q "UP_BEACONRY -\\.-> ${b}" docs/image-dependency-graph.md \
-    || fail "${b}: missing dashed UP_BEACONRY edge"
+  # FG-076 retired the UP_BEACONRY L0 dashed edge (was a duplicate of the
+  # canonical SRC_* L0.1 source edge). Only the L0.1 edge remains.
+  grep -q "SRC_GH_BBOORTZ_BEACONRY -\\.-> ${b}" docs/image-dependency-graph.md \
+    || fail "${b}: missing dashed L0.1 source edge (SRC_GH_BBOORTZ_BEACONRY)"
   grep -q "base_python_scratch_trixie --> ${b}" docs/image-dependency-graph.md \
     || fail "${b}: missing solid base_python_scratch_trixie edge"
 done

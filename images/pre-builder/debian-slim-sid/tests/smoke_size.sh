@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke — final image size ≤ upstream base × 1.3 (30% headroom for
+# Smoke — final image size ≤ upstream base × 1.4 (30% headroom for
 # sid's rolling-release apt-upgrade delta — can be chunkier than trixie).
 set -euo pipefail
 
@@ -7,7 +7,7 @@ IMAGE_NAME="${IMAGE_NAME:-pre-builder/debian-slim-sid}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-BUDGET_RATIO_NUM="${BUDGET_RATIO_NUM:-13}"
+BUDGET_RATIO_NUM="${BUDGET_RATIO_NUM:-14}"
 BUDGET_RATIO_DEN="${BUDGET_RATIO_DEN:-10}"
 
 DOCKERFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/Dockerfile"

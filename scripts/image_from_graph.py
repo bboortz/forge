@@ -224,7 +224,7 @@ def _load_image_yaml(image: str) -> dict:
 
 
 def build_full_graph(local_images: set[str]):
-    """Return (forward, dashed_local, upstream_solid, upstream_dashed, external).
+    """Return (forward, dashed_local, upstream_solid, upstream_dashed, external, final_src).
 
     forward[image] = {local images this image FROMs with content (builder/runtime)}
     dashed_local = list of (source-local, image) tuples where source is used ONLY
@@ -232,12 +232,16 @@ def build_full_graph(local_images: set[str]):
     upstream_solid = list of (upstream-ref, image) — FROM with content
     upstream_dashed = list of (upstream-ref, image) — stage used only as COPY --from=
     external = set of image dir names with image.yaml source: block
+    final_src[image] = (kind, name) of the final-stage FROM resolution (post-FG-076:
+        used to distinguish Class 1 FROM-parent from Class 2 FROM-builder-stage).
+        None for scratch final-stage or unresolvable final FROM.
     """
     forward: dict[str, set[str]] = {img: set() for img in local_images}
     dashed_local: list[tuple[str, str]] = []
     upstream_solid: list[tuple[str, str]] = []
     upstream_dashed: list[tuple[str, str]] = []
     external: set[str] = set()
+    final_src: dict[str, tuple[str, str] | None] = {}
 
     for img in sorted(local_images):
         yml = _load_image_yaml(img)
@@ -255,6 +259,13 @@ def build_full_graph(local_images: set[str]):
         if not df.is_file():
             continue
         arg_defaults, froms, copy_stages = _parse_dockerfile(df)
+
+        # Record the final-stage FROM resolution for FG-076 class-1-vs-2 lookup.
+        if froms:
+            final_target, _final_stage, _ = froms[-1]
+            final_resolved = _resolve_target(final_target, arg_defaults, local_images)
+            if final_resolved and final_resolved[0] != "scratch":
+                final_src[img] = final_resolved
 
         # Map stage name → (resolved, has_content).
         stage_to_resolved: dict[str, tuple[tuple[str, str], bool]] = {}
@@ -301,7 +312,7 @@ def build_full_graph(local_images: set[str]):
                     upstream_dashed.append(key)
                     emitted_dashed.add(key)
 
-    return forward, dashed_local, upstream_solid, upstream_dashed, external
+    return forward, dashed_local, upstream_solid, upstream_dashed, external, final_src
 
 
 def _tier_of(image: str) -> str:
@@ -347,7 +358,7 @@ def _source_node_id(url: str) -> str:
 
 def emit_mermaid_body(local_images: set[str]) -> str:
     """Just the ```mermaid ... ``` block (no surrounding markdown)."""
-    forward, dashed_local, upstream_solid, upstream_dashed, external = build_full_graph(local_images)
+    forward, dashed_local, upstream_solid, upstream_dashed, external, final_src = build_full_graph(local_images)
 
     lines: list[str] = []
     lines.append("```mermaid")
@@ -458,45 +469,148 @@ def emit_mermaid_body(local_images: set[str]) -> str:
             return f"{tier}_{leaf.replace('-', '_')}"
         return name
 
-    # Solid FROM edges. `forward` includes BOTH solid (FROM-with-content)
-    # and dashed (COPY-from overlay) deps so FG-059 reverse-lookup is
-    # correct; dedupe here so we don't emit both solid and dashed for
-    # the same edge pair.
+    # ------------------------------------------------------------------
+    # FG-076: semantic edge styling.
+    #
+    # Every edge classified into one of 5 classes; shape + color + width
+    # pinned per class via `linkStyle N` directives (indexed in emission
+    # order). Tier-of-source color palette:
+    #
+    #   L0   external image      #D81B60  (red)
+    #   L0.1 external source     #E65100  (orange)
+    #   L0.5 mirror/*            #FBC02D  (yellow)
+    #   L1   pre-builder/*       #43A047  (green)
+    #   L2   builder/*           #1E88E5  (blue)
+    #   L3   base/*              #6D4C41  (brown)
+    #   L4   runtime (rare)      #424242  (dark grey)
+    # ------------------------------------------------------------------
+    _TIER_COLOR = {
+        "L0":   "#D81B60",
+        "L0.1": "#E65100",
+        "L0.5": "#FBC02D",
+        "L1":   "#43A047",
+        "L2":   "#1E88E5",
+        "L3":   "#6D4C41",
+        "L4":   "#424242",
+    }
+
+    def _local_tier(name: str) -> str:
+        if name in _FORGE_MIRRORS: return "L0.5"
+        if name in _PRE_BUILDERS:  return "L1"
+        if name in _FORGE_BUILDERS: return "L2"
+        if name in _BASELINE:      return "L3"
+        return "L4"
+
+    # Class → (shape, width_px, extra_dasharray-or-None)
+    # Class 1: thick solid, 5px   → FROM-parent (final-stage, trust-spine)
+    # Class 2: thin  solid, 4px   → FROM builder-stage (content, discarded in child)
+    # Class 3: dashed      , 4px  → COPY --from (overlay / tool)
+    # Class 4: thick solid, 5px   → external L0 image FROM (fixed red)
+    # Class 5: dashed      , 3px, dotted dasharray → L0.1 upstream source
+    _CLASS_STYLE = {
+        1: ("==>", 5, None),
+        2: ("-->", 4, None),
+        3: ("-.->", 4, None),
+        4: ("==>", 5, None),
+        5: ("-.->", 3, "1,3"),   # tight dot pattern
+    }
+
+    # Walk the pre-built edge sets in deterministic order + classify.
+    # Returned tuple: (src_node_id, dst_node_id, class_num, color_hex).
+    classified: list[tuple[str, str, int, str]] = []
+
+    # Dedup set: (src_name, dst_name) pairs we've already classified as
+    # an overlay (Class 3). If a FROM-with-content edge also appears for
+    # the same pair, skip it (same pre-FG-076 dedup logic).
     dashed_pairs: set[tuple[str, str]] = {(src, dst) for src, dst in dashed_local}
-    lines.append("")
-    lines.append("    %% FROM edges (solid)")
+
+    # Class 4: external upstream FROM (pre-builders + runtime exemptions).
     for src, dst in sorted(upstream_solid):
-        lines.append(f"    {_upstream_id(src)} --> {_local_id(dst)}")
-    for src in sorted(forward):
-        for dst in sorted(forward[src]):
-            if (dst, src) in dashed_pairs:
-                continue
-            lines.append(f"    {_local_id(dst)} --> {_local_id(src)}")
+        classified.append((_upstream_id(src), _local_id(dst), 4, _TIER_COLOR["L0"]))
 
-    # Dashed COPY --from edges.
-    if dashed_local or upstream_dashed:
-        lines.append("")
-        lines.append("    %% COPY --from= edges (dashed)")
-        for src, dst in sorted(dashed_local):
-            lines.append(f"    {_local_id(src)} -.-> {_local_id(dst)}")
-        for src, dst in sorted(upstream_dashed):
-            lines.append(f"    {_upstream_id(src)} -.-> {_local_id(dst)}")
+    # Class 1 / 2: forge-local FROM edges. `forward[img]` = {src local image}.
+    # If src matches img's final-stage FROM resolution → Class 1 (trust spine).
+    # Otherwise → Class 2 (builder-stage, content discarded).
+    for img in sorted(forward):
+        img_final = final_src.get(img)
+        img_final_name = img_final[1] if (img_final and img_final[0] == "local") else None
+        for dep in sorted(forward[img]):
+            if (dep, img) in dashed_pairs:
+                continue  # emitted as Class 3 below
+            klass = 1 if dep == img_final_name else 2
+            classified.append((_local_id(dep), _local_id(img), klass, _TIER_COLOR[_local_tier(dep)]))
 
-    # L0.1 source → consumer edges (FG-068, dashed with "src" marker).
-    # Pulled from `_UPSTREAM_SOURCES` so this stays in sync with the
-    # verify-source-inventory.py gate automatically.
+    # Class 3: COPY --from (overlay / tool).
+    for src, dst in sorted(dashed_local):
+        classified.append((_local_id(src), _local_id(dst), 3, _TIER_COLOR[_local_tier(src)]))
+    # Upstream dashed = L0 external images used as COPY-from source (hc, grype).
+    # Exclude pre-FG-076 BEACONRY_SRC marker — the L0.1 _UPSTREAM_SOURCES loop
+    # emits those as Class 5 instead (avoids double-rendering).
+    for src, dst in sorted(upstream_dashed):
+        if src.startswith("BEACONRY_SRC"):
+            continue
+        classified.append((_upstream_id(src), _local_id(dst), 3, _TIER_COLOR["L0"]))
+
+    # Class 5: L0.1 upstream source → consumer.
     if _UPSTREAM_SOURCES:
-        lines.append("")
-        lines.append("    %% L0.1 source → consumer edges (dashed; build-time clone/download)")
         for src_url in sorted(_UPSTREAM_SOURCES):
             node = _source_node_id(src_url)
             for consumer in sorted(_UPSTREAM_SOURCES[src_url]):
                 if consumer in local_images:
-                    lines.append(f"    {node} -.-> {_local_id(consumer)}")
+                    classified.append((node, _local_id(consumer), 5, _TIER_COLOR["L0.1"]))
 
-    # Styling (verbatim palette — matches the current hand-maintained block).
+    # Emit legend subgraph FIRST — it consumes 5 edge indices; main-graph
+    # linkStyle indices start at 5 and are offset accordingly.
     lines.append("")
-    lines.append("    %% Styling")
+    lines.append("    %% FG-076 legend — 5 edge classes × tier-of-source palette")
+    lines.append('    subgraph Legend["Edge legend (shape = relationship · color = tier of source)"]')
+    lines.append("        direction LR")
+    lines.append('        L_C1_SRC[" "]:::legend_node')
+    lines.append('        L_C1_DST["Class 1 · FROM-parent (final-stage; trust + CVEs propagate)"]:::legend_node')
+    lines.append('        L_C2_SRC[" "]:::legend_node')
+    lines.append('        L_C2_DST["Class 2 · FROM builder-stage (content discarded in child)"]:::legend_node')
+    lines.append('        L_C3_SRC[" "]:::legend_node')
+    lines.append('        L_C3_DST["Class 3 · COPY --from (overlay / tool)"]:::legend_node')
+    lines.append('        L_C4_SRC[" "]:::legend_node')
+    lines.append('        L_C4_DST["Class 4 · external upstream image (L0, red)"]:::legend_node')
+    lines.append('        L_C5_SRC[" "]:::legend_node')
+    lines.append('        L_C5_DST["Class 5 · L0.1 upstream source (orange, build-time clone/tarball)"]:::legend_node')
+    lines.append("        L_C1_SRC ==> L_C1_DST")
+    lines.append("        L_C2_SRC --> L_C2_DST")
+    lines.append("        L_C3_SRC -.-> L_C3_DST")
+    lines.append("        L_C4_SRC ==> L_C4_DST")
+    lines.append("        L_C5_SRC -.-> L_C5_DST")
+    lines.append("    end")
+
+    # Emit the classified edges + linkStyle lines.
+    lines.append("")
+    lines.append("    %% FG-076 classified edges (shape + color encode semantic class + source tier)")
+    for src_id, dst_id, klass, _color in classified:
+        shape, _w, _da = _CLASS_STYLE[klass]
+        lines.append(f"    {src_id} {shape} {dst_id}")
+
+    # linkStyle directives. Legend edges first (indices 0..4), then main
+    # graph edges (indices 5..5+N-1).
+    lines.append("")
+    lines.append("    %% FG-076 linkStyle pins — one per emitted edge, in emission order")
+    # Legend edge styles.
+    for legend_class in (1, 2, 3, 4, 5):
+        shape, width, dasharray = _CLASS_STYLE[legend_class]
+        legend_idx = legend_class - 1
+        color = _TIER_COLOR["L0"] if legend_class == 4 else (
+            _TIER_COLOR["L0.1"] if legend_class == 5 else _TIER_COLOR["L3"]  # sample color for legend
+        )
+        extras = f",stroke-dasharray: {dasharray}" if dasharray else ""
+        lines.append(f"    linkStyle {legend_idx} stroke:{color},stroke-width:{width}px{extras};")
+    # Main-graph edges.
+    for i, (_src, _dst, klass, color) in enumerate(classified, start=5):
+        shape, width, dasharray = _CLASS_STYLE[klass]
+        extras = f",stroke-dasharray: {dasharray}" if dasharray else ""
+        lines.append(f"    linkStyle {i} stroke:{color},stroke-width:{width}px{extras};")
+
+    # Node :::class styling (unchanged — these style the boxes, not the edges).
+    lines.append("")
+    lines.append("    %% Node styling")
     lines.append("    classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;")
     lines.append("    classDef upstream_source fill:#fef3c7,stroke:#a16207,stroke-width:1px,color:#713f12,font-style:italic;")
     lines.append("    classDef prebuilder fill:#fed7aa,stroke:#c2410c,stroke-width:2px,color:#7c2d12;")
@@ -506,6 +620,7 @@ def emit_mermaid_body(local_images: set[str]) -> str:
     lines.append("    classDef scratch    fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#78350f;")
     lines.append("    classDef external   fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;")
     lines.append("    classDef mirror     fill:#99f6e4,stroke:#0f766e,stroke-width:2px,color:#134e4a;")
+    lines.append("    classDef legend_node fill:#ffffff,stroke:#999,stroke-width:1px,color:#333,font-size:11px;")
     lines.append("```")
 
     return "\n".join(lines) + "\n"
@@ -610,7 +725,7 @@ def main() -> int:
         return 0
 
     # Default: FG-059 reverse-JSON (back-compat).
-    forward, _dashed_l, _upstream_s, _upstream_d, _external = build_full_graph(local_images)
+    forward, _dashed_l, _upstream_s, _upstream_d, _external, _final_src = build_full_graph(local_images)
     cycles = detect_cycles(forward)
     if cycles:
         sys.stderr.write("image_from_graph: cycle(s) detected in Dockerfile FROM graph:\n")
