@@ -145,7 +145,7 @@ jobs:
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
       - name: Cache grype DB
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         # FG-038: cache action can hang on GHA service slowness (observed
         # on run 42602539732). 3-min cap + continue-on-error: a stuck
         # fetch fails fast, grype falls back to fresh DB download
