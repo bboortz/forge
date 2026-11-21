@@ -1,0 +1,16 @@
+# FG-078: psitransfer-slim-trixie's final-stage FROM is base/node-slim-trixie.
+spec_version: 1
+image: psitransfer-slim-trixie
+
+dependencies:
+  - image: node-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: runtime.node-binary
+        reason: "psitransfer is a Node.js service (engines.node >= 24); the parent must ship a working node binary."
+        preflight:
+          - images/base/node-slim-trixie/tests/smoke_node_version.sh
+      - promise: files.ca-certificates
+        reason: "psitransfer may be configured to POST download/upload webhooks over HTTPS; working CA trust store is required."
+        preflight:
+          - images/base/node-slim-trixie/tests/smoke_ca_bundle.sh

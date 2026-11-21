@@ -1,0 +1,46 @@
+# FG-078: psitransfer-slim-trixie contract.
+#
+# Self-hosted file-share service from psi-4ward/psitransfer rebuilt on
+# base/node-slim-trixie (FG-077 L3 public API). Replaces homelab/docker/
+# psitransfer/.
+
+spec_version: 1
+image: psitransfer-slim-trixie
+version: "0.1"
+
+promises:
+  - id: runtime.serves-http
+    description: Container listens on :3000 and serves HTTP 200 on GET / (upload page).
+    caps: [image.psitransfer-slim]
+    tests:
+      - images/psitransfer-slim-trixie/tests/smoke_serves_http.sh
+
+  - id: runtime.user-nonroot
+    description: Runs as uid 65532 (nonroot baseline inherited from base/node-slim-trixie).
+    caps: [image.psitransfer-slim]
+    tests:
+      - images/psitransfer-slim-trixie/tests/smoke_user_nonroot.sh
+
+  - id: files.data-volume
+    description: /data exists + is owned by uid 65532; declared as VOLUME so homelab bind-mounts survive image upgrades.
+    caps: [image.psitransfer-slim]
+    tests:
+      - images/psitransfer-slim-trixie/tests/smoke_data_volume.sh
+
+  - id: files.hc-embedded
+    description: /hc is present + executable. HEALTHCHECK baked in.
+    caps: [image.psitransfer-slim]
+    tests:
+      - images/psitransfer-slim-trixie/tests/smoke_hc_embedded.sh
+
+  - id: files.sbom-embedded
+    description: /sbom.json is present (CycloneDX). Captures backend node_modules + source tree per FG-020 pattern.
+    caps: [image.psitransfer-slim]
+    tests:
+      - images/psitransfer-slim-trixie/tests/smoke_sbom_embedded.sh
+
+  - id: files.revision-pinned
+    description: /app/REVISION contains the resolved upstream psi-4ward/psitransfer commit SHA that this build was clipped from (FG-013 build.ref-latest-release pattern). Operators can verify provenance against upstream GitHub.
+    caps: [image.psitransfer-slim]
+    tests:
+      - images/psitransfer-slim-trixie/tests/smoke_revision_pinned.sh

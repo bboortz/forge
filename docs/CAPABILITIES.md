@@ -785,3 +785,10 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-071
 - **Covered by**: `tests/acceptance/test_FG_071_builder-tier-migration.sh`, `docs/plan/tier-layering-model.md` §3 L2
+
+### image.psitransfer-slim
+
+**FG-078**: `psitransfer-slim-trixie` — self-hosted file-share service rebuilt from `github.com/psi-4ward/psitransfer` on Forge's Node chain. 5-stage Dockerfile: `src` (git clone + resolve SHA to `/app/REVISION`) → `frontend` (Vue 2 webpack bundle via `builder/node-trixie`) → `backend` (prod `npm ci` via `builder/node-trixie`) → `sbom` (syft CycloneDX over backend deps) → `runtime` (`base/node-slim-trixie` + /hc + /data VOLUME + USER 65532 + HEALTHCHECK on `:3000/`). Replaces homelab's local `docker/psitransfer/` recipe; paired homelab PR deletes that dir and flips compose to `image: ghcr.io/bboortz/psitransfer-slim-trixie:latest`. Chain at the FG-042 Node 5-hop cap.
+
+- **Delivered by**: FG-078
+- **Covered by**: `tests/acceptance/test_FG_078_psitransfer-slim-trixie.sh`, `images/psitransfer-slim-trixie/PROMISES.yaml`

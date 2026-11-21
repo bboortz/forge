@@ -46,6 +46,7 @@ _UPSTREAM_SOURCES: dict[str, list[str]] = {
 
     # From-Node-source in builder stage.
     "github.com/louislam/uptime-kuma": ["uptime-kuma-slim-trixie"],
+    "github.com/psi-4ward/psitransfer": ["psitransfer-slim-trixie"],
 
     # Release-tarball downloaded via curl + resolved via GitHub Releases API.
     "github.com/actions/runner": ["github-runner-noble"],
