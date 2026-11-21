@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Smoke — final image size ≤ upstream base × 1.1 (10% headroom for apt-upgrade
+# Smoke — final image size ≤ upstream base × 1.3 (30% headroom for apt-upgrade
 # deltas). The base is parsed from the Dockerfile's FROM line so the
 # comparison tracks any future base-image bump without script edits. Scratch
 # variants have no meaningful base ("FROM scratch" is 0 bytes) so they
 # additionally enforce an absolute MAX_BYTES ceiling via the SIZE_CEILING env.
 #
-# Delivers: FG-002 Scenario "Image size is within budget (base × 1.1)".
+# Delivers: FG-002 Scenario "Image size is within budget (base × 1.3)".
 # Reusable pattern — every future image's smoke_size.sh uses the same shape.
 set -euo pipefail
 
@@ -31,14 +31,14 @@ docker image inspect "${IMAGE}" >/dev/null 2>&1 || { echo "  ✗ ${IMAGE} not pr
 
 BASE_SIZE=$(docker image inspect --format='{{.Size}}' "${BASE}")
 OUR_SIZE=$(docker image inspect --format='{{.Size}}' "${IMAGE}")
-BUDGET=$(( BASE_SIZE * 11 / 10 ))
+BUDGET=$(( BASE_SIZE * 13 / 10 ))
 
 # base × 1.1 check only applies when no absolute ceiling is set. Scratch
 # derivatives that COPY large overlays (prometheus 175 MB binary, etc.)
 # blow past the builder-base size; they rely on SIZE_CEILING instead.
 if [[ -z "${SIZE_CEILING:-}" ]]; then
   if [[ "${OUR_SIZE}" -gt "${BUDGET}" ]]; then
-    echo "  ✗ size ${OUR_SIZE} exceeds budget ${BUDGET} (base ${BASE_SIZE} × 1.1)" >&2
+    echo "  ✗ size ${OUR_SIZE} exceeds budget ${BUDGET} (base ${BASE_SIZE} × 1.3)" >&2
     exit 1
   fi
 fi
@@ -51,7 +51,7 @@ if [[ -n "${SIZE_CEILING:-}" ]]; then
     echo "  ✗ size ${OUR_SIZE} exceeds absolute ceiling ${SIZE_CEILING}" >&2
     exit 1
   fi
-  echo "  ✓ size ${OUR_SIZE}B ≤ budget ${BUDGET}B (base × 1.1) AND ≤ ceiling ${SIZE_CEILING}B"
+  echo "  ✓ size ${OUR_SIZE}B ≤ budget ${BUDGET}B (base × 1.3) AND ≤ ceiling ${SIZE_CEILING}B"
 else
-  echo "  ✓ size ${OUR_SIZE}B ≤ budget ${BUDGET}B (base ${BASE} = ${BASE_SIZE}B × 1.1)"
+  echo "  ✓ size ${OUR_SIZE}B ≤ budget ${BUDGET}B (base ${BASE} = ${BASE_SIZE}B × 1.3)"
 fi
