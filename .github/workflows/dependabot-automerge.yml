@@ -65,11 +65,11 @@ jobs:
           case "$FMAJ$TMAJ$FMIN$TMIN" in
             *[!0-9]*) decision "non-numeric semver — leaving open: $FROM -> $TO" ;;
           esac
-          if [ "$FMAJ" != "$TMAJ" ]; then LEVEL=major
-          elif [ "$FMIN" != "$TMIN" ]; then LEVEL=minor
-          else LEVEL=patch; fi
+          if [ "$FMAJ" != "$TMAJ" ]; then LEVEL="major"
+          elif [ "$FMIN" != "$TMIN" ]; then LEVEL="minor"
+          else LEVEL="patch"; fi
           echo "bump: $NAME $FROM -> $TO ($LEVEL)"
-          if [ "$LEVEL" = major ]; then
+          if [ "$LEVEL" = "major" ]; then
             decision "major bump — leaving PR open for human review"
           fi
 
