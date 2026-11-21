@@ -1,0 +1,12 @@
+# What base/alpine-3 requires from its upstream dep.
+spec_version: 1
+image: alpine-3
+
+dependencies:
+  - image: alpine-3
+    version: ">=3.0"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "Consumers building on base/alpine-3 expect outbound HTTPS to work (apk fetch, curl, etc.)."
+        preflight:
+          - images/base/alpine-3/tests/smoke_ca_bundle.sh

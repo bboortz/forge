@@ -1,0 +1,33 @@
+# Authoritative contract for base/alpine-3.
+#
+# FG-079 public-API Alpine foundation. Shell + apk retained from
+# pre-builder/alpine-3; adds /hc + nonroot uid.
+
+spec_version: 1
+image: alpine-3
+version: "3.0"
+
+promises:
+  - id: files.hc-embedded
+    description: /hc is present + executable (static Zig healthcheck binary from bboortz/healthy).
+    caps: [image.alpine-foundation]
+    tests:
+      - images/base/alpine-3/tests/smoke_hc_embedded.sh
+
+  - id: runtime.user-nonroot
+    description: Container runs as uid 65532 by default. Consumers that need apk or root override with `USER 0` in their derived Dockerfile. NOTE Alpine's /etc/passwd has no entry at uid 65532; consumers using getpwuid() must add a passwd line.
+    caps: [image.alpine-foundation]
+    tests:
+      - images/base/alpine-3/tests/smoke_user_nonroot.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt present (inherited from pre-builder/alpine-3).
+    caps: [image.alpine-foundation]
+    tests:
+      - images/base/alpine-3/tests/smoke_ca_bundle.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ pre-builder/alpine-3 × 1.15 (15% headroom for /hc + labels).
+    caps: [image.alpine-foundation]
+    tests:
+      - images/base/alpine-3/tests/smoke_size.sh

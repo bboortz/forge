@@ -1,0 +1,8 @@
+# FG-079: Alpine 3.x foundation. Public API surface for Alpine consumers
+# (ham-rigctld, nginx-scratch-alpine, future Alpine-musl runtimes).
+repo: base/alpine-3
+tag: "3"
+platforms:
+  - linux/amd64
+depends_on:
+  - pre-builder/alpine-3

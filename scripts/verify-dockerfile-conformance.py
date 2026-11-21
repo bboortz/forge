@@ -54,6 +54,7 @@ _PRE_BUILDERS = {
     "pre-builder/python-slim-trixie",
     "pre-builder/ubuntu-slim-noble",
     "pre-builder/zig-slim-trixie",
+    "pre-builder/alpine-3",        # FG-079
 }
 # FG-066: forge mirror tier. Members under `images/mirror/<name>/` are
 # zero-mod forge-signed passthroughs of external upstream tool images.
@@ -74,6 +75,7 @@ _BASELINE = {
     "base/debian-slim-trixie",   # FG-077
     "base/ubuntu-slim-noble",    # FG-077
     "base/node-slim-trixie",     # FG-077
+    "base/alpine-3",             # FG-079
 }
 # Upstream helpers (COPY-from image layer forge-publishes but aren't under images/).
 # Treated as L0 for layering — not a runtime, not a builder.
@@ -100,6 +102,8 @@ _KNOWN_REF_ARGS = {
     "BASE_DEBIAN_SLIM_REF",      # base/debian-slim-trixie (FG-077)
     "BASE_UBUNTU_SLIM_NOBLE_REF",# base/ubuntu-slim-noble (FG-077)
     "BASE_NODE_SLIM_REF",        # base/node-slim-trixie (FG-077)
+    "ALPINE_REF",                # pre-builder/alpine-3 (FG-079; internal)
+    "BASE_ALPINE_REF",           # base/alpine-3 (FG-079; public API)
 }
 
 # Upstream Docker Hub tags allowed as literal `FROM` or as the default of
@@ -113,6 +117,7 @@ _UPSTREAM_ALLOWLIST = {
     "node:24-trixie-slim",
     "golang:1.27-trixie",
     "postgres:18",
+    "alpine:3",                  # FG-079 — Alpine OS family
 }
 
 # FG-065 Rule 8: literal `FROM <upstream>` is ALLOWED only in these images.
@@ -152,6 +157,9 @@ _INTRA_LAYER_EXEMPTIONS: set[tuple[str, str]] = {
     # for the inventory): base/python-slim-trixie FROMs pre-builder/python-
     # slim-trixie.
     ("base/python-slim-trixie", "pre-builder/python-slim-trixie"),
+    # FG-079: base/alpine-3 FROMs pre-builder/alpine-3 — same pattern as
+    # the FG-077 Debian/Ubuntu/Node siblings. Alpine is a new OS family.
+    ("base/alpine-3", "pre-builder/alpine-3"),
 }
 
 # Upstream helpers (not language bases; tools pulled as a stage).

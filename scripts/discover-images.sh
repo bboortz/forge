@@ -58,7 +58,7 @@ done
 # FG-051 adds ubuntu-slim-noble (github-runner-noble FROMs it).
 # FG-058 adds debian-slim-sid as an escape-hatch pre-builder for CVEs
 # that trixie leaves unfixed but sid patches at the same SONAME.
-_PRE_BUILDERS=(pre-builder/debian-slim-trixie pre-builder/debian-slim-sid pre-builder/go-slim-trixie pre-builder/python-slim-trixie pre-builder/ubuntu-slim-noble pre-builder/node-slim-trixie pre-builder/zig-slim-trixie)
+_PRE_BUILDERS=(pre-builder/debian-slim-trixie pre-builder/debian-slim-sid pre-builder/go-slim-trixie pre-builder/python-slim-trixie pre-builder/ubuntu-slim-noble pre-builder/node-slim-trixie pre-builder/zig-slim-trixie pre-builder/alpine-3)
 
 # FG-066: forge mirror tier. Members live under `images/mirror/<name>/`
 # and are classified as "mirrors" (new tier) regardless of depends_on
