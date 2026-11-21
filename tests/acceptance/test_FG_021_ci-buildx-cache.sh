@@ -77,7 +77,7 @@ grep -q 'docker/setup-buildx-action' .github/workflows/ci.yml \
   || { echo "  ✗ ci.yml missing docker/setup-buildx-action" >&2; exit 1; }
 grep -q 'docker/login-action' .github/workflows/ci.yml \
   || { echo "  ✗ ci.yml missing docker/login-action" >&2; exit 1; }
-grep -q 'actions/cache@v4' .github/workflows/ci.yml \
+grep -Eq 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci.yml \
   || { echo "  ✗ ci.yml missing actions/cache" >&2; exit 1; }
 # shellcheck disable=SC2088  # literal ~ in YAML, not shell-expanded
 grep -q '~/\.cache/grype' .github/workflows/ci.yml \
