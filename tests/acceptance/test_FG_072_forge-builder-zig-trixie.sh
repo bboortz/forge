@@ -125,13 +125,13 @@ say "9. dep graph contains the new Zig edges"
 # FG-070: pre-builder/* nodes have mermaid ids `pre-builder_<leaf>`
 # (slash+dashes normalized). Edges use the normalized ids.
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_debian_slim_trixie --> pre-builder_zig_slim_trixie' \
+  | grep -qE 'pre-builder_debian_slim_trixie (-->|==>) pre-builder_zig_slim_trixie' \
   || fail "dep graph missing pre-builder/debian-slim-trixie → pre-builder/zig-slim-trixie edge"
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_zig_slim_trixie --> builder_zig_trixie' \
+  | grep -qE 'pre-builder_zig_slim_trixie (-->|==>) builder_zig_trixie' \
   || fail "dep graph missing pre-builder/zig-slim-trixie → builder/zig-trixie edge"
 # Belt-and-suspenders: no direct upstream edge to the Zig pre-builder.
-if python3 scripts/image_from_graph.py --emit=mermaid | grep -qE 'UP_[A-Z]+ --> pre-builder_zig_slim_trixie'; then
+if python3 scripts/image_from_graph.py --emit=mermaid | grep -qE 'UP_[A-Z]+ (-->|==>) pre-builder_zig_slim_trixie'; then
   fail "dep graph has an upstream → pre-builder/zig-slim-trixie edge (must go via pre-builder/debian-slim-trixie)"
 fi
 pass "dep graph edges correct + no direct upstream edge"

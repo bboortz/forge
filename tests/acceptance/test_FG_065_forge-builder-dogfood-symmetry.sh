@@ -166,10 +166,10 @@ say "11. deepest chain for every scratch runtime is ≤ 5 hops"
 # FG-070: pre-builder/* mermaid node ids are `pre-builder_<leaf>`
 # (slash+dashes normalized).
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_go_slim_trixie --> builder_go_trixie' \
+  | grep -qE 'pre-builder_go_slim_trixie (-->|==>) builder_go_trixie' \
   || fail "dep graph missing pre-builder/go-slim-trixie → builder/go-trixie edge"
 python3 scripts/image_from_graph.py --emit=mermaid \
-  | grep -q 'pre-builder_node_slim_trixie --> builder_node_trixie' \
+  | grep -qE 'pre-builder_node_slim_trixie (-->|==>) builder_node_trixie' \
   || fail "dep graph missing pre-builder/node-slim-trixie → builder/node-trixie edge"
 pass "chain structure updated per FG-065"
 
