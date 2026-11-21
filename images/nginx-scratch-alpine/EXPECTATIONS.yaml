@@ -1,0 +1,29 @@
+# FG-080: nginx-scratch-alpine overlays base/scratch-alpine-3 (COPY --from=)
+# + FROMs base/alpine-3 for the apk-nginx builder stage.
+spec_version: 1
+image: nginx-scratch-alpine
+
+dependencies:
+  - image: scratch-alpine-3
+    version: ">=3.0"
+    expectations:
+      - promise: files.musl-loader
+        reason: "nginx binary dynamically links musl libc + loader; without the overlay's musl, the runtime cannot execute."
+        preflight:
+          - images/base/scratch-alpine-3/tests/smoke_musl_closure.sh
+      - promise: files.ca-certificates
+        reason: "nginx TLS termination requires working CA bundle for upstream SSL verification."
+        preflight:
+          - images/base/scratch-alpine-3/tests/smoke_ca_bundle.sh
+      - promise: files.etc-identity
+        reason: "nginx worker processes drop to uid 65532 via USER directive; /etc/passwd must resolve the nonroot uid."
+        preflight:
+          - images/base/scratch-alpine-3/tests/smoke_etc_identity.sh
+
+  - image: alpine-3
+    version: ">=3.0"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "Builder stage apk-adds nginx; the parent's CA bundle anchors apk's TLS-verified index fetch."
+        preflight:
+          - images/base/alpine-3/tests/smoke_ca_bundle.sh

@@ -76,6 +76,7 @@ _BASELINE = {
     "base/ubuntu-slim-noble",    # FG-077
     "base/node-slim-trixie",     # FG-077
     "base/alpine-3",             # FG-079
+    "base/scratch-alpine-3",     # FG-080
 }
 # Upstream helpers (COPY-from image layer forge-publishes but aren't under images/).
 # Treated as L0 for layering — not a runtime, not a builder.
@@ -104,6 +105,7 @@ _KNOWN_REF_ARGS = {
     "BASE_NODE_SLIM_REF",        # base/node-slim-trixie (FG-077)
     "ALPINE_REF",                # pre-builder/alpine-3 (FG-079; internal)
     "BASE_ALPINE_REF",           # base/alpine-3 (FG-079; public API)
+    "BASE_SCRATCH_ALPINE_REF",   # base/scratch-alpine-3 (FG-080; scratch-musl overlay)
 }
 
 # Upstream Docker Hub tags allowed as literal `FROM` or as the default of
@@ -160,6 +162,10 @@ _INTRA_LAYER_EXEMPTIONS: set[tuple[str, str]] = {
     # FG-079: base/alpine-3 FROMs pre-builder/alpine-3 — same pattern as
     # the FG-077 Debian/Ubuntu/Node siblings. Alpine is a new OS family.
     ("base/alpine-3", "pre-builder/alpine-3"),
+    # FG-080: base/scratch-alpine-3's builder stage FROMs base/alpine-3.
+    # L3 → L3 intra-tier edge (same as base/python-scratch-trixie overlaying
+    # base/scratch-trixie). Narrow named exemption.
+    ("base/scratch-alpine-3", "base/alpine-3"),
 }
 
 # Upstream helpers (not language bases; tools pulled as a stage).

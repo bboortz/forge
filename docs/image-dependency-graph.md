@@ -85,6 +85,7 @@ graph TD
         base_node_slim_trixie["base/node-slim-trixie"]:::baseline
         base_python_scratch_trixie["base/python-scratch-trixie"]:::baseline
         base_python_slim_trixie["base/python-slim-trixie"]:::baseline
+        base_scratch_alpine_3["base/scratch-alpine-3"]:::baseline
         base_scratch_trixie["base/scratch-trixie"]:::baseline
         base_ubuntu_slim_noble["base/ubuntu-slim-noble"]:::baseline
     end
@@ -99,6 +100,7 @@ graph TD
         ipmi-exporter-scratch-trixie:::scratch
         ipmi-exporter-slim-trixie:::slim
         mosquitto-scratch-trixie:::scratch
+        nginx-scratch-alpine:::scratch
         nginx-scratch-trixie:::scratch
         node-exporter-scratch-trixie:::scratch
         postgres-scratch-trixie:::scratch
@@ -146,6 +148,7 @@ graph TD
     pre-builder_node_slim_trixie ==> base_node_slim_trixie
     builder_python_trixie --> base_python_scratch_trixie
     pre-builder_python_slim_trixie ==> base_python_slim_trixie
+    base_alpine_3 --> base_scratch_alpine_3
     builder_python_trixie --> base_scratch_trixie
     pre-builder_ubuntu_slim_noble ==> base_ubuntu_slim_noble
     base_python_scratch_trixie --> beaconry-hub
@@ -164,6 +167,7 @@ graph TD
     base_debian_slim_trixie ==> ipmi-exporter-slim-trixie
     builder_go_trixie --> ipmi-exporter-slim-trixie
     builder_python_trixie --> mosquitto-scratch-trixie
+    base_alpine_3 --> nginx-scratch-alpine
     builder_python_trixie --> nginx-scratch-trixie
     builder_go_trixie --> node-exporter-scratch-trixie
     builder_python_trixie --> postgres-scratch-trixie
@@ -176,6 +180,7 @@ graph TD
     builder_python_trixie --> redis-scratch-trixie
     base_node_slim_trixie ==> uptime-kuma-slim-trixie
     builder_node_trixie --> uptime-kuma-slim-trixie
+    base_scratch_alpine_3 -.-> nginx-scratch-alpine
     base_scratch_trixie -.-> alertmanager-scratch-trixie
     base_scratch_trixie -.-> base_python_scratch_trixie
     base_scratch_trixie -.-> ipmi-exporter-scratch-trixie
@@ -200,6 +205,7 @@ graph TD
     UP_HC -.-> healthy-scratch-trixie
     UP_HC -.-> ipmi-exporter-scratch-trixie
     UP_HC -.-> ipmi-exporter-slim-trixie
+    UP_HC -.-> nginx-scratch-alpine
     UP_HC -.-> nginx-scratch-trixie
     UP_HC -.-> node-exporter-scratch-trixie
     UP_HC -.-> prometheus-scratch-trixie
@@ -242,38 +248,38 @@ graph TD
     linkStyle 18 stroke:#43A047,stroke-width:5px;
     linkStyle 19 stroke:#1E88E5,stroke-width:4px;
     linkStyle 20 stroke:#43A047,stroke-width:5px;
-    linkStyle 21 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 22 stroke:#43A047,stroke-width:5px;
-    linkStyle 23 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 21 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 22 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 23 stroke:#43A047,stroke-width:5px;
     linkStyle 24 stroke:#6D4C41,stroke-width:4px;
     linkStyle 25 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 26 stroke:#43A047,stroke-width:5px;
+    linkStyle 26 stroke:#6D4C41,stroke-width:4px;
     linkStyle 27 stroke:#43A047,stroke-width:5px;
     linkStyle 28 stroke:#43A047,stroke-width:5px;
     linkStyle 29 stroke:#43A047,stroke-width:5px;
-    linkStyle 30 stroke:#6D4C41,stroke-width:5px;
-    linkStyle 31 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 32 stroke:#6D4C41,stroke-width:5px;
-    linkStyle 33 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 30 stroke:#43A047,stroke-width:5px;
+    linkStyle 31 stroke:#6D4C41,stroke-width:5px;
+    linkStyle 32 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 33 stroke:#6D4C41,stroke-width:5px;
     linkStyle 34 stroke:#1E88E5,stroke-width:4px;
     linkStyle 35 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 36 stroke:#6D4C41,stroke-width:5px;
-    linkStyle 37 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 36 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 37 stroke:#6D4C41,stroke-width:5px;
     linkStyle 38 stroke:#1E88E5,stroke-width:4px;
     linkStyle 39 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 40 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 40 stroke:#6D4C41,stroke-width:4px;
     linkStyle 41 stroke:#1E88E5,stroke-width:4px;
     linkStyle 42 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 43 stroke:#43A047,stroke-width:5px;
+    linkStyle 43 stroke:#1E88E5,stroke-width:4px;
     linkStyle 44 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 45 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 46 stroke:#6D4C41,stroke-width:5px;
+    linkStyle 45 stroke:#43A047,stroke-width:5px;
+    linkStyle 46 stroke:#1E88E5,stroke-width:4px;
     linkStyle 47 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 48 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 49 stroke:#6D4C41,stroke-width:5px;
+    linkStyle 48 stroke:#6D4C41,stroke-width:5px;
+    linkStyle 49 stroke:#1E88E5,stroke-width:4px;
     linkStyle 50 stroke:#1E88E5,stroke-width:4px;
-    linkStyle 51 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 52 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 51 stroke:#6D4C41,stroke-width:5px;
+    linkStyle 52 stroke:#1E88E5,stroke-width:4px;
     linkStyle 53 stroke:#6D4C41,stroke-width:4px;
     linkStyle 54 stroke:#6D4C41,stroke-width:4px;
     linkStyle 55 stroke:#6D4C41,stroke-width:4px;
@@ -281,13 +287,13 @@ graph TD
     linkStyle 57 stroke:#6D4C41,stroke-width:4px;
     linkStyle 58 stroke:#6D4C41,stroke-width:4px;
     linkStyle 59 stroke:#6D4C41,stroke-width:4px;
-    linkStyle 60 stroke:#FBC02D,stroke-width:4px;
-    linkStyle 61 stroke:#FBC02D,stroke-width:4px;
-    linkStyle 62 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 60 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 61 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 62 stroke:#6D4C41,stroke-width:4px;
     linkStyle 63 stroke:#FBC02D,stroke-width:4px;
-    linkStyle 64 stroke:#D81B60,stroke-width:4px;
-    linkStyle 65 stroke:#D81B60,stroke-width:4px;
-    linkStyle 66 stroke:#D81B60,stroke-width:4px;
+    linkStyle 64 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 65 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 66 stroke:#FBC02D,stroke-width:4px;
     linkStyle 67 stroke:#D81B60,stroke-width:4px;
     linkStyle 68 stroke:#D81B60,stroke-width:4px;
     linkStyle 69 stroke:#D81B60,stroke-width:4px;
@@ -301,10 +307,10 @@ graph TD
     linkStyle 77 stroke:#D81B60,stroke-width:4px;
     linkStyle 78 stroke:#D81B60,stroke-width:4px;
     linkStyle 79 stroke:#D81B60,stroke-width:4px;
-    linkStyle 80 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 81 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 82 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
-    linkStyle 83 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 80 stroke:#D81B60,stroke-width:4px;
+    linkStyle 81 stroke:#D81B60,stroke-width:4px;
+    linkStyle 82 stroke:#D81B60,stroke-width:4px;
+    linkStyle 83 stroke:#D81B60,stroke-width:4px;
     linkStyle 84 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 85 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 86 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
@@ -315,6 +321,10 @@ graph TD
     linkStyle 91 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 92 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
     linkStyle 93 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 94 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 95 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 96 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 97 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
 
     %% Node styling
     classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;

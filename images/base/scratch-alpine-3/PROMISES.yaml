@@ -1,0 +1,40 @@
+# FG-080: base/scratch-alpine-3 contract.
+#
+# Shared signed foundation for Forge scratch-Alpine runtimes. Strict
+# intersection of what every scratch-musl consumer needs. Parallel to
+# base/scratch-trixie for glibc.
+
+spec_version: 1
+image: scratch-alpine-3
+version: "3.0"
+
+promises:
+  - id: files.musl-loader
+    description: /lib/ld-musl-x86_64.so.1 + /lib/libc.musl-x86_64.so.1 present with the Alpine upstream SONAME. Required for any dynamically-linked musl binary to run.
+    caps: [image.scratch-alpine-foundation]
+    tests:
+      - images/base/scratch-alpine-3/tests/smoke_musl_closure.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt present + non-empty. Consumers making outbound HTTPS calls inherit working TLS trust via COPY --from= overlay.
+    caps: [image.scratch-alpine-foundation]
+    tests:
+      - images/base/scratch-alpine-3/tests/smoke_ca_bundle.sh
+
+  - id: files.etc-identity
+    description: /etc/passwd + /etc/group + /etc/hosts + /etc/nsswitch.conf present with root + nobody + nonroot (65532) entries. Enables getpwuid()-based name resolution for uid 65532.
+    caps: [image.scratch-alpine-foundation]
+    tests:
+      - images/base/scratch-alpine-3/tests/smoke_etc_identity.sh
+
+  - id: files.zoneinfo-utc
+    description: /usr/share/zoneinfo/UTC present. Consumers that use timezone-aware timestamps default to UTC; consumers needing specific zones must mount /etc/localtime or copy their zone.
+    caps: [image.scratch-alpine-foundation]
+    tests:
+      - images/base/scratch-alpine-3/tests/smoke_zoneinfo.sh
+
+  - id: shape.tmp-writable
+    description: /tmp exists with mode 1777 (world-writable + sticky). Consumers can write temp files as uid 65532.
+    caps: [image.scratch-alpine-foundation]
+    tests:
+      - images/base/scratch-alpine-3/tests/smoke_tmp_writable.sh

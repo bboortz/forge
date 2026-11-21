@@ -70,6 +70,7 @@ _BASELINE = [
     "base/ubuntu-slim-noble",    # FG-077
     "base/node-slim-trixie",     # FG-077
     "base/alpine-3",             # FG-079
+    "base/scratch-alpine-3",     # FG-080
 ]
 _UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet
 # FG-066: forge mirror tier — zero-mod passthroughs under images/mirror/<name>/.
