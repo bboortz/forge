@@ -1,0 +1,12 @@
+# FG-077: ipmi-exporter-slim-trixie's final-stage FROM is base/debian-slim-trixie.
+spec_version: 1
+image: ipmi-exporter-slim-trixie
+
+dependencies:
+  - image: debian-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "prometheus-ipmi-exporter TLS-enabled scrape endpoints need working CA trust store."
+        preflight:
+          - images/base/debian-slim-trixie/tests/smoke_ca_bundle.sh

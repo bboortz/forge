@@ -1,7 +1,7 @@
 ---
 id: FG-077
 slug: base-slim-foundations
-status: ready
+status: shipped
 owner: bboortz
 created: 2026-11-21
 ---

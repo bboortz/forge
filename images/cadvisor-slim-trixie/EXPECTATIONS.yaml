@@ -1,0 +1,12 @@
+# FG-077: cadvisor-slim-trixie's final-stage FROM is base/debian-slim-trixie.
+spec_version: 1
+image: cadvisor-slim-trixie
+
+dependencies:
+  - image: debian-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "cadvisor fetches metrics via outbound HTTPS calls; needs working CA trust store."
+        preflight:
+          - images/base/debian-slim-trixie/tests/smoke_ca_bundle.sh

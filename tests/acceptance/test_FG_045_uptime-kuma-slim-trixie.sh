@@ -22,10 +22,12 @@ for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json \
   test -e "images/uptime-kuma-slim-trixie/${f}" \
     || fail "images/uptime-kuma-slim-trixie/${f} missing"
 done
-# Slim images do NOT ship EXPECTATIONS.yaml (no scratch-base dependency).
-test ! -e images/uptime-kuma-slim-trixie/EXPECTATIONS.yaml \
-  || fail "images/uptime-kuma-slim-trixie/EXPECTATIONS.yaml should not exist (slim, not scratch)"
-pass "all required files present (slim contract)"
+# FG-077: slim runtimes now declare base/* parent via depends_on; that
+# requires EXPECTATIONS.yaml (verify-contracts rule). Pre-FG-077 this
+# file was explicitly forbidden because the image had no depends_on.
+test -e images/uptime-kuma-slim-trixie/EXPECTATIONS.yaml \
+  || fail "images/uptime-kuma-slim-trixie/EXPECTATIONS.yaml must exist post-FG-077 (declares base/node-slim-trixie expectations)"
+pass "all required files present (slim contract post-FG-077)"
 
 say "2. uptime-kuma-slim-trixie:latest builds from Node source"
 bash scripts/build-image.sh uptime-kuma-slim-trixie >/dev/null
@@ -38,14 +40,14 @@ for s in images/uptime-kuma-slim-trixie/tests/smoke_*.sh; do
 done
 pass "all smoke tests green"
 
-say "4. image.yaml: tag=latest, NO depends_on (slim variant)"
+say "4. image.yaml: tag=latest, depends_on base/* (FG-077)"
 tag=$(awk '$1 == "tag:" {gsub(/"/, "", $2); print $2; exit}' \
         images/uptime-kuma-slim-trixie/image.yaml)
 [[ "${tag}" == "latest" ]] || fail "image.yaml tag = '${tag}' (want latest)"
-if grep -qE '^depends_on:' images/uptime-kuma-slim-trixie/image.yaml; then
-  fail "image.yaml should NOT have depends_on (slim variant, not scratch derivative)"
+if ! grep -qE '^depends_on:' images/uptime-kuma-slim-trixie/image.yaml; then
+  fail "image.yaml must declare depends_on post-FG-077 (slim consumer FROMs base/*)"
 fi
-pass "image.yaml correct (tag=latest, no depends_on)"
+pass "image.yaml correct (tag=latest, depends_on base/*)"
 
 echo
 echo "FG-045 acceptance: all sections passed."

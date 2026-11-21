@@ -12,3 +12,8 @@
 tag: "latest"
 platforms:
   - linux/amd64
+
+# FG-077: declare base/* dependency so publish-base tier runs before this
+# consumer in publish-derivatives.
+depends_on:
+  - base/ubuntu-slim-noble
