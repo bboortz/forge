@@ -1,0 +1,17 @@
+# Shepherd-managed .github/dependabot.yml (SH-011).
+# Ecosystems: github-actions + docker (container-image builder).
+---
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: [dependencies, github-actions]
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels: [dependencies, docker]
