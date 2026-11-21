@@ -101,48 +101,66 @@ graph TD
         uptime-kuma-slim-trixie:::slim
     end
 
-    %% FROM edges (solid)
-    UP_SYFT --> mirror_syft
-    UP_DEBIAN_SID --> pre-builder_debian_slim_sid
-    UP_DEBIAN_TRIXIE --> pre-builder_debian_slim_trixie
-    UP_GOLANG --> pre-builder_go_slim_trixie
-    UP_NODE --> pre-builder_node_slim_trixie
-    UP_POSTGRES --> postgres-slim-trixie
-    UP_PYTHON --> pre-builder_python_slim_trixie
-    UP_UBUNTU --> pre-builder_ubuntu_slim_noble
+    %% FG-076 legend — 5 edge classes × tier-of-source palette
+    subgraph Legend["Edge legend (shape = relationship · color = tier of source)"]
+        direction LR
+        L_C1_SRC[" "]:::legend_node
+        L_C1_DST["Class 1 · FROM-parent (final-stage; trust + CVEs propagate)"]:::legend_node
+        L_C2_SRC[" "]:::legend_node
+        L_C2_DST["Class 2 · FROM builder-stage (content discarded in child)"]:::legend_node
+        L_C3_SRC[" "]:::legend_node
+        L_C3_DST["Class 3 · COPY --from (overlay / tool)"]:::legend_node
+        L_C4_SRC[" "]:::legend_node
+        L_C4_DST["Class 4 · external upstream image (L0, red)"]:::legend_node
+        L_C5_SRC[" "]:::legend_node
+        L_C5_DST["Class 5 · L0.1 upstream source (orange, build-time clone/tarball)"]:::legend_node
+        L_C1_SRC ==> L_C1_DST
+        L_C2_SRC --> L_C2_DST
+        L_C3_SRC -.-> L_C3_DST
+        L_C4_SRC ==> L_C4_DST
+        L_C5_SRC -.-> L_C5_DST
+    end
+
+    %% FG-076 classified edges (shape + color encode semantic class + source tier)
+    UP_SYFT ==> mirror_syft
+    UP_DEBIAN_SID ==> pre-builder_debian_slim_sid
+    UP_DEBIAN_TRIXIE ==> pre-builder_debian_slim_trixie
+    UP_GOLANG ==> pre-builder_go_slim_trixie
+    UP_NODE ==> pre-builder_node_slim_trixie
+    UP_POSTGRES ==> postgres-slim-trixie
+    UP_PYTHON ==> pre-builder_python_slim_trixie
+    UP_UBUNTU ==> pre-builder_ubuntu_slim_noble
     builder_go_trixie --> alertmanager-scratch-trixie
     builder_node_trixie --> alertmanager-scratch-trixie
     builder_python_trixie --> base_python_scratch_trixie
-    pre-builder_python_slim_trixie --> base_python_slim_trixie
+    pre-builder_python_slim_trixie ==> base_python_slim_trixie
     builder_python_trixie --> base_scratch_trixie
     base_python_scratch_trixie --> beaconry-hub
     base_python_scratch_trixie --> beaconry-scout
     base_python_scratch_trixie --> beaconry-telegram-mock
-    pre-builder_go_slim_trixie --> builder_go_trixie
-    pre-builder_node_slim_trixie --> builder_node_trixie
-    pre-builder_python_slim_trixie --> builder_python_trixie
-    pre-builder_zig_slim_trixie --> builder_zig_trixie
+    pre-builder_go_slim_trixie ==> builder_go_trixie
+    pre-builder_node_slim_trixie ==> builder_node_trixie
+    pre-builder_python_slim_trixie ==> builder_python_trixie
+    pre-builder_zig_slim_trixie ==> builder_zig_trixie
     builder_go_trixie --> cadvisor-slim-trixie
-    pre-builder_debian_slim_trixie --> cadvisor-slim-trixie
-    pre-builder_ubuntu_slim_noble --> github-runner-noble
+    pre-builder_debian_slim_trixie ==> cadvisor-slim-trixie
+    pre-builder_ubuntu_slim_noble ==> github-runner-noble
     builder_python_trixie --> healthy-scratch-trixie
     builder_go_trixie --> ipmi-exporter-scratch-trixie
     builder_python_trixie --> ipmi-exporter-scratch-trixie
     builder_go_trixie --> ipmi-exporter-slim-trixie
-    pre-builder_debian_slim_trixie --> ipmi-exporter-slim-trixie
+    pre-builder_debian_slim_trixie ==> ipmi-exporter-slim-trixie
     builder_python_trixie --> mosquitto-scratch-trixie
     builder_python_trixie --> nginx-scratch-trixie
     builder_go_trixie --> node-exporter-scratch-trixie
     builder_python_trixie --> postgres-scratch-trixie
     builder_go_trixie --> postgres-slim-trixie
-    pre-builder_debian_slim_trixie --> pre-builder_zig_slim_trixie
+    pre-builder_debian_slim_trixie ==> pre-builder_zig_slim_trixie
     builder_go_trixie --> prometheus-scratch-trixie
     builder_node_trixie --> prometheus-scratch-trixie
     builder_python_trixie --> redis-scratch-trixie
     builder_node_trixie --> uptime-kuma-slim-trixie
-    pre-builder_node_slim_trixie --> uptime-kuma-slim-trixie
-
-    %% COPY --from= edges (dashed)
+    pre-builder_node_slim_trixie ==> uptime-kuma-slim-trixie
     base_scratch_trixie -.-> alertmanager-scratch-trixie
     base_scratch_trixie -.-> base_python_scratch_trixie
     base_scratch_trixie -.-> ipmi-exporter-scratch-trixie
@@ -156,9 +174,6 @@ graph TD
     mirror_syft -.-> builder_node_trixie
     mirror_syft -.-> builder_python_trixie
     mirror_syft -.-> builder_zig_trixie
-    UP_BEACONRY -.-> beaconry-hub
-    UP_BEACONRY -.-> beaconry-scout
-    UP_BEACONRY -.-> beaconry-telegram-mock
     UP_HC -.-> alertmanager-scratch-trixie
     UP_HC -.-> base_python_scratch_trixie
     UP_HC -.-> base_python_slim_trixie
@@ -170,8 +185,6 @@ graph TD
     UP_HC -.-> node-exporter-scratch-trixie
     UP_HC -.-> prometheus-scratch-trixie
     UP_HC -.-> uptime-kuma-slim-trixie
-
-    %% L0.1 source → consumer edges (dashed; build-time clone/download)
     SRC_GH_ACTIONS_RUNNER -.-> github-runner-noble
     SRC_GH_BBOORTZ_BEACONRY -.-> beaconry-hub
     SRC_GH_BBOORTZ_BEACONRY -.-> beaconry-scout
@@ -186,7 +199,90 @@ graph TD
     SRC_GH_TIANON_GOSU -.-> postgres-slim-trixie
     SRC_ZIGLANG_ORG_DOWNLOAD -.-> pre-builder_zig_slim_trixie
 
-    %% Styling
+    %% FG-076 linkStyle pins — one per emitted edge, in emission order
+    linkStyle 0 stroke:#6D4C41,stroke-width:5px;
+    linkStyle 1 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 2 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 3 stroke:#D81B60,stroke-width:5px;
+    linkStyle 4 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 5 stroke:#D81B60,stroke-width:5px;
+    linkStyle 6 stroke:#D81B60,stroke-width:5px;
+    linkStyle 7 stroke:#D81B60,stroke-width:5px;
+    linkStyle 8 stroke:#D81B60,stroke-width:5px;
+    linkStyle 9 stroke:#D81B60,stroke-width:5px;
+    linkStyle 10 stroke:#D81B60,stroke-width:5px;
+    linkStyle 11 stroke:#D81B60,stroke-width:5px;
+    linkStyle 12 stroke:#D81B60,stroke-width:5px;
+    linkStyle 13 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 14 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 15 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 16 stroke:#43A047,stroke-width:5px;
+    linkStyle 17 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 18 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 19 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 20 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 21 stroke:#43A047,stroke-width:5px;
+    linkStyle 22 stroke:#43A047,stroke-width:5px;
+    linkStyle 23 stroke:#43A047,stroke-width:5px;
+    linkStyle 24 stroke:#43A047,stroke-width:5px;
+    linkStyle 25 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 26 stroke:#43A047,stroke-width:5px;
+    linkStyle 27 stroke:#43A047,stroke-width:5px;
+    linkStyle 28 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 29 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 30 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 31 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 32 stroke:#43A047,stroke-width:5px;
+    linkStyle 33 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 34 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 35 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 36 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 37 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 38 stroke:#43A047,stroke-width:5px;
+    linkStyle 39 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 40 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 41 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 42 stroke:#1E88E5,stroke-width:4px;
+    linkStyle 43 stroke:#43A047,stroke-width:5px;
+    linkStyle 44 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 45 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 46 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 47 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 48 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 49 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 50 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 51 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 52 stroke:#6D4C41,stroke-width:4px;
+    linkStyle 53 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 54 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 55 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 56 stroke:#FBC02D,stroke-width:4px;
+    linkStyle 57 stroke:#D81B60,stroke-width:4px;
+    linkStyle 58 stroke:#D81B60,stroke-width:4px;
+    linkStyle 59 stroke:#D81B60,stroke-width:4px;
+    linkStyle 60 stroke:#D81B60,stroke-width:4px;
+    linkStyle 61 stroke:#D81B60,stroke-width:4px;
+    linkStyle 62 stroke:#D81B60,stroke-width:4px;
+    linkStyle 63 stroke:#D81B60,stroke-width:4px;
+    linkStyle 64 stroke:#D81B60,stroke-width:4px;
+    linkStyle 65 stroke:#D81B60,stroke-width:4px;
+    linkStyle 66 stroke:#D81B60,stroke-width:4px;
+    linkStyle 67 stroke:#D81B60,stroke-width:4px;
+    linkStyle 68 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 69 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 70 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 71 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 72 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 73 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 74 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 75 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 76 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 77 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 78 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 79 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+    linkStyle 80 stroke:#E65100,stroke-width:3px,stroke-dasharray: 1,3;
+
+    %% Node styling
     classDef upstream   fill:#eeeeee,stroke:#999,stroke-width:1px,color:#333;
     classDef upstream_source fill:#fef3c7,stroke:#a16207,stroke-width:1px,color:#713f12,font-style:italic;
     classDef prebuilder fill:#fed7aa,stroke:#c2410c,stroke-width:2px,color:#7c2d12;
@@ -196,6 +292,7 @@ graph TD
     classDef scratch    fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#78350f;
     classDef external   fill:#ede9fe,stroke:#6d28d9,stroke-width:1px,color:#4c1d95;
     classDef mirror     fill:#99f6e4,stroke:#0f766e,stroke-width:2px,color:#134e4a;
+    classDef legend_node fill:#ffffff,stroke:#999,stroke-width:1px,color:#333,font-size:11px;
 ```
 
 </details>
