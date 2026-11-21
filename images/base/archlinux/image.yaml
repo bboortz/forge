@@ -1,0 +1,8 @@
+# FG-081: Arch Linux foundation. Public API surface for Arch consumers
+# (gamepad-archlinux, future rolling-current Arch runtimes).
+repo: base/archlinux
+tag: "latest"
+platforms:
+  - linux/amd64
+depends_on:
+  - pre-builder/archlinux

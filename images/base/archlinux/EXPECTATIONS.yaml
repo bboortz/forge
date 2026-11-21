@@ -1,0 +1,12 @@
+# What base/archlinux requires from its upstream dep.
+spec_version: 1
+image: archlinux
+
+dependencies:
+  - image: archlinux
+    version: ">=0.1"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "Consumers building on base/archlinux expect outbound HTTPS to work (pacman fetch, curl, etc.)."
+        preflight:
+          - images/base/archlinux/tests/smoke_ca_bundle.sh

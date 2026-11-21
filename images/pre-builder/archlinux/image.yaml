@@ -1,0 +1,8 @@
+# FG-081: forge-rooted Arch Linux pre-builder. Third OS family in the
+# fleet (after Debian + Ubuntu + Alpine). Rolling-release model: daily
+# cron re-resolves archlinux:latest + mirrors; scan-baseline drifts
+# more than any other pre-builder (parallel to debian-slim-sid).
+repo: pre-builder/archlinux
+tag: "latest"
+platforms:
+  - linux/amd64
