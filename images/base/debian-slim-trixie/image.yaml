@@ -1,0 +1,9 @@
+# FG-077: Debian slim foundation. Public API surface for external consumers
+# who want a plain Debian runtime (apt-based apps; cadvisor; ipmi-exporter-
+# slim).
+repo: base/debian-slim-trixie
+tag: "0.1"
+platforms:
+  - linux/amd64
+depends_on:
+  - pre-builder/debian-slim-trixie

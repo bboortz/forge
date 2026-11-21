@@ -16,6 +16,7 @@
 # state atomically. Resolved to forge-local during local builds, to
 # ghcr.io/bboortz/pre-builder/debian-slim-trixie:latest in CI (see build-image.sh).
 ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/pre-builder/debian-slim-trixie:latest
+ARG BASE_DEBIAN_SLIM_REF=ghcr.io/bboortz/base/debian-slim-trixie:0.1
 # FG-046: shared Go builder base (apt-upgraded, syft + git + jq pre-baked,
 # Go 1.27+ toolchain). Rebuilt before this image in the daily cron so
 # Go stdlib CVE fixes propagate within 24h.
@@ -106,11 +107,17 @@ RUN set -eux; \
 RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 
 # --- Stage 3: runtime (debian-slim) -----------------------------------------
-FROM ${DEBIAN_SLIM_REF}
+FROM ${BASE_DEBIAN_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
+
+# FG-077: base/*-slim-trixie defaults USER 65532 (nonroot). Override to
+# USER 0 because this image needs root (apt install at build; runtime
+# requires device/filesystem access typical of system services).
+# hadolint ignore=DL3002
+USER 0
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.description="Minimal, continuously patched Google cAdvisor built from source (slim-trixie runtime; shell + apt kept)"

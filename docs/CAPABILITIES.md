@@ -737,6 +737,27 @@ Architectural invariant: every L3 image lives under `images/base/` (encoded in t
 - **Delivered by**: FG-075
 - **Covered by**: `tests/acceptance/test_FG_075_base-tier-public-api.sh`, `images/base/python-slim-trixie/PROMISES.yaml`
 
+### image.debian-slim-foundation
+
+**FG-077**: `base/debian-slim-trixie` — slim Debian foundation under the arch.base-tier-public-api contract. Contents: `pre-builder/debian-slim-trixie` + `/hc` + `USER 65532`. No `ENTRYPOINT` (Debian default shell). Current consumers: `cadvisor-slim-trixie`, `ipmi-exporter-slim-trixie` (both with `USER 0` override for root-equivalent runtime needs). Enables future homelab consumers to FROM a public-API Debian runtime without reaching into `pre-builder/*`.
+
+- **Delivered by**: FG-077
+- **Covered by**: `tests/acceptance/test_FG_077_base-slim-foundations.sh`, `images/base/debian-slim-trixie/PROMISES.yaml`
+
+### image.ubuntu-slim-foundation
+
+**FG-077**: `base/ubuntu-slim-noble` — slim Ubuntu 24.04 (noble) foundation. Shape mirrors `image.debian-slim-foundation`. Rationale: Ubuntu-specific library dependencies (libicu74) require the Ubuntu base per memory/design-decisions.md § Ubuntu exception. Current consumer: `github-runner-noble` (with `USER 0` override — the GitHub Actions runner startup requires root).
+
+- **Delivered by**: FG-077
+- **Covered by**: `tests/acceptance/test_FG_077_base-slim-foundations.sh`, `images/base/ubuntu-slim-noble/PROMISES.yaml`
+
+### image.node-slim-foundation
+
+**FG-077**: `base/node-slim-trixie` — slim Node 24 LTS foundation with `ENTRYPOINT ["node"]` (parallel to `base/python-slim-trixie`'s python3 entrypoint). Current consumer: `uptime-kuma-slim-trixie`. Chain depth lands at 5 hops for Node consumers (at the FG-042 cap) — any future Node scratch runtime would need chain-depth restructuring first.
+
+- **Delivered by**: FG-077
+- **Covered by**: `tests/acceptance/test_FG_077_base-slim-foundations.sh`, `images/base/node-slim-trixie/PROMISES.yaml`
+
 ### build.pre-builder-migrated
 
 Post-FG-070, the 7 L1 pre-builders live under `images/pre-builder/<name>/` with GHCR paths `ghcr.io/bboortz/pre-builder/<name>:<tag>`. Members: `pre-builder/debian-slim-trixie`, `pre-builder/debian-slim-sid`, `pre-builder/go-slim-trixie`, `pre-builder/node-slim-trixie`, `pre-builder/python-slim-trixie`, `pre-builder/ubuntu-slim-noble`, `pre-builder/zig-slim-trixie`. Each image.yaml carries an explicit `repo: pre-builder/<name>` field (parallel with mirror/+base/ convention) so `image_yaml_repo` returns the canonical nested path, not the leaf. 8 consumer ARG defaults in the forge fleet flip to the new path: `UBUNTU_SLIM_NOBLE_REF` (github-runner-noble), `ZIG_SLIM_REF` (forge-builder-zig-trixie), `PYTHON_SLIM_REF` (forge-builder-python-trixie), `NODE_SLIM_REF` (forge-builder-node-trixie + uptime-kuma-slim-trixie), `GO_SLIM_REF` (forge-builder-go-trixie), `DEBIAN_SLIM_REF` (cadvisor-slim-trixie + ipmi-exporter-slim-trixie + pre-builder/zig-slim-trixie). Homelab coordination paired via FG-074.

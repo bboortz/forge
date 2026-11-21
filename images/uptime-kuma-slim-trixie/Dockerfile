@@ -20,6 +20,7 @@
 # shared with every other Forge Node runtime (psitransfer, future).
 ARG BUILDER_NODE_REF=ghcr.io/bboortz/builder/node-trixie:latest
 ARG NODE_SLIM_REF=ghcr.io/bboortz/pre-builder/node-slim-trixie:latest
+ARG BASE_NODE_SLIM_REF=ghcr.io/bboortz/base/node-slim-trixie:0.1
 # FG-031: /hc for docker-native HEALTHCHECK.
 ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # Track upstream's latest GitHub release. Empty default → build-time
@@ -106,7 +107,7 @@ RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 # upstream). ca-certificates + dumb-init are already baked by the pre-
 # builder; we only apt-install iputils-ping here (FG-055 — Ping monitor
 # type).
-FROM ${NODE_SLIM_REF}
+FROM ${BASE_NODE_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown

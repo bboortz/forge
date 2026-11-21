@@ -1,0 +1,9 @@
+# FG-077: Node 24 LTS slim foundation. Public API surface for consumers who
+# want a slim Node runtime (uptime-kuma-slim; future Node service apps).
+# Chain depth 4 hops; consumers hit the FG-042 5-hop cap.
+repo: base/node-slim-trixie
+tag: "0.1"
+platforms:
+  - linux/amd64
+depends_on:
+  - pre-builder/node-slim-trixie

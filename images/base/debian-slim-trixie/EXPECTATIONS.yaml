@@ -1,0 +1,14 @@
+# What base/debian-slim-trixie requires from its upstream dep:
+# pre-builder/debian-slim-trixie provides apt-upgraded Debian trixie + CA +
+# dumb-init. FG-077 adds /hc + nonroot uid on top.
+spec_version: 1
+image: debian-slim-trixie
+
+dependencies:
+  - image: debian-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "Consumers building on base/debian-slim-trixie expect outbound HTTPS to work (apt install over https, curl, etc.)."
+        preflight:
+          - images/base/debian-slim-trixie/tests/smoke_ca_bundle.sh

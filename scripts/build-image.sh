@@ -53,10 +53,12 @@ _FORGE_BUILDER_DIR="${ROOT}/images/builder/python-trixie"
 case "${IMAGE_DIR}" in
   builder/python-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|builder/go-trixie|builder/zig-trixie|builder/node-trixie)
     _needs_forge_builder=0 ;;
-  pre-builder/*|mirror/*)
+  pre-builder/*|mirror/*|base/debian-slim-trixie|base/ubuntu-slim-noble|base/node-slim-trixie)
     # FG-066: mirror images are zero-mod passthroughs; never need the
     # builder/python-trixie builder stage.
     # FG-070: pre-builder/* are thin apt-upgrade layers; same reasoning.
+    # FG-077: base/*-slim-trixie siblings are thin /hc + USER overlays on
+    # their pre-builder sibling; also don't need the python builder.
     _needs_forge_builder=0 ;;
   *)
     _needs_forge_builder=1 ;;
@@ -152,6 +154,29 @@ if [[ -d "${_MIRROR_SYFT_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "SYFT_REF" "${SRC}/Dockerfile"; then
   echo "→ mirror dependency: mirror/syft"
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" mirror/syft
+fi
+
+# FG-077: base/debian-slim-trixie, base/ubuntu-slim-noble, base/node-slim-trixie
+# are L3 foundations layered on their L1 pre-builder/*-slim-trixie siblings.
+# Build on demand when the consumer Dockerfile declares the corresponding
+# BASE_*_REF ARG.
+_BASE_DEBIAN_SLIM_DIR="${ROOT}/images/base/debian-slim-trixie"
+if [[ -d "${_BASE_DEBIAN_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "BASE_DEBIAN_SLIM_REF" "${SRC}/Dockerfile"; then
+  echo "→ base dependency: base/debian-slim-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" base/debian-slim-trixie
+fi
+_BASE_UBUNTU_SLIM_DIR="${ROOT}/images/base/ubuntu-slim-noble"
+if [[ -d "${_BASE_UBUNTU_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "BASE_UBUNTU_SLIM_NOBLE_REF" "${SRC}/Dockerfile"; then
+  echo "→ base dependency: base/ubuntu-slim-noble"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" base/ubuntu-slim-noble
+fi
+_BASE_NODE_SLIM_DIR="${ROOT}/images/base/node-slim-trixie"
+if [[ -d "${_BASE_NODE_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "BASE_NODE_SLIM_REF" "${SRC}/Dockerfile"; then
+  echo "→ base dependency: base/node-slim-trixie"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" base/node-slim-trixie
 fi
 
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
@@ -324,6 +349,43 @@ if ! docker image inspect "${HC_REF}" >/dev/null 2>&1; then
   HC_REF="ghcr.io/bboortz/hc:0.1.0"
 fi
 
+# FG-077: BASE_DEBIAN_SLIM_REF — forge-rooted L3 base layered on pre-builder/
+# debian-slim-trixie with /hc + USER 65532 (public API surface).
+_BASE_DEBIAN_SLIM_YAML="${ROOT}/images/base/debian-slim-trixie/image.yaml"
+if [[ -f "${_BASE_DEBIAN_SLIM_YAML}" ]]; then
+  _BASE_DEBIAN_SLIM_TAG=$(image_yaml_get "${_BASE_DEBIAN_SLIM_YAML}" tag)
+else
+  _BASE_DEBIAN_SLIM_TAG="latest"
+fi
+BASE_DEBIAN_SLIM_REF="${REGISTRY}/base/debian-slim-trixie:${_BASE_DEBIAN_SLIM_TAG}"
+if ! docker image inspect "${BASE_DEBIAN_SLIM_REF}" >/dev/null 2>&1; then
+  BASE_DEBIAN_SLIM_REF="ghcr.io/bboortz/base/debian-slim-trixie:${_BASE_DEBIAN_SLIM_TAG}"
+fi
+
+# FG-077: BASE_UBUNTU_SLIM_NOBLE_REF — L3 Ubuntu foundation.
+_BASE_UBUNTU_SLIM_YAML="${ROOT}/images/base/ubuntu-slim-noble/image.yaml"
+if [[ -f "${_BASE_UBUNTU_SLIM_YAML}" ]]; then
+  _BASE_UBUNTU_SLIM_TAG=$(image_yaml_get "${_BASE_UBUNTU_SLIM_YAML}" tag)
+else
+  _BASE_UBUNTU_SLIM_TAG="latest"
+fi
+BASE_UBUNTU_SLIM_NOBLE_REF="${REGISTRY}/base/ubuntu-slim-noble:${_BASE_UBUNTU_SLIM_TAG}"
+if ! docker image inspect "${BASE_UBUNTU_SLIM_NOBLE_REF}" >/dev/null 2>&1; then
+  BASE_UBUNTU_SLIM_NOBLE_REF="ghcr.io/bboortz/base/ubuntu-slim-noble:${_BASE_UBUNTU_SLIM_TAG}"
+fi
+
+# FG-077: BASE_NODE_SLIM_REF — L3 Node foundation.
+_BASE_NODE_SLIM_YAML="${ROOT}/images/base/node-slim-trixie/image.yaml"
+if [[ -f "${_BASE_NODE_SLIM_YAML}" ]]; then
+  _BASE_NODE_SLIM_TAG=$(image_yaml_get "${_BASE_NODE_SLIM_YAML}" tag)
+else
+  _BASE_NODE_SLIM_TAG="latest"
+fi
+BASE_NODE_SLIM_REF="${REGISTRY}/base/node-slim-trixie:${_BASE_NODE_SLIM_TAG}"
+if ! docker image inspect "${BASE_NODE_SLIM_REF}" >/dev/null 2>&1; then
+  BASE_NODE_SLIM_REF="ghcr.io/bboortz/base/node-slim-trixie:${_BASE_NODE_SLIM_TAG}"
+fi
+
 PULL_FLAG="--pull"
 # Drop --pull if either referenced base is a daemon-only forge-local tag —
 # docker build --pull tries to resolve it from a registry and aborts with
@@ -375,6 +437,17 @@ if [[ "${SYFT_REF}" == forge-local/* ]]; then
 fi
 # FG-031: same guard for HC_REF — forge-local/hc:0.1.0 isn't a real registry.
 if [[ "${HC_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-077: same guard for BASE_DEBIAN_SLIM_REF + BASE_UBUNTU_SLIM_NOBLE_REF +
+# BASE_NODE_SLIM_REF.
+if [[ "${BASE_DEBIAN_SLIM_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+if [[ "${BASE_UBUNTU_SLIM_NOBLE_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+if [[ "${BASE_NODE_SLIM_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 
@@ -532,6 +605,23 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${SYFT_REF}" == forge-local/* ]] \
    && grep -q "SYFT_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-077: same check for BASE_DEBIAN_SLIM_REF + BASE_UBUNTU_SLIM_NOBLE_REF
+# + BASE_NODE_SLIM_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BASE_DEBIAN_SLIM_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "BASE_DEBIAN_SLIM_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BASE_UBUNTU_SLIM_NOBLE_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "BASE_UBUNTU_SLIM_NOBLE_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BASE_NODE_SLIM_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "BASE_NODE_SLIM_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -567,6 +657,9 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg ZIG_SLIM_REF="${ZIG_SLIM_REF}" \
   --build-arg SYFT_REF="${SYFT_REF}" \
   --build-arg HC_REF="${HC_REF}" \
+  --build-arg BASE_DEBIAN_SLIM_REF="${BASE_DEBIAN_SLIM_REF}" \
+  --build-arg BASE_UBUNTU_SLIM_NOBLE_REF="${BASE_UBUNTU_SLIM_NOBLE_REF}" \
+  --build-arg BASE_NODE_SLIM_REF="${BASE_NODE_SLIM_REF}" \
   --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \

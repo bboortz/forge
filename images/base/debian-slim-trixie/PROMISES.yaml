@@ -1,0 +1,33 @@
+# Authoritative contract for base/debian-slim-trixie.
+#
+# FG-077 public-API slim Debian foundation. Shell + apt retained from
+# pre-builder/debian-slim-trixie; adds /hc + nonroot uid.
+
+spec_version: 1
+image: debian-slim-trixie
+version: "0.1"
+
+promises:
+  - id: files.hc-embedded
+    description: /hc is present + executable (static Zig healthcheck binary from bboortz/healthy). Consumers wire a docker HEALTHCHECK against their own listener.
+    caps: [image.debian-slim-foundation]
+    tests:
+      - images/base/debian-slim-trixie/tests/smoke_hc_embedded.sh
+
+  - id: runtime.user-nonroot
+    description: Container runs as uid 65532 by default. Consumers that need apt or root override with `USER 0` in their derived Dockerfile.
+    caps: [image.debian-slim-foundation]
+    tests:
+      - images/base/debian-slim-trixie/tests/smoke_user_nonroot.sh
+
+  - id: files.tls-stack
+    description: /etc/ssl/certs/ca-certificates.crt present (inherited from pre-builder/debian-slim-trixie).
+    caps: [image.debian-slim-foundation]
+    tests:
+      - images/base/debian-slim-trixie/tests/smoke_ca_bundle.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ pre-builder/debian-slim-trixie × 1.15 (15% headroom for /hc + labels).
+    caps: [image.debian-slim-foundation]
+    tests:
+      - images/base/debian-slim-trixie/tests/smoke_size.sh

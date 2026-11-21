@@ -19,6 +19,7 @@
 # FG-042: FROM forge-rooted debian-slim-trixie (not debian:trixie-slim
 # upstream). Resolved by scripts/build-image.sh.
 ARG DEBIAN_SLIM_REF=ghcr.io/bboortz/pre-builder/debian-slim-trixie:latest
+ARG BASE_DEBIAN_SLIM_REF=ghcr.io/bboortz/base/debian-slim-trixie:0.1
 # FG-046: shared Go builder base.
 ARG BUILDER_GO_REF=ghcr.io/bboortz/builder/go-trixie:latest
 # FG-031: /hc for docker-native HEALTHCHECK.
@@ -90,11 +91,17 @@ RUN set -eux; \
 RUN syft scan dir:/src/ -o cyclonedx-json > /sbom.json
 
 # --- Stage 2: runtime (slim) -------------------------------------------------
-FROM ${DEBIAN_SLIM_REF}
+FROM ${BASE_DEBIAN_SLIM_REF}
 
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
+
+# FG-077: base/*-slim-trixie defaults USER 65532 (nonroot). Override to
+# USER 0 because this image needs root (apt install at build; runtime
+# requires device/filesystem access typical of system services).
+# hadolint ignore=DL3002
+USER 0
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.description="Minimal, continuously patched Prometheus IPMI Exporter (built from Go source) + freeipmi-tools 1.6 (slim-trixie runtime; shell + apt kept for operator debugging)"

@@ -67,7 +67,14 @@ _FORGE_BUILDERS = {
     "builder/python-trixie",
     "builder/zig-trixie",
 }
-_BASELINE = {"base/scratch-trixie", "base/python-scratch-trixie", "base/python-slim-trixie"}
+_BASELINE = {
+    "base/scratch-trixie",
+    "base/python-scratch-trixie",
+    "base/python-slim-trixie",
+    "base/debian-slim-trixie",   # FG-077
+    "base/ubuntu-slim-noble",    # FG-077
+    "base/node-slim-trixie",     # FG-077
+}
 # Upstream helpers (COPY-from image layer forge-publishes but aren't under images/).
 # Treated as L0 for layering — not a runtime, not a builder.
 _UPSTREAM_HELPERS = {"hc"}
@@ -90,6 +97,9 @@ _KNOWN_REF_ARGS = {
     "ZIG_SLIM_REF",              # zig-slim-trixie (FG-072)
     "SYFT_REF",                  # mirror/syft (FG-066)
     "HC_REF",                    # ghcr.io/bboortz/hc (healthcheck embed)
+    "BASE_DEBIAN_SLIM_REF",      # base/debian-slim-trixie (FG-077)
+    "BASE_UBUNTU_SLIM_NOBLE_REF",# base/ubuntu-slim-noble (FG-077)
+    "BASE_NODE_SLIM_REF",        # base/node-slim-trixie (FG-077)
 }
 
 # Upstream Docker Hub tags allowed as literal `FROM` or as the default of
@@ -130,6 +140,18 @@ _INTRA_LAYER_EXEMPTIONS: set[tuple[str, str]] = {
     # Narrow within-tier edge, same pattern as zig → debian-slim.
     # FG-075: renamed from base/python-trixie.
     ("base/python-scratch-trixie", "base/scratch-trixie"),
+    # FG-077: 3 new base/*-slim-trixie siblings FROM their respective
+    # pre-builder/*-slim-trixie counterparts. L3 → L1 edges (not strictly
+    # intra-layer), but allowed as narrow named exemptions — each new base/
+    # exists to layer /hc + USER 65532 on top of the pre-builder for
+    # external consumers while keeping the pre-builder/ tier internal.
+    ("base/debian-slim-trixie", "pre-builder/debian-slim-trixie"),
+    ("base/ubuntu-slim-noble", "pre-builder/ubuntu-slim-noble"),
+    ("base/node-slim-trixie", "pre-builder/node-slim-trixie"),
+    # FG-075 (already present in the list above for python, re-stated here
+    # for the inventory): base/python-slim-trixie FROMs pre-builder/python-
+    # slim-trixie.
+    ("base/python-slim-trixie", "pre-builder/python-slim-trixie"),
 }
 
 # Upstream helpers (not language bases; tools pulled as a stage).
