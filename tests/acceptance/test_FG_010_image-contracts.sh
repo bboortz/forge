@@ -72,7 +72,14 @@ promises = {}
 # FG-069: index PROMISES by BOTH the image: field (usually the leaf name per
 # mirror/syft convention) AND the canonical directory path (base/<leaf> etc.)
 # so EXPECTATIONS dependencies pointing at the nested canonical path resolve.
-for p in list((root / 'images').glob('*/PROMISES.yaml')) + list((root / 'images').glob('*/*/PROMISES.yaml')):
+# FG-084 hotfix: sort deterministically. Leaf-name collisions (e.g.
+# pre-builder/node-slim-trixie vs base/node-slim-trixie both `image:
+# node-slim-trixie`) made filesystem-order determine which wins; CI's
+# FS order flipped post-FG-084-merge and failed. Alphabetical ordering
+# puts base/* before pre-builder/*, so pre-builder/* (the owner of
+# upstream-tier promises like files.ca-certificates / apt.freshly-
+# upgraded, which L4 EXPECTATIONS reference) wins the leaf-key write.
+for p in sorted(list((root / 'images').glob('*/PROMISES.yaml')) + list((root / 'images').glob('*/*/PROMISES.yaml'))):
     data = yaml.safe_load(p.read_text())
     ids = {pr['id'] for pr in data.get('promises', [])}
     # Image name from PROMISES (leaf per convention).
