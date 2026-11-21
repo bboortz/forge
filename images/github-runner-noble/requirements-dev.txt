@@ -2,11 +2,17 @@
 # Sync strategy: chore PR when homelab's drifts. See FG-051 story
 # § dep-sync strategy.
 #
-# Snapshot date: 2026-11-14.
-ansible-lint==26.4.0
-fastapi==0.136.3
-PyJWT==2.15.0
-pytest==9.0.3
+# FG-085 (2026-11-21): forge-leading sync. Bumped 5 pinned versions
+# (ansible-lint, fastapi, PyJWT, pytest, ruff) to current PyPI latest
+# per post-FG-084 audit. Zero OSV advisories at any prior pin — bumps
+# are QoL, not security-mandatory. Homelab-side resync PR is paired
+# follow-up (out of scope here).
+#
+# Snapshot date: 2026-11-21.
+ansible-lint==26.11.0
+fastapi==0.165.0
+PyJWT==2.15.1
+pytest==9.2.0
 pytest-xdist==3.8.0
-ruff==0.15.22
+ruff==0.17.6
 yamllint==1.38.0
