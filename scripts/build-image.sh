@@ -53,7 +53,7 @@ _FORGE_BUILDER_DIR="${ROOT}/images/builder/python-trixie"
 case "${IMAGE_DIR}" in
   builder/python-trixie|beaconry-telegram-mock|beaconry-hub|beaconry-scout|builder/go-trixie|builder/zig-trixie|builder/node-trixie)
     _needs_forge_builder=0 ;;
-  pre-builder/*|mirror/*|base/debian-slim-trixie|base/ubuntu-slim-noble|base/node-slim-trixie)
+  pre-builder/*|mirror/*|base/debian-slim-trixie|base/ubuntu-slim-noble|base/node-slim-trixie|base/alpine-3)
     # FG-066: mirror images are zero-mod passthroughs; never need the
     # builder/python-trixie builder stage.
     # FG-070: pre-builder/* are thin apt-upgrade layers; same reasoning.
@@ -177,6 +177,20 @@ if [[ -d "${_BASE_NODE_SLIM_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "BASE_NODE_SLIM_REF" "${SRC}/Dockerfile"; then
   echo "→ base dependency: base/node-slim-trixie"
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" base/node-slim-trixie
+fi
+
+# FG-079: pre-builder/alpine-3 + base/alpine-3 on-demand builds.
+_ALPINE_DIR="${ROOT}/images/pre-builder/alpine-3"
+if [[ -d "${_ALPINE_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "ALPINE_REF" "${SRC}/Dockerfile"; then
+  echo "→ pre-builder dependency: pre-builder/alpine-3"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/alpine-3
+fi
+_BASE_ALPINE_DIR="${ROOT}/images/base/alpine-3"
+if [[ -d "${_BASE_ALPINE_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "BASE_ALPINE_REF" "${SRC}/Dockerfile"; then
+  echo "→ base dependency: base/alpine-3"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" base/alpine-3
 fi
 
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
@@ -386,6 +400,30 @@ if ! docker image inspect "${BASE_NODE_SLIM_REF}" >/dev/null 2>&1; then
   BASE_NODE_SLIM_REF="ghcr.io/bboortz/base/node-slim-trixie:${_BASE_NODE_SLIM_TAG}"
 fi
 
+# FG-079: ALPINE_REF — L1 Alpine pre-builder (internal).
+_ALPINE_YAML="${ROOT}/images/pre-builder/alpine-3/image.yaml"
+if [[ -f "${_ALPINE_YAML}" ]]; then
+  _ALPINE_TAG=$(image_yaml_get "${_ALPINE_YAML}" tag)
+else
+  _ALPINE_TAG="3"
+fi
+ALPINE_REF="${REGISTRY}/pre-builder/alpine-3:${_ALPINE_TAG}"
+if ! docker image inspect "${ALPINE_REF}" >/dev/null 2>&1; then
+  ALPINE_REF="ghcr.io/bboortz/pre-builder/alpine-3:${_ALPINE_TAG}"
+fi
+
+# FG-079: BASE_ALPINE_REF — L3 Alpine foundation (public API).
+_BASE_ALPINE_YAML="${ROOT}/images/base/alpine-3/image.yaml"
+if [[ -f "${_BASE_ALPINE_YAML}" ]]; then
+  _BASE_ALPINE_TAG=$(image_yaml_get "${_BASE_ALPINE_YAML}" tag)
+else
+  _BASE_ALPINE_TAG="3"
+fi
+BASE_ALPINE_REF="${REGISTRY}/base/alpine-3:${_BASE_ALPINE_TAG}"
+if ! docker image inspect "${BASE_ALPINE_REF}" >/dev/null 2>&1; then
+  BASE_ALPINE_REF="ghcr.io/bboortz/base/alpine-3:${_BASE_ALPINE_TAG}"
+fi
+
 PULL_FLAG="--pull"
 # Drop --pull if either referenced base is a daemon-only forge-local tag —
 # docker build --pull tries to resolve it from a registry and aborts with
@@ -448,6 +486,13 @@ if [[ "${BASE_UBUNTU_SLIM_NOBLE_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 if [[ "${BASE_NODE_SLIM_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-079: same guards for ALPINE_REF + BASE_ALPINE_REF.
+if [[ "${ALPINE_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+if [[ "${BASE_ALPINE_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 
@@ -622,6 +667,17 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BASE_NODE_SLIM_REF}" == forge-local/* ]] 
    && grep -q "BASE_NODE_SLIM_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-079: same check for ALPINE_REF + BASE_ALPINE_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${ALPINE_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "ALPINE_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BASE_ALPINE_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "BASE_ALPINE_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -660,6 +716,8 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg BASE_DEBIAN_SLIM_REF="${BASE_DEBIAN_SLIM_REF}" \
   --build-arg BASE_UBUNTU_SLIM_NOBLE_REF="${BASE_UBUNTU_SLIM_NOBLE_REF}" \
   --build-arg BASE_NODE_SLIM_REF="${BASE_NODE_SLIM_REF}" \
+  --build-arg ALPINE_REF="${ALPINE_REF}" \
+  --build-arg BASE_ALPINE_REF="${BASE_ALPINE_REF}" \
   --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \

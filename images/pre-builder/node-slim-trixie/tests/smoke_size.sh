@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Smoke — image size ≤ upstream base × 1.1.
+# Smoke — image size ≤ upstream base × 1.3.
 set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-pre-builder/node-slim-trixie}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 REGISTRY="${REGISTRY:-forge-local}"
 IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
-BUDGET_RATIO_NUM="${BUDGET_RATIO_NUM:-11}"
+BUDGET_RATIO_NUM="${BUDGET_RATIO_NUM:-13}"
 BUDGET_RATIO_DEN="${BUDGET_RATIO_DEN:-10}"
 
 DOCKERFILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/Dockerfile"

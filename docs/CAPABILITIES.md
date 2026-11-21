@@ -792,3 +792,17 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-078
 - **Covered by**: `tests/acceptance/test_FG_078_psitransfer-slim-trixie.sh`, `images/psitransfer-slim-trixie/PROMISES.yaml`
+
+### arch.alpine-pre-builder
+
+**FG-079**: first Alpine OS family in the Forge fleet. `pre-builder/alpine-3` FROMs `alpine:3` (floating major pin) + runs `apk upgrade --no-cache` + installs `ca-certificates` + `dumb-init` + `update-ca-certificates`. Single-stage. Parallel to `pre-builder/debian-slim-trixie` + `pre-builder/ubuntu-slim-noble` but on apk + musl instead of apt + glibc. `verify-no-upstream-drift _EXPECTED` bumps 6 → 7. No `builder/alpine-*` — L2 builders exist for language families (python/go/node/zig), not OS families.
+
+- **Delivered by**: FG-079
+- **Covered by**: `tests/acceptance/test_FG_079_alpine-base-family.sh`, `images/pre-builder/alpine-3/PROMISES.yaml`
+
+### image.alpine-foundation
+
+**FG-079**: `base/alpine-3` — public-API Alpine 3.x foundation. Contents: `pre-builder/alpine-3` + `/hc` + `USER 65532`. No ENTRYPOINT (Alpine busybox shell is the default). Dual duty: final runtime for Alpine-musl apps + builder stage for future scratch-musl overlays. Parallel to `image.{debian,ubuntu}-slim-foundation`. Driver: homelab's `docker/ham-remote/rigctld/` currently FROMs `alpine:latest` unsigned; FG-079 unblocks a follow-up FG that rebuilds that image as `ham-rigctld-alpine-3` on `base/alpine-3`. Also unblocks FG-073 nginx-scratch-alpine (draft).
+
+- **Delivered by**: FG-079
+- **Covered by**: `tests/acceptance/test_FG_079_alpine-base-family.sh`, `images/base/alpine-3/PROMISES.yaml`

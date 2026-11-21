@@ -86,11 +86,13 @@ grep -q 'mirror/syft' images/builder/zig-trixie/image.yaml \
   || fail "builder/zig-trixie/image.yaml must list mirror/syft in depends_on"
 pass "depends_on wiring present on both"
 
-# --- (6) pre-builder count 6 → 7, builder count 3 → 4 ---------------------
-say "6. discover-images.sh pre-builders = 7, builders = 4"
+# --- (6) pre-builder count ≥ 7 (includes zig-slim-trixie), builder count = 4 ---
+# FG-072 originally locked pre-builders = 7. FG-079 adds pre-builder/alpine-3
+# so the count grows. Assert ≥ 7 + zig-slim-trixie is present.
+say "6. discover-images.sh pre-builders ≥ 7 (includes zig-slim-trixie), builders = 4"
 out=$(bash scripts/discover-images.sh pre-builders)
 got=$(echo "${out}" | jq '.include | length')
-[[ "${got}" -eq 7 ]] || fail "pre-builders tier returned ${got} entries (want 7)"
+[[ "${got}" -ge 7 ]] || fail "pre-builders tier returned ${got} entries (want ≥ 7)"
 echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/zig-slim-trixie"])' >/dev/null \
   || fail "pre-builders tier missing zig-slim-trixie"
 out=$(bash scripts/discover-images.sh builders)
@@ -100,13 +102,14 @@ echo "${out}" | jq -e '.include | map(.image_dir) | contains(["builder/zig-trixi
   || fail "builders tier missing builder/zig-trixie"
 pass "7 pre-builders + 4 builders including the Zig pair"
 
-# --- (7) verify-no-upstream-drift stays at _EXPECTED=6 --------------------
-say "7. verify-no-upstream-drift _EXPECTED stays at 6 (ARG-indirect)"
-grep -qE '^_EXPECTED=6$' scripts/verify-no-upstream-drift.sh \
-  || fail "scripts/verify-no-upstream-drift.sh _EXPECTED must be 6 (unchanged — Zig uses ARG-indirect FROM)"
+# --- (7) verify-no-upstream-drift: FG-072 does NOT inflate the count ----
+# FG-072 shipped with _EXPECTED=6 (Zig pre-builder uses ARG-indirect FROM).
+# FG-079 later bumped to 7 (Alpine adds one literal FROM alpine:3).
+# The invariant FG-072 asserts — Zig doesn't contribute — holds either way.
+say "7. verify-no-upstream-drift clean (Zig uses ARG-indirect; doesn't add to _EXPECTED)"
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails — FG-072 should NOT change literal-FROM-upstream count"
-pass "drift guard green at _EXPECTED=6"
+pass "drift guard still clean"
 
 # --- (8) arch.language-family-image-pair holds for Zig --------------------
 say "8. arch.language-family-image-pair invariant holds for Zig"

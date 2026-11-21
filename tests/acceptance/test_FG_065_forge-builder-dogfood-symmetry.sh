@@ -80,14 +80,15 @@ echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/go-sl
 pass "${got} pre-builders including go-slim-trixie"
 
 # --- (7) verify-no-upstream-drift ---------------------------------------
-say "7. verify-no-upstream-drift: _EXPECTED=6 and golang:1.27-trixie anchored"
+# FG-065 originally locked _EXPECTED=6. FG-079 bumped it to 7 (Alpine).
+# This test asserts the golang anchor + that verify-no-upstream-drift
+# runs clean against the current fleet — regardless of numeric value.
+say "7. verify-no-upstream-drift: golang:1.27-trixie anchored and script passes"
 grep -q "'golang:1\\\\.27-trixie'" scripts/verify-no-upstream-drift.sh \
   || fail "scripts/verify-no-upstream-drift.sh must list 'golang:1.27-trixie' in _UPSTREAM_ANCHORS"
-grep -qE '^_EXPECTED=6$' scripts/verify-no-upstream-drift.sh \
-  || fail "scripts/verify-no-upstream-drift.sh _EXPECTED must be 6"
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails — mismatch between _EXPECTED and FROM-grep count"
-pass "drift guard green at _EXPECTED=6"
+pass "drift guard green (golang anchored; _EXPECTED runs clean)"
 
 # --- (8) conformance lint Rules 7 + 8 + 9 wired ---------------------------
 say "8. verify-dockerfile-conformance.py Rules 7 + 8 + 9 present"

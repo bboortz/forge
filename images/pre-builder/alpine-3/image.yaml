@@ -1,0 +1,7 @@
+# FG-079: forge-rooted Alpine 3.x pre-builder. First Alpine OS family in
+# the fleet. Floating major pin (alpine:3) — daily cron picks up patch
+# releases; a major bump to Alpine 4 would spawn a sibling pre-builder.
+repo: pre-builder/alpine-3
+tag: "3"
+platforms:
+  - linux/amd64

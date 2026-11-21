@@ -38,23 +38,26 @@ _new=$(grep -lE "ghcr\\.io/bboortz/pre-builder/(debian|go|node|python|ubuntu|zig
 [[ "${_new}" -ge 8 ]] || fail "only ${_new} Dockerfiles reference pre-builder/ paths (want ≥ 8)"
 pass "no stale refs; ${_new} Dockerfiles use pre-builder/* paths"
 
-# --- (4) discover-images.sh pre-builders mode = 7 entries ---
-say "4. discover-images.sh pre-builders returns 7 under pre-builder/"
+# --- (4) discover-images.sh pre-builders mode ≥ 7 entries ---
+# FG-070 originally locked pre-builders = 7. FG-079 adds pre-builder/alpine-3.
+# Assert ≥ 7 + all entries under pre-builder/.
+say "4. discover-images.sh pre-builders returns ≥ 7 under pre-builder/"
 out=$(bash scripts/discover-images.sh pre-builders)
 got=$(echo "${out}" | jq '.include | length')
-[[ "${got}" -eq 7 ]] || fail "pre-builders mode returned ${got} entries (want 7)"
+[[ "${got}" -ge 7 ]] || fail "pre-builders mode returned ${got} entries (want ≥ 7)"
 # Every entry starts with pre-builder/
 _nonprefixed=$(echo "${out}" | jq -r '.include[] | select(.image_dir | startswith("pre-builder/") | not) | .image_dir' 2>&1)
 [[ -z "${_nonprefixed}" ]] || { echo "${_nonprefixed}" >&2; fail "discover-images returned entries not under pre-builder/"; }
-pass "7 entries, all under pre-builder/"
+pass "${got} entries, all under pre-builder/"
 
-# --- (5) verify-no-upstream-drift _EXPECTED=6 (unchanged) ---
-say "5. verify-no-upstream-drift stays at _EXPECTED=6"
-grep -qE '^_EXPECTED=6$' scripts/verify-no-upstream-drift.sh \
-  || fail "verify-no-upstream-drift _EXPECTED must be 6 (unchanged)"
+# --- (5) verify-no-upstream-drift clean (FG-070 doesn't change the count) ---
+# FG-070 shipped with _EXPECTED=6. FG-079 bumped to 7 (Alpine). The
+# invariant FG-070 cares about — 7 pre-builders published at their new
+# paths — is not count-locked here.
+say "5. verify-no-upstream-drift clean (pre-builders moved paths, not count)"
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails on current fleet"
-pass "drift guard green at _EXPECTED=6"
+pass "drift guard still clean"
 
 # --- (6) conformance lint green + language-family invariant uses new paths ---
 say "6. verify-dockerfile-conformance green + language-family expects pre-builder/ sibling"
