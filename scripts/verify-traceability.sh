@@ -65,6 +65,58 @@ for story in docs/stories/FG-*.md; do
   fi
 done
 
+# 4. Every `image.*` CAP must have ≥1 PROMISES entry mentioning it via
+#    caps:. Non-`image.*` CAPs (arch./build./ci./tooling./...) are
+#    architecture / pipeline / meta invariants and don't belong in any
+#    image's per-promise caps list — they're covered via acceptance tests.
+#    This closes the CAP ⇆ PROMISES bidirectional gap left by Rules 1-3
+#    (which only enforce CAP ⇆ test and CAP ⇆ story). FG-083.
+if command -v python3 >/dev/null 2>&1; then
+  if ! _traceability_rule_4=$(python3 - <<'PY' 2>&1
+import sys, re
+from pathlib import Path
+try:
+    import yaml
+except ImportError:
+    # Soft-skip if PyYAML missing; the python-based verify-contracts gate
+    # in test-fast has the same dep + prints its own install hint.
+    print("warn: PyYAML missing — Rule 4 skipped", file=sys.stderr)
+    sys.exit(0)
+
+root = Path(".")
+known = set()
+for line in (root / "docs/CAPABILITIES.md").read_text().splitlines():
+    m = re.match(r"^### ([a-z]+\.[a-z0-9-]+)$", line)
+    if m:
+        known.add(m.group(1))
+
+promised = set()
+for p in list(root.glob("images/*/PROMISES.yaml")) + list(root.glob("images/*/*/PROMISES.yaml")):
+    try:
+        d = yaml.safe_load(p.read_text())
+    except Exception as e:
+        print(f"FAIL: cannot parse {p}: {e}", file=sys.stderr)
+        sys.exit(1)
+    for prom in (d or {}).get("promises", []) or []:
+        for c in prom.get("caps", []) or []:
+            promised.add(c)
+
+# Only image.* CAPs are image-level contracts; others are meta.
+image_caps = {c for c in known if c.startswith("image.")}
+uncovered = sorted(image_caps - promised)
+if uncovered:
+    print(f"FAIL: {len(uncovered)} image.* CAP(s) have zero PROMISES.caps coverage:", file=sys.stderr)
+    for c in uncovered:
+        print(f"  {c}", file=sys.stderr)
+    print("\nEvery image.* CAP must be referenced by at least one promise's caps: entry.", file=sys.stderr)
+    sys.exit(1)
+PY
+  ); then
+    echo "$_traceability_rule_4" >&2
+    fail=1
+  fi
+fi
+
 if [[ $fail -eq 0 ]]; then
   echo "verify-traceability: ok (${#known_caps[@]} CAP(s) tracked)."
 fi

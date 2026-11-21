@@ -138,6 +138,17 @@ verify-no-upstream-drift:
 verify-dockerfile-conformance:
 	@python3 scripts/verify-dockerfile-conformance.py
 
+# FG-083: every images/*/tests/smoke_*.sh must be referenced by a
+# PROMISES.yaml `tests:` entry. Catches test→promise orphans.
+verify-no-orphan-smokes:
+	@python3 scripts/verify-no-orphan-smokes.py
+
+# FG-083: if a PROMISES.yaml's promise count changed vs base branch,
+# its `version:` field must also differ. Git-diff aware. Base defaults
+# to origin/dev; override via GIT_DIFF_BASE or GITHUB_BASE_REF (PR CI).
+verify-promises-version-bump:
+	@bash scripts/verify-promises-version-bump.sh
+
 # FG-064: regenerate the mermaid dep graph in docs/image-dependency-graph.md
 # between the GENERATED markers + the SVG alongside it. Narrative sections
 # outside the markers are preserved verbatim.
@@ -211,7 +222,7 @@ test-acceptance:
 test-images:
 	@bash scripts/test-images.sh
 
-test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-source-inventory verify-no-upstream-drift verify-dockerfile-conformance verify-dep-graph-fresh
+test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-source-inventory verify-no-upstream-drift verify-dockerfile-conformance verify-no-orphan-smokes verify-promises-version-bump verify-dep-graph-fresh
 
 check: test-fast test-acceptance test-images
 
