@@ -1,0 +1,12 @@
+# FG-077: github-runner-noble's final-stage FROM is base/ubuntu-slim-noble.
+spec_version: 1
+image: github-runner-noble
+
+dependencies:
+  - image: ubuntu-slim-noble
+    version: ">=0.1"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "GitHub Actions runner contacts api.github.com via outbound HTTPS; needs working CA trust store."
+        preflight:
+          - images/base/ubuntu-slim-noble/tests/smoke_ca_bundle.sh

@@ -169,8 +169,15 @@ while IFS= read -r -d '' yml; do
     mirrors)      _is_mirror "${name}" || continue ;;
     pre-builders) { ! _is_mirror "${name}" && _is_pre_builder "${name}"; } || continue ;;
     builders)     { ! _is_mirror "${name}" && _is_builder "${name}"; } || continue ;;
-    base)         { [[ ${dep_count} -eq 0 ]] && ! _is_mirror "${name}" && ! _is_pre_builder "${name}" && ! _is_builder "${name}"; } || continue ;;
-    derivatives)  { [[ ${dep_count} -gt 0 ]] && ! _is_mirror "${name}"; } || continue ;;
+    base)         { [[ "${name}" == base/* ]] || { [[ ${dep_count} -eq 0 ]] && ! _is_mirror "${name}" && ! _is_pre_builder "${name}" && ! _is_builder "${name}"; }; } || continue ;;
+    # FG-077: base/* members with depends_on must still land in `base` mode
+    # (publish-base tier) so they publish BEFORE their downstream consumers
+    # in publish-derivatives. Pre-FG-077 the mode filter was dep-count-only,
+    # which routed base/python-{scratch,slim}-trixie + the 3 new FG-077
+    # base/*-slim-trixie siblings to derivatives — causing an ordering race
+    # where cadvisor/ipmi-exporter/github-runner/uptime-kuma tried to pull
+    # ghcr.io/bboortz/base/*:latest before publish-base finished them.
+    derivatives)  { [[ "${name}" != base/* ]] && [[ ${dep_count} -gt 0 ]] && ! _is_mirror "${name}"; } || continue ;;
     all)          ;;
     *) echo "unknown mode: ${MODE} (mirrors|pre-builders|builders|base|derivatives|all)" >&2; exit 2 ;;
   esac

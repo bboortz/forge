@@ -1,0 +1,12 @@
+# FG-077: uptime-kuma-slim-trixie's final-stage FROM is base/node-slim-trixie.
+spec_version: 1
+image: uptime-kuma-slim-trixie
+
+dependencies:
+  - image: node-slim-trixie
+    version: ">=0.1"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "uptime-kuma probes HTTPS endpoints; needs working CA trust store."
+        preflight:
+          - images/base/node-slim-trixie/tests/smoke_ca_bundle.sh
