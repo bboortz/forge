@@ -834,3 +834,24 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-081
 - **Covered by**: `tests/acceptance/test_FG_081_archlinux-base-family.sh`, `images/base/archlinux/PROMISES.yaml`
+
+### arch.verify-no-orphan-smokes
+
+**FG-083**: Every `images/<x>/tests/smoke_*.sh` must be referenced by at least one `tests:` entry in some `PROMISES.yaml`. Catches the "test exists but contract doesn't state what it proves" class — DD-TGD's test→promise direction. FG-082 needed a 4-smoke cleanup because this gate didn't exist. Enforced by `scripts/verify-no-orphan-smokes.py`; wired into `make test-fast`.
+
+- **Delivered by**: FG-083
+- **Covered by**: `tests/acceptance/test_FG_083_contract-enforcement.sh`, `scripts/verify-no-orphan-smokes.py`
+
+### arch.verify-cap-has-promise
+
+**FG-083**: Every `image.*` CAP in `docs/CAPABILITIES.md` must be named by at least one `caps:` entry in some `PROMISES.yaml`. Non-`image.*` CAPs (`arch.*`, `build.*`, `ci.*`, `tooling.*`, ...) are meta/architecture invariants and don't require promise coverage. Closes the last CAP⇆PROMISES bidirectional gap left by Rules 1–3 of `verify-traceability.sh`. FG-083 adds Rule 4 to that script.
+
+- **Delivered by**: FG-083
+- **Covered by**: `tests/acceptance/test_FG_083_contract-enforcement.sh`, `scripts/verify-traceability.sh` Rule 4
+
+### arch.verify-promises-version-bump
+
+**FG-083**: If a `PROMISES.yaml` gains or loses a promise `- id:` line between base branch and HEAD, its `version:` field must also change. Enforced by `scripts/verify-promises-version-bump.sh` (git-diff-aware; default base `origin/dev`; PR CI picks up `GITHUB_BASE_REF`). Pins the prior-FG convention (minor-bump on additive promise changes) as a rule. FG-082 missed 3 bumps because this gate didn't exist.
+
+- **Delivered by**: FG-083
+- **Covered by**: `tests/acceptance/test_FG_083_contract-enforcement.sh`, `scripts/verify-promises-version-bump.sh`
