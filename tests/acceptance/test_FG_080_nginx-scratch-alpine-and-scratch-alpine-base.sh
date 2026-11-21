@@ -58,13 +58,14 @@ grep -qE '^\s*"BASE_SCRATCH_ALPINE_REF"' scripts/verify-dockerfile-conformance.p
   || fail "BASE_SCRATCH_ALPINE_REF not in _KNOWN_REF_ARGS"
 pass "ARG name registered"
 
-# --- (5) _EXPECTED stays at 7 ---
-say "5. verify-no-upstream-drift _EXPECTED=7 (unchanged — both new images FROM forge-rooted)"
-grep -qE '^_EXPECTED=7$' scripts/verify-no-upstream-drift.sh \
-  || fail "verify-no-upstream-drift _EXPECTED should be 7"
+# --- (5) _EXPECTED stays ≥ 7 (FG-080 didn't bump; later FGs may have) ---
+say "5. verify-no-upstream-drift _EXPECTED ≥ 7 (FG-080's new images FROM forge-rooted)"
+_actual=$(awk -F= '/^_EXPECTED=/ {print $2; exit}' scripts/verify-no-upstream-drift.sh)
+[[ "${_actual}" -ge 7 ]] \
+  || fail "verify-no-upstream-drift _EXPECTED must be >= 7 (got: ${_actual})"
 bash scripts/verify-no-upstream-drift.sh >/dev/null \
   || fail "verify-no-upstream-drift fails"
-pass "drift guard green at 7"
+pass "drift guard green at ${_actual} (≥ 7)"
 
 # --- (6) dep graph: both nodes present + overlay edge from base/scratch-alpine-3 ---
 say "6. dep graph: base/scratch-alpine-3 in L3, nginx-scratch-alpine in L4 with overlay edge"

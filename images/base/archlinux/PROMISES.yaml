@@ -1,0 +1,33 @@
+# Authoritative contract for base/archlinux.
+#
+# FG-081 public-API Arch foundation. Shell + pacman retained from
+# pre-builder/archlinux; adds /hc + nonroot uid.
+
+spec_version: 1
+image: archlinux
+version: "0.1"
+
+promises:
+  - id: files.hc-embedded
+    description: /hc is present + executable (static Zig healthcheck binary from bboortz/healthy).
+    caps: [image.archlinux-foundation]
+    tests:
+      - images/base/archlinux/tests/smoke_hc_embedded.sh
+
+  - id: runtime.user-nonroot
+    description: Container runs as uid 65532 by default. Consumers that need pacman or root override with `USER 0` in their derived Dockerfile. NOTE Arch's /etc/passwd has no entry at uid 65532; consumers using getpwuid() must add a passwd line.
+    caps: [image.archlinux-foundation]
+    tests:
+      - images/base/archlinux/tests/smoke_user_nonroot.sh
+
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt present (inherited from pre-builder/archlinux).
+    caps: [image.archlinux-foundation]
+    tests:
+      - images/base/archlinux/tests/smoke_ca_bundle.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ pre-builder/archlinux × 1.15 (15% headroom for /hc + labels).
+    caps: [image.archlinux-foundation]
+    tests:
+      - images/base/archlinux/tests/smoke_size.sh

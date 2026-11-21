@@ -820,3 +820,17 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-080 (supersedes FG-073 draft)
 - **Covered by**: `tests/acceptance/test_FG_080_nginx-scratch-alpine-and-scratch-alpine-base.sh`, `images/nginx-scratch-alpine/PROMISES.yaml`
+
+### arch.archlinux-pre-builder
+
+**FG-081**: third OS family in the Forge fleet (after Debian + Ubuntu + Alpine). `pre-builder/archlinux` FROMs `archlinux:latest` + runs `pacman -Syu --noconfirm ca-certificates` + `update-ca-trust` + `pacman -Scc --noconfirm` (cache clear). Single-stage. Parallel to `pre-builder/alpine-3` but on pacman + rolling-release. `verify-no-upstream-drift _EXPECTED` bumps 7 → 8. Rolling-release model: daily cron re-resolves `archlinux:latest`; scan-baseline drifts more than any other pre-builder (parallel to `debian-slim-sid`). **Delta vs other pre-builders**: dumb-init not shipped (not in Arch core/extra; AUR-only). No `builder/archlinux-*` — L2 builders exist for language families, not OS families.
+
+- **Delivered by**: FG-081
+- **Covered by**: `tests/acceptance/test_FG_081_archlinux-base-family.sh`, `images/pre-builder/archlinux/PROMISES.yaml`
+
+### image.archlinux-foundation
+
+**FG-081**: `base/archlinux` — public-API Arch Linux foundation. Contents: `pre-builder/archlinux` + `/hc` + `USER 65532`. No ENTRYPOINT (Arch's `/bin/bash` is the default). Dual duty: final runtime for Arch apps needing rolling-current packages + builder stage for from-source on Arch's toolchain. Parallel to `image.alpine-foundation`. Driver: homelab's `docker/gamepad/Dockerfile` currently FROMs `archlinux:latest` unsigned for `python-evdev`; FG-081 unblocks a follow-up FG that rebuilds that image as `gamepad-archlinux` on `base/archlinux`.
+
+- **Delivered by**: FG-081
+- **Covered by**: `tests/acceptance/test_FG_081_archlinux-base-family.sh`, `images/base/archlinux/PROMISES.yaml`

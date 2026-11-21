@@ -55,7 +55,7 @@ case "${IMAGE_DIR}" in
     # FG-080: nginx-scratch-alpine's builder stage is base/alpine-3, not
     # builder/python-trixie. It doesn't need the forge Python builder.
     _needs_forge_builder=0 ;;
-  pre-builder/*|mirror/*|base/debian-slim-trixie|base/ubuntu-slim-noble|base/node-slim-trixie|base/alpine-3|base/scratch-alpine-3)
+  pre-builder/*|mirror/*|base/debian-slim-trixie|base/ubuntu-slim-noble|base/node-slim-trixie|base/alpine-3|base/scratch-alpine-3|base/archlinux)
     # FG-066: mirror images are zero-mod passthroughs; never need the
     # builder/python-trixie builder stage.
     # FG-070: pre-builder/* are thin apt-upgrade layers; same reasoning.
@@ -200,6 +200,20 @@ if [[ -d "${_BASE_SCRATCH_ALPINE_DIR}" && -f "${SRC}/Dockerfile" ]] \
    && grep -q "BASE_SCRATCH_ALPINE_REF" "${SRC}/Dockerfile"; then
   echo "→ base dependency: base/scratch-alpine-3"
   REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" base/scratch-alpine-3
+fi
+
+# FG-081: pre-builder/archlinux + base/archlinux on-demand builds.
+_ARCHLINUX_DIR="${ROOT}/images/pre-builder/archlinux"
+if [[ -d "${_ARCHLINUX_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "ARCHLINUX_REF" "${SRC}/Dockerfile"; then
+  echo "→ pre-builder dependency: pre-builder/archlinux"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" pre-builder/archlinux
+fi
+_BASE_ARCHLINUX_DIR="${ROOT}/images/base/archlinux"
+if [[ -d "${_BASE_ARCHLINUX_DIR}" && -f "${SRC}/Dockerfile" ]] \
+   && grep -q "BASE_ARCHLINUX_REF" "${SRC}/Dockerfile"; then
+  echo "→ base dependency: base/archlinux"
+  REGISTRY="${REGISTRY}" "${BASH_SOURCE[0]}" base/archlinux
 fi
 
 REPO=$(image_yaml_repo "${SRC}/image.yaml")
@@ -445,6 +459,30 @@ if ! docker image inspect "${BASE_SCRATCH_ALPINE_REF}" >/dev/null 2>&1; then
   BASE_SCRATCH_ALPINE_REF="ghcr.io/bboortz/base/scratch-alpine-3:${_BASE_SCRATCH_ALPINE_TAG}"
 fi
 
+# FG-081: ARCHLINUX_REF — L1 Arch Linux pre-builder (internal).
+_ARCHLINUX_YAML="${ROOT}/images/pre-builder/archlinux/image.yaml"
+if [[ -f "${_ARCHLINUX_YAML}" ]]; then
+  _ARCHLINUX_TAG=$(image_yaml_get "${_ARCHLINUX_YAML}" tag)
+else
+  _ARCHLINUX_TAG="latest"
+fi
+ARCHLINUX_REF="${REGISTRY}/pre-builder/archlinux:${_ARCHLINUX_TAG}"
+if ! docker image inspect "${ARCHLINUX_REF}" >/dev/null 2>&1; then
+  ARCHLINUX_REF="ghcr.io/bboortz/pre-builder/archlinux:${_ARCHLINUX_TAG}"
+fi
+
+# FG-081: BASE_ARCHLINUX_REF — L3 Arch Linux foundation (public API).
+_BASE_ARCHLINUX_YAML="${ROOT}/images/base/archlinux/image.yaml"
+if [[ -f "${_BASE_ARCHLINUX_YAML}" ]]; then
+  _BASE_ARCHLINUX_TAG=$(image_yaml_get "${_BASE_ARCHLINUX_YAML}" tag)
+else
+  _BASE_ARCHLINUX_TAG="latest"
+fi
+BASE_ARCHLINUX_REF="${REGISTRY}/base/archlinux:${_BASE_ARCHLINUX_TAG}"
+if ! docker image inspect "${BASE_ARCHLINUX_REF}" >/dev/null 2>&1; then
+  BASE_ARCHLINUX_REF="ghcr.io/bboortz/base/archlinux:${_BASE_ARCHLINUX_TAG}"
+fi
+
 PULL_FLAG="--pull"
 # Drop --pull if either referenced base is a daemon-only forge-local tag —
 # docker build --pull tries to resolve it from a registry and aborts with
@@ -518,6 +556,13 @@ if [[ "${BASE_ALPINE_REF}" == forge-local/* ]]; then
 fi
 # FG-080: same guard for BASE_SCRATCH_ALPINE_REF.
 if [[ "${BASE_SCRATCH_ALPINE_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+# FG-081: same guards for ARCHLINUX_REF + BASE_ARCHLINUX_REF.
+if [[ "${ARCHLINUX_REF}" == forge-local/* ]]; then
+  PULL_FLAG=""
+fi
+if [[ "${BASE_ARCHLINUX_REF}" == forge-local/* ]]; then
   PULL_FLAG=""
 fi
 
@@ -709,6 +754,17 @@ if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BASE_SCRATCH_ALPINE_REF}" == forge-local/
    && grep -q "BASE_SCRATCH_ALPINE_REF" "${BUILD_DOCKERFILE}"; then
   _HAS_LOCAL_DEP=1
 fi
+# FG-081: same check for ARCHLINUX_REF + BASE_ARCHLINUX_REF.
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${ARCHLINUX_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "ARCHLINUX_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
+if [[ "${_HAS_LOCAL_DEP}" == "0" && "${BASE_ARCHLINUX_REF}" == forge-local/* ]] \
+   && [[ -f "${BUILD_DOCKERFILE}" ]] \
+   && grep -q "BASE_ARCHLINUX_REF" "${BUILD_DOCKERFILE}"; then
+  _HAS_LOCAL_DEP=1
+fi
 # FG-031: same check for HC_REF.
 if [[ "${_HAS_LOCAL_DEP}" == "0" && "${HC_REF}" == forge-local/* ]] \
    && [[ -f "${BUILD_DOCKERFILE}" ]] \
@@ -750,6 +806,8 @@ echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=
   --build-arg ALPINE_REF="${ALPINE_REF}" \
   --build-arg BASE_ALPINE_REF="${BASE_ALPINE_REF}" \
   --build-arg BASE_SCRATCH_ALPINE_REF="${BASE_SCRATCH_ALPINE_REF}" \
+  --build-arg ARCHLINUX_REF="${ARCHLINUX_REF}" \
+  --build-arg BASE_ARCHLINUX_REF="${BASE_ARCHLINUX_REF}" \
   --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   "${EXTRA_LABELS[@]}" \
   "${CACHE_ARGS[@]}" \

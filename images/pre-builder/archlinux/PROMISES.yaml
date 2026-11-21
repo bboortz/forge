@@ -1,0 +1,39 @@
+# Authoritative contract for pre-builder/archlinux.
+#
+# FG-081 Arch Linux OS family pre-builder. pacman -Syu'd + CA + dumb-init.
+# Shell + pacman kept.
+
+spec_version: 1
+image: archlinux
+version: "0.1"
+
+promises:
+  - id: files.ca-certificates
+    description: /etc/ssl/certs/ca-certificates.crt present via `pacman -S ca-certificates` + `update-ca-trust`. HTTPS resolves out of the box.
+    caps: [arch.archlinux-pre-builder]
+    tests:
+      - images/pre-builder/archlinux/tests/smoke_ca_bundle.sh
+
+  - id: pacman.freshly-upgraded
+    description: "pacman -Syu ran during build; no stale packages. (Parallel to Debian pre-builders' apt.freshly-upgraded.)"
+    caps: [arch.archlinux-pre-builder]
+    tests:
+      - images/pre-builder/archlinux/tests/smoke_pacman_upgraded.sh
+
+  - id: pacman.cache-cleared
+    description: /var/cache/pacman/pkg + /var/lib/pacman/sync are empty — pacman -Scc + rm kept package indexes out of the final image.
+    caps: [arch.archlinux-pre-builder]
+    tests:
+      - images/pre-builder/archlinux/tests/smoke_pacman_cache_cleared.sh
+
+  - id: presence.shell
+    description: /bin/bash present (Arch default). Operators can docker exec -it <image> bash.
+    caps: [arch.archlinux-pre-builder]
+    tests:
+      - images/pre-builder/archlinux/tests/smoke_shell.sh
+
+  - id: shape.size-budget
+    description: Image size ≤ upstream archlinux:latest × 1.5 (50% headroom for pacman-upgrade delta + ca-certificates + dumb-init on a rolling-release base).
+    caps: [arch.archlinux-pre-builder]
+    tests:
+      - images/pre-builder/archlinux/tests/smoke_size.sh

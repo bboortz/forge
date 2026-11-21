@@ -55,6 +55,7 @@ _PRE_BUILDERS = [
     "pre-builder/ubuntu-slim-noble",
     "pre-builder/zig-slim-trixie",
     "pre-builder/alpine-3",        # FG-079
+    "pre-builder/archlinux",       # FG-081
 ]
 _FORGE_BUILDERS = [
     "builder/go-trixie",
@@ -71,6 +72,7 @@ _BASELINE = [
     "base/node-slim-trixie",     # FG-077
     "base/alpine-3",             # FG-079
     "base/scratch-alpine-3",     # FG-080
+    "base/archlinux",            # FG-081
 ]
 _UPSTREAM_HELPERS = ["hc"]  # ghcr.io/bboortz/hc — forge-published but external to the layered fleet
 # FG-066: forge mirror tier — zero-mod passthroughs under images/mirror/<name>/.
@@ -85,6 +87,7 @@ _UPSTREAM_ANCHORS = {
     "golang:1.27-trixie",
     "postgres:18",
     "alpine:3",                  # FG-079
+    "archlinux:latest",          # FG-081
 }
 _HELPER_UPSTREAMS = {
     "docker.io/anchore/syft:latest",
@@ -101,6 +104,7 @@ _UPSTREAM_NODE_IDS = {
     "golang:1.27-trixie":      ("UP_GOLANG",          "golang:1.27-trixie<br/>docker.io"),
     "postgres:18":             ("UP_POSTGRES",        "postgres:18<br/>docker.io"),
     "alpine:3":                ("UP_ALPINE",          "alpine:3<br/>docker.io"),
+    "archlinux:latest":        ("UP_ARCHLINUX",       "archlinux:latest<br/>docker.io"),
     "docker.io/anchore/syft:latest": ("UP_SYFT",      "anchore/syft:latest<br/>docker.io"),
     "anchore/syft:latest":           ("UP_SYFT",      "anchore/syft:latest<br/>docker.io"),
     "hc":                       ("UP_HC",             "hc:0.1.0<br/>ghcr.io/bboortz<br/>(static Zig healthcheck)"),

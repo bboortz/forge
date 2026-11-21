@@ -37,15 +37,16 @@ _UPSTREAM_ANCHORS=(
   'node:24-trixie-slim'
   'golang:1\.27-trixie'
   'alpine:3'
+  'archlinux:latest'
 )
 # How many Dockerfiles SHOULD FROM each anchor (= how many pre-builders
 # each anchor should feed into). FG-065 adds go-slim-trixie as the 6th
 # pre-builder; FG-079 adds pre-builder/alpine-3 as the 7th (Alpine OS
-# family). Pre-builders FROM the upstream literally; downstream base/*
-# + builder/* + consumers FROM the pre-builder via `${…_REF}` ARGs
-# (ARG-indirect, doesn't match the grep below — one literal match per
-# pre-builder).
-_EXPECTED=7
+# family); FG-081 adds pre-builder/archlinux as the 8th (Arch OS family).
+# Pre-builders FROM the upstream literally; downstream base/* + builder/*
+# + consumers FROM the pre-builder via `${…_REF}` ARGs (ARG-indirect,
+# doesn't match the grep below — one literal match per pre-builder).
+_EXPECTED=8
 
 # Build a single alternation for grep (|-separated).
 _ANCHOR_RE="$(IFS='|'; echo "${_UPSTREAM_ANCHORS[*]}")"
