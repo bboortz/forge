@@ -43,16 +43,19 @@ echo "${out}" | jq -e '.include | map(.image_dir) | contains(["pre-builder/node-
   || fail "pre-builders tier missing node-slim-trixie"
 pass "pre-builders tier includes node-slim-trixie"
 
-say "5. uptime-kuma-slim-trixie runtime FROMs \${NODE_SLIM_REF}"
+say "5. uptime-kuma-slim-trixie runtime FROMs \${NODE_SLIM_REF} or \${BASE_NODE_SLIM_REF}"
 # Previous FG-048c state: runtime stage FROMed node:24-trixie-slim via
-# ARG NODE_BASE. FG-061 flips it to FROM ${NODE_SLIM_REF}.
-grep -qE '^ARG NODE_SLIM_REF=' images/uptime-kuma-slim-trixie/Dockerfile \
-  || fail "uptime-kuma-slim-trixie Dockerfile must declare ARG NODE_SLIM_REF"
+# ARG NODE_BASE. FG-061 flipped it to FROM ${NODE_SLIM_REF}. FG-077
+# flipped it again to FROM ${BASE_NODE_SLIM_REF} (public-API foundation).
+grep -qE '^ARG (NODE_SLIM_REF|BASE_NODE_SLIM_REF)=' images/uptime-kuma-slim-trixie/Dockerfile \
+  || fail "uptime-kuma-slim-trixie must declare ARG NODE_SLIM_REF or FG-077 BASE_NODE_SLIM_REF"
 # The runtime stage FROM (last FROM line, not the hc or builder stages):
 runtime_from=$(awk 'toupper($1)=="FROM"{last=$0} END{print last}' images/uptime-kuma-slim-trixie/Dockerfile)
 # shellcheck disable=SC2016  # intentional literal "${NODE_SLIM_REF}" substring
-[[ "${runtime_from}" == *'${NODE_SLIM_REF}'* ]] \
-  || fail "uptime-kuma-slim-trixie runtime FROM is '${runtime_from}', want '... \${NODE_SLIM_REF}'"
+case "${runtime_from}" in
+  *'${NODE_SLIM_REF}'*|*'${BASE_NODE_SLIM_REF}'*) ;;
+  *) fail "uptime-kuma-slim-trixie runtime FROM is '${runtime_from}', want '... \${NODE_SLIM_REF}' or '... \${BASE_NODE_SLIM_REF}'" ;;
+esac
 # Belt-and-suspenders: upstream node:24-trixie-slim must NOT be the runtime FROM.
 if grep -qE '^FROM node:24-trixie-slim' images/uptime-kuma-slim-trixie/Dockerfile; then
   fail "uptime-kuma-slim-trixie must not FROM node:24-trixie-slim directly (migrated to node-slim-trixie per FG-061)"
