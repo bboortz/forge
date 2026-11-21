@@ -23,6 +23,12 @@ promises:
     tests:
       - images/uptime-kuma-slim-trixie/tests/smoke_node_version.sh
 
+  - id: files.ping-binary
+    description: "/bin/ping is present + runnable. Uptime Kuma's Ping monitor type shells out to it; without this, operators see 'ping: command not found' in the UI when configuring ICMP checks."
+    caps: [image.uptime-kuma-serves-monitoring]
+    tests:
+      - images/uptime-kuma-slim-trixie/tests/smoke_ping_available.sh
+
   - id: runtime.hc-binary
     description: /hc is present and executable; baked HEALTHCHECK polls :3001.
     caps: [image.hc-embedded, image.uptime-kuma-serves-monitoring]

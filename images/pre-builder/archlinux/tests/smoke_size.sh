@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke: image size ≤ upstream archlinux:latest × 1.5 (rolling base; +CA +dumb-init on
+# Smoke: image size ≤ upstream archlinux:latest × 1.5 (rolling base; +CA on
 # top of ~400 MB archlinux fits within 50% headroom).
 set -euo pipefail
 

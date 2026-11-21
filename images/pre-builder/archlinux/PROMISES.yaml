@@ -1,6 +1,7 @@
 # Authoritative contract for pre-builder/archlinux.
 #
-# FG-081 Arch Linux OS family pre-builder. pacman -Syu'd + CA + dumb-init.
+# FG-081 Arch Linux OS family pre-builder. pacman -Syu'd + CA.
+# Delta vs other forge pre-builders is documented in the Dockerfile header.
 # Shell + pacman kept.
 
 spec_version: 1
@@ -33,7 +34,7 @@ promises:
       - images/pre-builder/archlinux/tests/smoke_shell.sh
 
   - id: shape.size-budget
-    description: Image size ≤ upstream archlinux:latest × 1.5 (50% headroom for pacman-upgrade delta + ca-certificates + dumb-init on a rolling-release base).
+    description: Image size ≤ upstream archlinux:latest × 1.5 (50% headroom for pacman-upgrade delta + ca-certificates on a rolling-release base).
     caps: [arch.archlinux-pre-builder]
     tests:
       - images/pre-builder/archlinux/tests/smoke_size.sh

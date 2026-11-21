@@ -11,7 +11,7 @@
 #   (b) Builder stage for consumers who want a from-source build on Arch's
 #       rolling toolchain.
 #
-# Composition on top of pre-builder/archlinux (pacman -Syu'd + CA + dumb-init):
+# Composition on top of pre-builder/archlinux (pacman -Syu'd + CA):
 #   - /hc baked in (bboortz/healthy static Zig healthcheck binary).
 #   - USER 65532 (nonroot baseline — override to USER 0 in consumers that
 #     need pacman at build time).
