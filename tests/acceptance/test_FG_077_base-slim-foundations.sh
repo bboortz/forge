@@ -29,7 +29,7 @@ for name in "${NEW_FOUNDATIONS[@]}"; do
   tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' "images/base/${name}/image.yaml")
   docker image inspect "forge-local/base/${name}:${tag}" >/dev/null \
     || fail "forge-local/base/${name}:${tag} did not materialize after build"
-  for s in images/base/${name}/tests/smoke_*.sh; do
+  for s in "images/base/${name}/tests/"smoke_*.sh; do
     [[ -f "$s" ]] || continue
     IMAGE_TAG="${tag}" bash "$s" >/dev/null \
       || fail "smoke failed: ${s}"
