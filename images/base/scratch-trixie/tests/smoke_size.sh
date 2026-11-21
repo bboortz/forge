@@ -9,7 +9,7 @@ set -euo pipefail
 SIZE_CEILING=${SIZE_CEILING:-25000000}
 export SIZE_CEILING
 export IMAGE_NAME="${IMAGE_NAME:-base/scratch-trixie}"
-export IMAGE_TAG="${IMAGE_TAG:-0.2}"
+export IMAGE_TAG="${IMAGE_TAG:-0.3}"
 export REGISTRY="${REGISTRY:-forge-local}"
 
 # FG-069: this file moved from images/scratch-base-trixie/tests/ to
