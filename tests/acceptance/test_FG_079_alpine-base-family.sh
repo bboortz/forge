@@ -54,11 +54,12 @@ pass "both built + smokes green"
 
 # --- (4) no builder/alpine-* ---
 say "4. no builder/alpine-* exists (OS family, not language family)"
-if ls -d images/builder/alpine-* 2>/dev/null | grep -q .; then
+# shellcheck disable=SC2144  # glob-against-array check is idiomatic here
+_alpine_builder_dirs=(images/builder/alpine-*)
+if [[ -d "${_alpine_builder_dirs[0]}" ]]; then
   fail "images/builder/alpine-* exists — Alpine is an OS family, no builder expected"
 fi
-if grep -qE 'alpine' scripts/discover-images.sh 2>/dev/null \
-   && bash scripts/discover-images.sh builders 2>&1 | jq -r '.include[].image_dir' | grep -q alpine; then
+if bash scripts/discover-images.sh builders 2>&1 | jq -r '.include[].image_dir' | grep -q alpine; then
   fail "discover-images.sh builders mode contains an alpine image"
 fi
 pass "no builder/alpine-*; L2 Alpine not spawned"
