@@ -95,7 +95,7 @@ say "5. build.yml publish-base + publish-derivatives have buildx + grype cache"
 # Both jobs should set up buildx and cache grype DB. Check each pattern appears
 # at least twice.
 setup_count=$(grep -c 'docker/setup-buildx-action' .github/workflows/build.yml)
-cache_count=$(grep -c 'actions/cache@v4' .github/workflows/build.yml)
+cache_count=$(grep -Ec 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/build.yml)
 [[ ${setup_count} -ge 2 ]] || { echo "  ✗ build.yml buildx setup appears ${setup_count}× (want ≥2)" >&2; exit 1; }
 [[ ${cache_count} -ge 2 ]] || { echo "  ✗ build.yml grype cache appears ${cache_count}× (want ≥2)" >&2; exit 1; }
 pass "build.yml covers both publish jobs"
