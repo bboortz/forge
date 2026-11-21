@@ -23,6 +23,12 @@ promises:
     tests:
       - images/ipmi-exporter-scratch-trixie/tests/smoke_freeipmi_tools.sh
 
+  - id: absence.shell-wrapper-dependency
+    description: "ipmi-exporter.yml config pins collector_cmd[ipmi]=ipmi-sensors so the collector never invokes the Debian-shipped /usr/sbin/ipmimonitoring shell wrapper (scratch has no /bin/sh). FG-043 regression guard for the 2026-11-10 homelab incident (ipmi_up=0 + silent `exec not found` in logs on real BMC hardware)."
+    caps: [image.ipmi-exporter-serves-metrics]
+    tests:
+      - images/ipmi-exporter-scratch-trixie/tests/smoke_ipmi_collector_uses_elf.sh
+
   - id: runtime.metrics-endpoint
     description: Container responds to GET /metrics on :9290 with Prometheus text format even without /dev/ipmi0 (self-metrics only; IPMI probes fail cleanly with error metrics). Includes `ipmi_scrape_duration_seconds`.
     caps: [image.ipmi-exporter-serves-metrics, test.smoke-server-helper]
