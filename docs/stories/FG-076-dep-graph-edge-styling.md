@@ -1,7 +1,7 @@
 ---
 id: FG-076
 slug: dep-graph-edge-styling
-status: ready
+status: shipped
 owner: bboortz
 created: 2026-11-21
 ---
