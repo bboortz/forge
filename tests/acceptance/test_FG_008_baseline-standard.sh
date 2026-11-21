@@ -13,18 +13,21 @@ say() { printf '\n\033[1;36m[FG-008]\033[0m %s\n' "$*"; }
 pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 
 BASELINE_DIR="base/scratch-trixie"
-BASELINE_IMAGE="forge-local/${BASELINE_DIR}:0.2"
+# FG-084: read tag from image.yaml instead of hard-pinning. Prior-FG pins
+# (0.2) block ordinary tag bumps. We still assert the tag exists + looks
+# like a 0.x SemVer floor; actual value may bump over time.
+BASELINE_TAG=$(awk '/^tag:/ {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${BASELINE_DIR}/image.yaml")
+BASELINE_IMAGE="forge-local/${BASELINE_DIR}:${BASELINE_TAG}"
 
 # -----------------------------------------------------------------------------
-# Section 1 — baseline tag bumps to 0.2
+# Section 1 — baseline tag conforms to 0.x SemVer floor
 # -----------------------------------------------------------------------------
-say "1. baseline image.yaml bumped to 0.2"
-got=$(awk '/^tag:/ {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${BASELINE_DIR}/image.yaml")
-if [[ "${got}" != "0.2" ]]; then
-  echo "  ✗ expected tag 0.2, got: ${got}" >&2
+say "1. baseline image.yaml tag is a 2-digit 0.x SemVer (floor: 0.2)"
+if [[ ! "${BASELINE_TAG}" =~ ^0\.[2-9][0-9]*$ ]]; then
+  echo "  ✗ expected 0.x with x >= 2, got: ${BASELINE_TAG}" >&2
   exit 1
 fi
-pass "image.yaml tag = 0.2"
+pass "image.yaml tag = ${BASELINE_TAG} (>= 0.2 floor)"
 
 # -----------------------------------------------------------------------------
 # Section 2 — baseline builds + full smoke suite passes
@@ -55,17 +58,17 @@ done
 pass "baseline-contract.md references every required term"
 
 # -----------------------------------------------------------------------------
-# Section 4 — existing scratch derivatives still pass against 0.2
+# Section 4 — existing scratch derivatives still pass against the current baseline
 # -----------------------------------------------------------------------------
-say "4. existing derivatives build + smoke green against 0.2 baseline"
+say "4. existing derivatives build + smoke green against ${BASELINE_TAG} baseline"
 for d in base/python-scratch-trixie nginx-scratch-trixie postgres-scratch-trixie; do
   bash scripts/build-image.sh "${d}" >/dev/null
   # FG-017 B: skip per-derivative smokes under `make check` (test-images runs globally).
   if [[ "${_FORGE_IN_CHECK:-0}" == "1" ]]; then
-    pass "${d} builds green on 0.2 baseline (smokes covered globally)"
+    pass "${d} builds green on ${BASELINE_TAG} baseline (smokes covered globally)"
   else
     bash scripts/test-images.sh "${d}" >/dev/null
-    pass "${d} still passes its own smoke suite on 0.2 baseline"
+    pass "${d} still passes its own smoke suite on ${BASELINE_TAG} baseline"
   fi
 done
 
@@ -73,8 +76,8 @@ done
 # Section 5 — Post-publish (opt-in via PUBLISHED=1)
 # -----------------------------------------------------------------------------
 if [[ "${PUBLISHED:-0}" == "1" ]]; then
-  say "5. external cosign verify against :0.2 and :latest"
-  for t in 0.2 latest; do
+  say "5. external cosign verify against :${BASELINE_TAG} and :latest"
+  for t in "${BASELINE_TAG}" latest; do
     cosign verify \
       --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
       --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
