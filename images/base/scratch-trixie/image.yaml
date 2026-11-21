@@ -5,7 +5,7 @@
 # pattern as mirror/syft (FG-066).
 # Semantic versioning (FG-005): bump tag when the surface changes; 0.x until
 # we have real consumer dependence.
-tag: "0.2"
+tag: "0.3"
 repo: base/scratch-trixie
 platforms:
   - linux/amd64

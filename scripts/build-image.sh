@@ -638,14 +638,19 @@ fi
 # tags so the CI YAML doesn't need per-image knowledge.
 BUILDX_CACHE_FROM="${BUILDX_CACHE_FROM:-}"
 BUILDX_CACHE_TO="${BUILDX_CACHE_TO:-}"
-if [[ -z "${BUILDX_CACHE_FROM}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" ]]; then
+# FG-084: mirror/* images are zero-mod passthroughs (Rule 10) — no cache
+# benefit possible, and buildx `ignore-error=true` does not actually
+# tolerate a missing :buildcache for cache-from in current BuildKit
+# versions (classified as config error, not import error). Hard-skip
+# cache setup for them entirely.
+if [[ -z "${BUILDX_CACHE_FROM}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" && "${REPO}" != mirror/* ]]; then
   # FG-048: `ignore-error=true` tolerates first-time publish when the
   # :buildcache tag doesn't exist yet. Without this, a brand-new image
   # (e.g. forge-builder-node-trixie:0.1) + its downstream consumers
   # fail buildx with "not found" before any build starts.
   BUILDX_CACHE_FROM="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache,ignore-error=true"
 fi
-if [[ -z "${BUILDX_CACHE_TO}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" && "${FORGE_CACHE_PUSH:-0}" == "1" ]]; then
+if [[ -z "${BUILDX_CACHE_TO}" && -n "${FORGE_CACHE_FROM_PREFIX:-}" && "${FORGE_CACHE_PUSH:-0}" == "1" && "${REPO}" != mirror/* ]]; then
   BUILDX_CACHE_TO="type=registry,ref=${FORGE_CACHE_FROM_PREFIX}/${REPO}:buildcache,mode=max"
 fi
 

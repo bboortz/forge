@@ -23,7 +23,7 @@ ARG HC_REF=ghcr.io/bboortz/hc:0.1.0
 # Pin via commit SHA for reproducibility; daily cron re-resolves `latest`
 # per the FG-012 externally-sourced pattern (we clone here, not FG-012's
 # `source:` block, because the rest of the Dockerfile is forge-local).
-ARG PSITRANSFER_VERSION=latest
+ARG PSITRANSFER_VERSION=""
 
 # --- Stage 0: fetch source via git clone ------------------------------------
 FROM ${BUILDER_NODE_REF} AS src
@@ -32,7 +32,7 @@ USER 0
 WORKDIR /src
 # hadolint ignore=DL3059,DL3003
 RUN set -eux; \
-    if [ "${PSITRANSFER_VERSION:-latest}" = "latest" ]; then \
+    if [ -z "${PSITRANSFER_VERSION:-}" ] || [ "${PSITRANSFER_VERSION}" = "latest" ]; then \
       git clone --depth=1 https://github.com/psi-4ward/psitransfer /src/psitransfer; \
     else \
       git clone https://github.com/psi-4ward/psitransfer /src/psitransfer; \
