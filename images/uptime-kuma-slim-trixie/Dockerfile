@@ -112,6 +112,11 @@ FROM ${BASE_NODE_SLIM_REF}
 ARG GIT_SHA=unknown
 ARG BUILD_TIMESTAMP=unknown
 
+
+# FG-077: base/node-slim-trixie defaults USER 65532 (nonroot). Override to
+# USER 0 for the apt-install block below; the Dockerfile sets USER node
+# later (line ~148) so runtime stays nonroot.
+USER 0
 LABEL org.opencontainers.image.source="https://github.com/bboortz/forge"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.description="Minimal, continuously patched Uptime Kuma (slim-trixie runtime; shell + apt kept; Chromium / browser monitors deliberately excluded — use the louislam upstream image if you need those)"

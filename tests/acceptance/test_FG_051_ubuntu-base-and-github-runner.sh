@@ -60,8 +60,8 @@ pass "all required files present"
 
 say "5. github-runner-noble Dockerfile uses forge-rooted UBUNTU_SLIM_NOBLE_REF + FG-050 latest-resolve"
 dockerfile=images/github-runner-noble/Dockerfile
-grep -qE 'FROM \$\{UBUNTU_SLIM_NOBLE_REF\}' "$dockerfile" \
-  || fail "Dockerfile must FROM \${UBUNTU_SLIM_NOBLE_REF} (forge-rooted Ubuntu base)"
+grep -qE 'FROM \$\{(UBUNTU_SLIM_NOBLE_REF|BASE_UBUNTU_SLIM_NOBLE_REF)\}' "$dockerfile" \
+  || fail "Dockerfile must FROM \${UBUNTU_SLIM_NOBLE_REF} or FG-077 \${BASE_UBUNTU_SLIM_NOBLE_REF}"
 grep -qE '^ARG RUNNER_VERSION=\s*$' "$dockerfile" \
   || fail "Dockerfile must have empty-default RUNNER_VERSION (FG-050 build.ref-latest-release pattern)"
 grep -q 'api.github.com/repos/actions/runner/releases/latest' "$dockerfile" \
