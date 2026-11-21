@@ -1,0 +1,8 @@
+# FG-080: scratch-musl overlay. Consumed via COPY --from= by scratch-Alpine
+# runtimes (nginx-scratch-alpine + future haproxy-scratch-alpine, etc.).
+repo: base/scratch-alpine-3
+tag: "3"
+platforms:
+  - linux/amd64
+depends_on:
+  - base/alpine-3

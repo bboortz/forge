@@ -806,3 +806,17 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-079
 - **Covered by**: `tests/acceptance/test_FG_079_alpine-base-family.sh`, `images/base/alpine-3/PROMISES.yaml`
+
+### image.scratch-alpine-foundation
+
+**FG-080**: `base/scratch-alpine-3` — scratch-musl overlay. Strict-intersection closure (musl loader + libc + CA bundle + nss stubs + /etc identity + UTC zone + /tmp 1777). Consumed via `COPY --from=` by scratch-Alpine runtimes. Parallel to `base/scratch-trixie` for glibc. Rule 12 ✓ — `FROM scratch` final stage + ≥1 forge-internal consumer (`nginx-scratch-alpine`).
+
+- **Delivered by**: FG-080
+- **Covered by**: `tests/acceptance/test_FG_080_nginx-scratch-alpine-and-scratch-alpine-base.sh`, `images/base/scratch-alpine-3/PROMISES.yaml`
+
+### image.nginx-scratch-alpine
+
+**FG-080**: `nginx-scratch-alpine` — nginx on Alpine/musl FROM scratch. 4-stage Dockerfile: scratch_base_alpine (overlay source) + builder (base/alpine-3 + apk add nginx + ldd closure) + sbom + runtime (FROM scratch + COPY overlay + COPY builder /out). ~15 MB. Serves on :80; HEALTHCHECK on `/`. Parallel to `nginx-scratch-trixie` (FG-006) for operators wanting a musl-sized runtime. First consumer of `base/scratch-alpine-3`; supersedes the long-draft FG-073.
+
+- **Delivered by**: FG-080 (supersedes FG-073 draft)
+- **Covered by**: `tests/acceptance/test_FG_080_nginx-scratch-alpine-and-scratch-alpine-base.sh`, `images/nginx-scratch-alpine/PROMISES.yaml`

@@ -1,0 +1,9 @@
+# FG-080: nginx on Alpine/musl FROM scratch. Overlay base/scratch-alpine-3.
+# Rebuilds nginx from Alpine's apk package; first consumer of base/
+# scratch-alpine-3 (satisfies Rule 12 for that L3 base).
+tag: "latest"
+platforms:
+  - linux/amd64
+depends_on:
+  - base/scratch-alpine-3
+  - base/alpine-3

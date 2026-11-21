@@ -1,0 +1,13 @@
+# FG-080: base/scratch-alpine-3's builder stage FROMs base/alpine-3 for
+# apk + musl + ca-certificates + tzdata.
+spec_version: 1
+image: scratch-alpine-3
+
+dependencies:
+  - image: alpine-3
+    version: ">=3.0"
+    expectations:
+      - promise: files.ca-certificates
+        reason: "scratch-alpine-3's builder stage copies /etc/ssl/certs/ca-certificates.crt from base/alpine-3's CA bundle into the scratch overlay."
+        preflight:
+          - images/base/scratch-alpine-3/tests/smoke_ca_bundle.sh
