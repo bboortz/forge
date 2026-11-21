@@ -45,6 +45,18 @@ promises:
     tests:
       - images/prometheus-scratch-trixie/tests/smoke_web_ui.sh
 
+  - id: files.console-templates
+    description: "/usr/share/prometheus/consoles + /usr/share/prometheus/console_libraries files are present. Operators pass --web.console.templates / --web.console.libraries to enable Prometheus' built-in /consoles/ UI pages (node.html, redis.html, etc.)."
+    caps: [image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_console_files.sh
+
+  - id: runtime.lifecycle-reload
+    description: "--web.enable-lifecycle serves POST /-/reload returning HTTP 200. Homelab compose uses this for hot-reload of prometheus.yml without restarting the container."
+    caps: [image.prometheus-serves-metrics]
+    tests:
+      - images/prometheus-scratch-trixie/tests/smoke_lifecycle_reload.sh
+
   - id: runtime.hc-binary
     description: "/hc is present and executable; baked HEALTHCHECK polls /-/healthy so `docker ps` reflects container health."
     caps: [image.hc-embedded, image.prometheus-serves-metrics]
