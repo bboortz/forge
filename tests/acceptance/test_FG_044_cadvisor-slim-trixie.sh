@@ -21,10 +21,11 @@ for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json \
   test -e "images/cadvisor-slim-trixie/${f}" \
     || fail "images/cadvisor-slim-trixie/${f} missing"
 done
-# Slim images do NOT ship EXPECTATIONS.yaml (no scratch-base dependency).
-test ! -e images/cadvisor-slim-trixie/EXPECTATIONS.yaml \
-  || fail "images/cadvisor-slim-trixie/EXPECTATIONS.yaml should not exist (slim, not scratch)"
-pass "all required files present (slim contract)"
+# FG-077: slim runtimes now declare base/* parent via depends_on; that
+# requires EXPECTATIONS.yaml (verify-contracts rule).
+test -e images/cadvisor-slim-trixie/EXPECTATIONS.yaml \
+  || fail "images/cadvisor-slim-trixie/EXPECTATIONS.yaml must exist post-FG-077 (declares base/debian-slim-trixie expectations)"
+pass "all required files present (slim contract post-FG-077)"
 
 say "2. cadvisor-slim-trixie:latest builds from Go source"
 bash scripts/build-image.sh cadvisor-slim-trixie >/dev/null

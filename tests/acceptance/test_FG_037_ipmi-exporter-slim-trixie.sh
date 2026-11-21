@@ -20,10 +20,12 @@ for f in Dockerfile image.yaml PROMISES.yaml scan-baseline.json \
   test -e "images/ipmi-exporter-slim-trixie/${f}" \
     || fail "images/ipmi-exporter-slim-trixie/${f} missing"
 done
-# Slim images do NOT ship EXPECTATIONS.yaml (no scratch-base dependency).
-test ! -e images/ipmi-exporter-slim-trixie/EXPECTATIONS.yaml \
-  || fail "images/ipmi-exporter-slim-trixie/EXPECTATIONS.yaml should not exist (slim, not scratch)"
-pass "all required files present (slim contract)"
+# FG-077: slim runtimes now declare base/* parent via depends_on; that
+# requires EXPECTATIONS.yaml (verify-contracts rule). Pre-FG-077 this
+# file was explicitly forbidden because the image had no depends_on.
+test -e images/ipmi-exporter-slim-trixie/EXPECTATIONS.yaml \
+  || fail "images/ipmi-exporter-slim-trixie/EXPECTATIONS.yaml must exist post-FG-077 (declares base/debian-slim-trixie expectations)"
+pass "all required files present (slim contract post-FG-077)"
 
 say "2. ipmi-exporter-slim-trixie:latest builds"
 bash scripts/build-image.sh ipmi-exporter-slim-trixie >/dev/null
