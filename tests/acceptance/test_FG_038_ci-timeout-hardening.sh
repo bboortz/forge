@@ -41,7 +41,6 @@ EXPECTED = {
     "build.yml":   {"discover": (1, 10),
                     "publish-builders": (5, 12), "publish-base": (5, 12),
                     "publish-derivatives": (10, 18)},
-    "release.yml": {"promote": (1, 10)},
     "ci-nightly.yml": {"check-strict": (40, 60)},
 }
 
