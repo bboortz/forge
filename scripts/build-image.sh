@@ -789,36 +789,85 @@ elif [[ -n "${BUILDX_CACHE_FROM}${BUILDX_CACHE_TO}" ]]; then
 fi
 
 echo "→ ${BUILD_CMD[*]} ${IMAGE_REF} (dockerfile=${BUILD_DOCKERFILE}, context=${BUILD_CONTEXT}, revision=${RESOLVED_SHA})"
-"${BUILD_CMD[@]}" \
-  ${PULL_FLAG} \
-  --build-arg GIT_SHA="${RESOLVED_SHA}" \
-  --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}" \
-  --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}" \
-  --build-arg BUILDER_PYTHON_REF="${BUILDER_PYTHON_REF}" \
-  --build-arg BUILDER_GO_REF="${BUILDER_GO_REF}" \
-  --build-arg BUILDER_NODE_REF="${BUILDER_NODE_REF}" \
-  --build-arg DEBIAN_SLIM_REF="${DEBIAN_SLIM_REF}" \
-  --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}" \
-  --build-arg UBUNTU_SLIM_NOBLE_REF="${UBUNTU_SLIM_NOBLE_REF}" \
-  --build-arg NODE_SLIM_REF="${NODE_SLIM_REF}" \
-  --build-arg GO_SLIM_REF="${GO_SLIM_REF}" \
-  --build-arg ZIG_SLIM_REF="${ZIG_SLIM_REF}" \
-  --build-arg SYFT_REF="${SYFT_REF}" \
-  --build-arg HC_REF="${HC_REF}" \
-  --build-arg BASE_DEBIAN_SLIM_REF="${BASE_DEBIAN_SLIM_REF}" \
-  --build-arg BASE_UBUNTU_SLIM_NOBLE_REF="${BASE_UBUNTU_SLIM_NOBLE_REF}" \
-  --build-arg BASE_NODE_SLIM_REF="${BASE_NODE_SLIM_REF}" \
-  --build-arg ALPINE_REF="${ALPINE_REF}" \
-  --build-arg BASE_ALPINE_REF="${BASE_ALPINE_REF}" \
-  --build-arg BASE_SCRATCH_ALPINE_REF="${BASE_SCRATCH_ALPINE_REF}" \
-  --build-arg ARCHLINUX_REF="${ARCHLINUX_REF}" \
-  --build-arg BASE_ARCHLINUX_REF="${BASE_ARCHLINUX_REF}" \
-  --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
-  "${EXTRA_LABELS[@]}" \
-  "${CACHE_ARGS[@]}" \
-  --file "${BUILD_DOCKERFILE}" \
-  --tag "${IMAGE_REF}" \
+
+# Assemble args in an array so we can (a) retry on Docker Hub 429s and
+# (b) drop --pull on the last attempt to fall back to the daemon cache.
+BUILD_ARGS=()
+[[ -n "${PULL_FLAG}" ]] && BUILD_ARGS+=("${PULL_FLAG}")
+BUILD_ARGS+=(
+  --build-arg GIT_SHA="${RESOLVED_SHA}"
+  --build-arg BUILD_TIMESTAMP="${BUILD_TIMESTAMP}"
+  --build-arg SCRATCH_BASE_REF="${SCRATCH_BASE_REF}"
+  --build-arg BUILDER_PYTHON_REF="${BUILDER_PYTHON_REF}"
+  --build-arg BUILDER_GO_REF="${BUILDER_GO_REF}"
+  --build-arg BUILDER_NODE_REF="${BUILDER_NODE_REF}"
+  --build-arg DEBIAN_SLIM_REF="${DEBIAN_SLIM_REF}"
+  --build-arg PYTHON_SLIM_REF="${PYTHON_SLIM_REF}"
+  --build-arg UBUNTU_SLIM_NOBLE_REF="${UBUNTU_SLIM_NOBLE_REF}"
+  --build-arg NODE_SLIM_REF="${NODE_SLIM_REF}"
+  --build-arg GO_SLIM_REF="${GO_SLIM_REF}"
+  --build-arg ZIG_SLIM_REF="${ZIG_SLIM_REF}"
+  --build-arg SYFT_REF="${SYFT_REF}"
+  --build-arg HC_REF="${HC_REF}"
+  --build-arg BASE_DEBIAN_SLIM_REF="${BASE_DEBIAN_SLIM_REF}"
+  --build-arg BASE_UBUNTU_SLIM_NOBLE_REF="${BASE_UBUNTU_SLIM_NOBLE_REF}"
+  --build-arg BASE_NODE_SLIM_REF="${BASE_NODE_SLIM_REF}"
+  --build-arg ALPINE_REF="${ALPINE_REF}"
+  --build-arg BASE_ALPINE_REF="${BASE_ALPINE_REF}"
+  --build-arg BASE_SCRATCH_ALPINE_REF="${BASE_SCRATCH_ALPINE_REF}"
+  --build-arg ARCHLINUX_REF="${ARCHLINUX_REF}"
+  --build-arg BASE_ARCHLINUX_REF="${BASE_ARCHLINUX_REF}"
+  --build-arg GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+  "${EXTRA_LABELS[@]}"
+  "${CACHE_ARGS[@]}"
+  --file "${BUILD_DOCKERFILE}"
+  --tag "${IMAGE_REF}"
   "${BUILD_CONTEXT}"
+)
+
+# SH-019: retry on Docker Hub HTTP 429 (sustained rate-limit when the full
+# matrix cold-builds 59 images each HEADing the registry). Non-429 failures
+# fail-fast — we never mask bugs behind retries. Attempt 3 drops --pull so
+# the daemon cache can serve the FROM image if a prior session pulled it.
+_build_log=$(mktemp)
+trap 'rm -f "${_build_log}"' EXIT
+
+_rc=0
+for _attempt in 1 2 3; do
+  if [[ "${_attempt}" -gt 1 ]]; then
+    echo "→ docker build retry ${_attempt}/3"
+  fi
+  : > "${_build_log}"
+  set +e
+  "${BUILD_CMD[@]}" "${BUILD_ARGS[@]}" 2>&1 | tee "${_build_log}"
+  _rc=${PIPESTATUS[0]}
+  set -e
+  [[ "${_rc}" -eq 0 ]] && break
+  if ! grep -q '429 Too Many Requests' "${_build_log}"; then
+    exit "${_rc}"
+  fi
+  [[ "${_attempt}" -ge 3 ]] && break
+  _sleep=$((15 * _attempt))
+  _next=$((_attempt + 1))
+  echo "→ Docker Hub rate-limited (HTTP 429); sleeping ${_sleep}s before retry ${_next}/3..." >&2
+  sleep "${_sleep}"
+  if [[ "${_attempt}" -eq 2 ]]; then
+    _new_args=()
+    _had_pull=0
+    for _a in "${BUILD_ARGS[@]}"; do
+      if [[ "${_a}" == "--pull" ]]; then _had_pull=1; continue; fi
+      _new_args+=("${_a}")
+    done
+    if [[ "${_had_pull}" -eq 1 ]]; then
+      echo "→ retry 3/3: dropping --pull (fall back to daemon cache for FROM image)" >&2
+      BUILD_ARGS=("${_new_args[@]}")
+    fi
+  fi
+done
+if [[ "${_rc}" -ne 0 ]]; then
+  echo "✗ docker build failed after 3 attempts (last rc=${_rc}); Docker Hub rate-limit persisted" >&2
+  exit "${_rc}"
+fi
 
 # FG-023: record stamp of the inputs that produced this image so a
 # subsequent invocation with identical inputs can skip docker build.
