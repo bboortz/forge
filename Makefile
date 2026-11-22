@@ -127,7 +127,7 @@ verify-source-inventory:
 # FG-042 follow-up: catch any new Dockerfile that FROMs python:3.14-slim-trixie
 # or debian:trixie-slim directly instead of going through the forge-rooted
 # pre-builders (python-slim-trixie / debian-slim-trixie). Pre-commit guard;
-# ci.yml's acceptance-test §7 is the complementary CI guard.
+# ci-branch.yml's acceptance-test §7 is the complementary CI guard.
 verify-no-upstream-drift:
 	@bash scripts/verify-no-upstream-drift.sh
 

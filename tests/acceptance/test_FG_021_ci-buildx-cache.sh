@@ -70,23 +70,23 @@ grep -q ':buildcache' scripts/build-image.sh || {
 pass "per-image buildcache tag derivation present"
 
 # -----------------------------------------------------------------------------
-# Section 4 — ci.yml wires buildx + GHCR login + cache env
+# Section 4 — ci-branch.yml wires buildx + GHCR login + cache env
 # -----------------------------------------------------------------------------
-say "4. ci.yml full-check job wires buildx + grype cache + cache env"
-grep -q 'docker/setup-buildx-action' .github/workflows/ci.yml \
-  || { echo "  ✗ ci.yml missing docker/setup-buildx-action" >&2; exit 1; }
-grep -q 'docker/login-action' .github/workflows/ci.yml \
-  || { echo "  ✗ ci.yml missing docker/login-action" >&2; exit 1; }
-grep -Eq 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci.yml \
-  || { echo "  ✗ ci.yml missing actions/cache" >&2; exit 1; }
+say "4. ci-branch.yml full-check job wires buildx + grype cache + cache env"
+grep -q 'docker/setup-buildx-action' .github/workflows/ci-branch.yml \
+  || { echo "  ✗ ci-branch.yml missing docker/setup-buildx-action" >&2; exit 1; }
+grep -q 'docker/login-action' .github/workflows/ci-branch.yml \
+  || { echo "  ✗ ci-branch.yml missing docker/login-action" >&2; exit 1; }
+grep -Eq 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci-branch.yml \
+  || { echo "  ✗ ci-branch.yml missing actions/cache" >&2; exit 1; }
 # shellcheck disable=SC2088  # literal ~ in YAML, not shell-expanded
-grep -q '~/\.cache/grype' .github/workflows/ci.yml \
-  || { echo "  ✗ ci.yml cache path isn't ~/.cache/grype" >&2; exit 1; }
-grep -q 'FORGE_CACHE_FROM_PREFIX' .github/workflows/ci.yml \
-  || { echo "  ✗ ci.yml doesn't set FORGE_CACHE_FROM_PREFIX" >&2; exit 1; }
-grep -q 'FORGE_CACHE_PUSH' .github/workflows/ci.yml \
-  || { echo "  ✗ ci.yml doesn't set FORGE_CACHE_PUSH" >&2; exit 1; }
-pass "ci.yml fully wired"
+grep -q '~/\.cache/grype' .github/workflows/ci-branch.yml \
+  || { echo "  ✗ ci-branch.yml cache path isn't ~/.cache/grype" >&2; exit 1; }
+grep -q 'FORGE_CACHE_FROM_PREFIX' .github/workflows/ci-branch.yml \
+  || { echo "  ✗ ci-branch.yml doesn't set FORGE_CACHE_FROM_PREFIX" >&2; exit 1; }
+grep -q 'FORGE_CACHE_PUSH' .github/workflows/ci-branch.yml \
+  || { echo "  ✗ ci-branch.yml doesn't set FORGE_CACHE_PUSH" >&2; exit 1; }
+pass "ci-branch.yml fully wired"
 
 # -----------------------------------------------------------------------------
 # Section 5 — build.yml wires buildx + grype cache on both publish jobs
@@ -101,25 +101,25 @@ cache_count=$(grep -Ec 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/
 pass "build.yml covers both publish jobs"
 
 # -----------------------------------------------------------------------------
-# Section 6 — nightly.yml has buildx + grype cache
+# Section 6 — ci-nightly.yml has buildx + grype cache
 # -----------------------------------------------------------------------------
-say "6. nightly.yml has buildx + grype cache"
-grep -q 'docker/setup-buildx-action' .github/workflows/nightly.yml \
-  || { echo "  ✗ nightly.yml missing buildx setup" >&2; exit 1; }
+say "6. ci-nightly.yml has buildx + grype cache"
+grep -q 'docker/setup-buildx-action' .github/workflows/ci-nightly.yml \
+  || { echo "  ✗ ci-nightly.yml missing buildx setup" >&2; exit 1; }
 # shellcheck disable=SC2088  # literal ~ in YAML, not shell-expanded
-grep -q '~/\.cache/grype' .github/workflows/nightly.yml \
-  || { echo "  ✗ nightly.yml missing grype cache" >&2; exit 1; }
+grep -q '~/\.cache/grype' .github/workflows/ci-nightly.yml \
+  || { echo "  ✗ ci-nightly.yml missing grype cache" >&2; exit 1; }
 # Nightly doesn't push cache (it's a clean-cache audit).
-grep -qE "FORGE_CACHE_PUSH:\s*'0'" .github/workflows/nightly.yml \
-  || { echo "  ✗ nightly.yml should set FORGE_CACHE_PUSH=0" >&2; exit 1; }
-pass "nightly.yml: buildx + grype cache, no cache push"
+grep -qE "FORGE_CACHE_PUSH:\s*'0'" .github/workflows/ci-nightly.yml \
+  || { echo "  ✗ ci-nightly.yml should set FORGE_CACHE_PUSH=0" >&2; exit 1; }
+pass "ci-nightly.yml: buildx + grype cache, no cache push"
 
 # -----------------------------------------------------------------------------
 # Section 7 — PR events don't push cache (fork-safe)
 # -----------------------------------------------------------------------------
-say "7. ci.yml: FORGE_CACHE_PUSH is 0 on PRs, 1 on push"
-grep -q "github.event_name == 'push' && '1' || '0'" .github/workflows/ci.yml \
-  || { echo "  ✗ ci.yml FORGE_CACHE_PUSH gate not wired to push vs PR" >&2; exit 1; }
+say "7. ci-branch.yml: FORGE_CACHE_PUSH is 0 on PRs, 1 on push"
+grep -q "github.event_name == 'push' && '1' || '0'" .github/workflows/ci-branch.yml \
+  || { echo "  ✗ ci-branch.yml FORGE_CACHE_PUSH gate not wired to push vs PR" >&2; exit 1; }
 pass "PR events cache-pull-only; push-to-dev writes the cache"
 
 # -----------------------------------------------------------------------------
@@ -127,7 +127,7 @@ pass "PR events cache-pull-only; push-to-dev writes the cache"
 # -----------------------------------------------------------------------------
 say "8. updated workflows lint clean"
 yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" \
-  .github/workflows/ci.yml .github/workflows/build.yml .github/workflows/nightly.yml >/dev/null
+  .github/workflows/ci-branch.yml .github/workflows/build.yml .github/workflows/ci-nightly.yml >/dev/null
 pass "yamllint clean"
 
 echo

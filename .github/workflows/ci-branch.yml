@@ -7,7 +7,7 @@
 # FG-024: acceptance tests fan out as a GHA matrix (one job per test file).
 # Wall-clock bound = slowest single test. Local `make check` is unchanged.
 
-name: CI
+name: ci-branch
 
 "on":
   push:

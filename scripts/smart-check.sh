@@ -107,9 +107,9 @@ _CORE_SCRIPTS=(
 # The bailout now matches only workflows that actually affect image-
 # build semantics:
 #
-#   ci.yml       — the acceptance matrix + lint-verify
+#   ci-branch.yml       — the acceptance matrix + lint-verify
 #   build.yml    — the nightly image publish
-#   nightly.yml  — nightly check-strict sweep
+#   ci-nightly.yml  — nightly check-strict sweep
 #
 # Other workflows fall through to the scoped path. test-fast still
 # always runs in the scoped path (covers lint + verify-* + yamllint on
