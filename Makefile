@@ -255,3 +255,38 @@ check-smart:
 # nightly cron still runs check-strict from cold as the safety net.
 check-smart-strict:
 	@bash scripts/smart-check.sh
+
+##@ Shepherd dev-cycle contract (SH-014 / SH-019)
+#
+# Spec: https://github.com/bboortz/shepherd/blob/main/docs/specs/dev-cycle-contract.md
+#
+# Forge was flagged in the dev-cycle doc as having an "early start" for
+# affected-only: scripts/affected_images.py + scripts/smart-check.sh. This
+# PR wires that native idiom into the shepherd contract.
+#
+# Dev-cycle-doc prescription for forge:
+# - `make test` (alias of `test-fast`) — currently missing.
+# - `test-affected` uses `scripts/smart-check.sh`.
+
+.PHONY: test test-affected smoke release-artifacts \
+        ci-branch ci-patch ci-release ci-nightly ci-nightly-body
+
+# Dev-cycle-doc prescription: `make test` alias of `test-fast`. Was missing.
+test: test-fast
+
+# Contract entry points — anchor on forge's native idioms.
+test-affected:
+	@bash scripts/smart-check.sh   # FG-017 scoped run: affected images only
+# `smoke` = test-fast (fast lint + verify-* without image builds).
+smoke: test-fast
+# `release-artifacts` — forge's build target builds images. ci-release will
+# promote-by-digest in a later SH (SH-022 scope extension).
+release-artifacts: build
+
+# Tier bodies.
+ci-branch:  lint test-affected    # 5-min PR gate: lint + affected-only scoped run
+ci-patch:   smoke                  # post-merge smoke (fast; no rebuild)
+ci-release:
+	@echo "ci-release: forge images are published by the nightly build.yml; promote-by-digest arrives with SH-022"
+ci-nightly: ci-nightly-body
+ci-nightly-body: check-strict      # nightly: full 83-test matrix from cold
