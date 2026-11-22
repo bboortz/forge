@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# FG-064 — Render the mermaid block inside docs/image-dependency-graph.md
-# to docs/image-dependency-graph.svg via the mermaid-cli Docker image.
+# FG-064 — Render the mermaid block inside docs/specs/image-dependency-graph.md
+# to docs/specs/image-dependency-graph.svg via the mermaid-cli Docker image.
 #
 # Docker-based so forge contributors don't need to install node + puppeteer
 # locally. Version pinning keeps output reproducible for the drift gate.
@@ -13,8 +13,8 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 MERMAID_CLI_IMAGE="${FORGE_MERMAID_CLI_IMAGE:-minlag/mermaid-cli:11.4.2}"
-SRC_MD="docs/image-dependency-graph.md"
-OUT_SVG="docs/image-dependency-graph.svg"
+SRC_MD="docs/specs/image-dependency-graph.md"
+OUT_SVG="docs/specs/image-dependency-graph.svg"
 STAGE_MMD=".make/dep-graph.mmd"
 
 # Docker daemon reachable? Graceful no-op otherwise.

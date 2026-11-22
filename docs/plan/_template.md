@@ -32,4 +32,4 @@ Filled at pre-ship audit (step 6a). One row per Gherkin scenario + one per CAP d
 | Item | Pointer | Status |
 |------|---------|--------|
 | Scenario: <name> | `tests/acceptance/test_FG_NNN_<slug>.sh:<line>` | ⚠️ |
-| CAP `<cap.id>` | `tests/acceptance/test_FG_NNN_<slug>.sh:<line>` + `docs/CAPABILITIES.md#<cap.id>` | ⚠️ |
+| CAP `<cap.id>` | `tests/acceptance/test_FG_NNN_<slug>.sh:<line>` + `docs/specs/CAPABILITIES.md#<cap.id>` | ⚠️ |

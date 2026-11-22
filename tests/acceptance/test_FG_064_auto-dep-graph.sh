@@ -78,34 +78,34 @@ pass "emitter output is well-formed + covers every image"
 # --- (4) idempotent: running --write twice leaves the file identical --------
 say "4. make dep-graph is idempotent"
 make dep-graph >/dev/null
-sha_a=$(sha256sum docs/image-dependency-graph.md | awk '{print $1}')
+sha_a=$(sha256sum docs/specs/image-dependency-graph.md | awk '{print $1}')
 make dep-graph >/dev/null
-sha_b=$(sha256sum docs/image-dependency-graph.md | awk '{print $1}')
+sha_b=$(sha256sum docs/specs/image-dependency-graph.md | awk '{print $1}')
 [[ "${sha_a}" == "${sha_b}" ]] \
   || fail "make dep-graph is not idempotent (sha changed ${sha_a} → ${sha_b})"
 pass "idempotent"
 
 # --- (5) GENERATED markers preserved + narrative outside markers untouched --
 say "5. generator respects the GENERATED markers"
-grep -q "<!-- GENERATED:dep-graph START" docs/image-dependency-graph.md \
+grep -q "<!-- GENERATED:dep-graph START" docs/specs/image-dependency-graph.md \
   || fail "START marker missing after regen"
-grep -q "<!-- GENERATED:dep-graph END -->" docs/image-dependency-graph.md \
+grep -q "<!-- GENERATED:dep-graph END -->" docs/specs/image-dependency-graph.md \
   || fail "END marker missing after regen"
 # Facts section must still exist outside the markers.
-grep -q "^## Facts behind the graph" docs/image-dependency-graph.md \
+grep -q "^## Facts behind the graph" docs/specs/image-dependency-graph.md \
   || fail "Facts narrative section was lost"
-grep -q "^## Regenerating" docs/image-dependency-graph.md \
+grep -q "^## Regenerating" docs/specs/image-dependency-graph.md \
   || fail "Regenerating narrative section was lost"
 pass "markers + narrative preserved"
 
 # --- (6) 5-layer subgraph structure ----------------------------------------
 say "6. output enforces the 5-layer subgraph structure"
 for sg in L0_upstream L1_prebuilders L2_builders L3_baseline L4_runtimes; do
-  grep -q "subgraph ${sg}\[" docs/image-dependency-graph.md \
+  grep -q "subgraph ${sg}\[" docs/specs/image-dependency-graph.md \
     || fail "subgraph ${sg} missing"
 done
 # Subgraph order: L0 before L1 before L2 before L3 before L4.
-awk '/subgraph L[0-4]_/ {print NR, $0}' docs/image-dependency-graph.md \
+awk '/subgraph L[0-4]_/ {print NR, $0}' docs/specs/image-dependency-graph.md \
   | awk 'BEGIN{p=-1} {match($0, /L([0-4])_/, m); if (m[1] <= p) exit 1; p=m[1]} END{exit 0}' \
   || fail "subgraphs are not in L0 → L4 order"
 pass "5 subgraphs present, in order"
@@ -125,9 +125,9 @@ say "8. external-sourced images (FG-012) show dashed edge from BEACONRY_SRC + so
 for b in beaconry-hub beaconry-scout beaconry-telegram-mock; do
   # FG-076 retired the UP_BEACONRY L0 dashed edge (was a duplicate of the
   # canonical SRC_* L0.1 source edge). Only the L0.1 edge remains.
-  grep -q "SRC_GH_BBOORTZ_BEACONRY -\\.-> ${b}" docs/image-dependency-graph.md \
+  grep -q "SRC_GH_BBOORTZ_BEACONRY -\\.-> ${b}" docs/specs/image-dependency-graph.md \
     || fail "${b}: missing dashed L0.1 source edge (SRC_GH_BBOORTZ_BEACONRY)"
-  grep -q "base_python_scratch_trixie --> ${b}" docs/image-dependency-graph.md \
+  grep -q "base_python_scratch_trixie --> ${b}" docs/specs/image-dependency-graph.md \
     || fail "${b}: missing solid base_python_scratch_trixie edge"
 done
 pass "external-sourced graph edges present"
@@ -135,9 +135,9 @@ pass "external-sourced graph edges present"
 # --- (9) multi-builder images show every builder edge ----------------------
 say "9. prometheus-scratch-trixie + alertmanager-scratch-trixie show BOTH builder edges"
 for img in prometheus-scratch-trixie alertmanager-scratch-trixie; do
-  grep -q "builder_go_trixie --> ${img}" docs/image-dependency-graph.md \
+  grep -q "builder_go_trixie --> ${img}" docs/specs/image-dependency-graph.md \
     || fail "${img}: missing builder/go-trixie edge"
-  grep -q "builder_node_trixie --> ${img}" docs/image-dependency-graph.md \
+  grep -q "builder_node_trixie --> ${img}" docs/specs/image-dependency-graph.md \
     || fail "${img}: missing builder/node-trixie edge"
 done
 pass "dual-builder edges present"
@@ -146,7 +146,7 @@ pass "dual-builder edges present"
 say "10. make verify-dep-graph-fresh green after a regen+stage cycle"
 make dep-graph >/dev/null
 # Stage the regen'd file so git diff --exit-code (vs index) is clean.
-git add docs/image-dependency-graph.md 2>/dev/null || true
+git add docs/specs/image-dependency-graph.md 2>/dev/null || true
 make verify-dep-graph-fresh >/dev/null \
   || fail "make verify-dep-graph-fresh failed even after regen+stage"
 pass "drift gate green when file is fresh"
@@ -168,29 +168,29 @@ pass "wired into pre-commit + test-fast (CI picks it up via make test-fast)"
 # --- (12) legend / classDef / palette preserved -----------------------------
 say "12. classDef palette matches the hand-maintained one"
 for cls in upstream prebuilder builder baseline slim scratch external; do
-  grep -q "classDef ${cls}" docs/image-dependency-graph.md \
+  grep -q "classDef ${cls}" docs/specs/image-dependency-graph.md \
     || fail "classDef ${cls} missing from regenerated block"
 done
 pass "7 classDef entries present"
 
 # --- (13) hybrid layout: SVG image + collapsible mermaid source ------------
 say "13. hybrid layout: SVG image + <details> mermaid source"
-grep -q '!\[Image dependency graph\](image-dependency-graph.svg)' docs/image-dependency-graph.md \
+grep -q '!\[Image dependency graph\](image-dependency-graph.svg)' docs/specs/image-dependency-graph.md \
   || fail "markdown must embed the SVG via ![...](image-dependency-graph.svg)"
-grep -q '^<details>' docs/image-dependency-graph.md \
+grep -q '^<details>' docs/specs/image-dependency-graph.md \
   || fail "markdown must wrap the mermaid source in <details>"
-grep -q '^</details>' docs/image-dependency-graph.md \
+grep -q '^</details>' docs/specs/image-dependency-graph.md \
   || fail "markdown must close </details> after the mermaid source"
 pass "SVG embedded + mermaid source inside <details>"
 
 # --- (14) SVG exists, valid, and references the committed node set ---------
-say "14. docs/image-dependency-graph.svg exists and is a well-formed SVG"
-[[ -f docs/image-dependency-graph.svg ]] \
-  || fail 'docs/image-dependency-graph.svg missing — run make dep-graph'
-head -1 docs/image-dependency-graph.svg | grep -q '<svg' \
-  || fail "docs/image-dependency-graph.svg does not start with <svg"
-tail -1 docs/image-dependency-graph.svg | grep -q '</svg>' \
-  || fail "docs/image-dependency-graph.svg does not end with </svg>"
+say "14. docs/specs/image-dependency-graph.svg exists and is a well-formed SVG"
+[[ -f docs/specs/image-dependency-graph.svg ]] \
+  || fail 'docs/specs/image-dependency-graph.svg missing — run make dep-graph'
+head -1 docs/specs/image-dependency-graph.svg | grep -q '<svg' \
+  || fail "docs/specs/image-dependency-graph.svg does not start with <svg"
+tail -1 docs/specs/image-dependency-graph.svg | grep -q '</svg>' \
+  || fail "docs/specs/image-dependency-graph.svg does not end with </svg>"
 pass "SVG exists, well-formed"
 
 # --- (15) scripts/mermaid-to-svg.sh present + executable -------------------
@@ -216,7 +216,7 @@ _tmpgraph=$(mktemp -d)
 trap 'rm -rf "${_tmpgraph}"' EXIT
 python3 scripts/image_from_graph.py --emit=mermaid > "${_tmpgraph}/gen.md"
 # Build a temp fresh markdown with the same marker block for a diff.
-if diff -q "${_tmpgraph}/gen.md" <(awk '/<!-- GENERATED:dep-graph START/{found=1;next} found && /<!-- GENERATED:dep-graph END/{exit} found' docs/image-dependency-graph.md) >/dev/null 2>&1; then
+if diff -q "${_tmpgraph}/gen.md" <(awk '/<!-- GENERATED:dep-graph START/{found=1;next} found && /<!-- GENERATED:dep-graph END/{exit} found' docs/specs/image-dependency-graph.md) >/dev/null 2>&1; then
   pass "dep graph generator output matches committed .md (no topology diff to check)"
 else
 _file_ts() {
@@ -234,13 +234,13 @@ _file_ts() {
   # Committed + clean → use last commit timestamp.
   git log -1 --format=%ct -- "$f" 2>/dev/null || echo 0
 }
-graph_ts_md=$(_file_ts docs/image-dependency-graph.md)
-graph_ts_svg=$(_file_ts docs/image-dependency-graph.svg)
+graph_ts_md=$(_file_ts docs/specs/image-dependency-graph.md)
+graph_ts_svg=$(_file_ts docs/specs/image-dependency-graph.svg)
 # Pick the OLDER of the two artifacts (both must be at least as new as every input).
 if (( graph_ts_md <= graph_ts_svg )); then
-  graph_ts=${graph_ts_md}; older_artifact="docs/image-dependency-graph.md"
+  graph_ts=${graph_ts_md}; older_artifact="docs/specs/image-dependency-graph.md"
 else
-  graph_ts=${graph_ts_svg}; older_artifact="docs/image-dependency-graph.svg"
+  graph_ts=${graph_ts_svg}; older_artifact="docs/specs/image-dependency-graph.svg"
 fi
 offenders=()
 while IFS= read -r f; do

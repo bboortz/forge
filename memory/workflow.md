@@ -26,7 +26,7 @@ Per feature (FG-NNN):
 4.  Implementation          Smallest change that turns the red test green.
 5.  Refactor + helpers      tests/unit/ (bats) for non-trivial helpers.
                             Every test file carries a `Covers:` block.
-5a. Register capabilities   docs/CAPABILITIES.md — add/extend entries; bidirectional
+5a. Register capabilities   docs/specs/CAPABILITIES.md — add/extend entries; bidirectional
                             links checked by make verify-traceability.
 6.  Gates                   make check (see matrix below). For image-touching
                             changes also: make build + scan + verify locally.
@@ -86,7 +86,7 @@ Lifecycle: `draft → ready → in-progress → shipped` (frontmatter + INDEX).
 
 ## Capability matrix
 
-`docs/CAPABILITIES.md` is the source of truth for what Forge can do, with bidirectional links to the acceptance tests. Example CAP ids: `build.two-stage-scratch`, `build.multi-arch`, `pins.sid-pin`, `pins.audit-staleness`, `scan.grype-attest`, `scan.regression-gate`, `sbom.cyclonedx-attest`, `sign.cosign-keyless-oidc`, `sign.cosign-local-dev`, `verify.consumer-cmd`, `publish.daily-cron`, `publish.date-tagged-aliases`, `publish.ghcr-public-pull`.
+`docs/specs/CAPABILITIES.md` is the source of truth for what Forge can do, with bidirectional links to the acceptance tests. Example CAP ids: `build.two-stage-scratch`, `build.multi-arch`, `pins.sid-pin`, `pins.audit-staleness`, `scan.grype-attest`, `scan.regression-gate`, `sbom.cyclonedx-attest`, `sign.cosign-keyless-oidc`, `sign.cosign-local-dev`, `verify.consumer-cmd`, `publish.daily-cron`, `publish.date-tagged-aliases`, `publish.ghcr-public-pull`.
 
 `make verify-traceability` enforces: every CAP has ≥1 test pointer; every acceptance test's `Covers:` block names only known CAPs; every `ready+` story has at least one CAP in question 9.
 
@@ -144,7 +144,7 @@ Mocking rule: cosign / grype / syft run for real against local test images — n
 - [ ] Dockerfile two-stage; hadolint clean
 - [ ] `images/<name>/build.sh` written (`set -euo pipefail`)
 - [ ] Wired into Makefile + `.github/workflows/{build,pr}.yml`
-- [ ] CAPs registered in `docs/CAPABILITIES.md`; bidirectional links present
+- [ ] CAPs registered in `docs/specs/CAPABILITIES.md`; bidirectional links present
 - [ ] Shipping evidence table ✅
 - [ ] First grype scan captured as baseline
 - [ ] README `§ Images` table updated when ready to publish

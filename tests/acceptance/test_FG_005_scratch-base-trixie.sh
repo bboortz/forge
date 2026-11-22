@@ -95,8 +95,8 @@ pass "baseline size ${size}B ≤ 25 MB ceiling"
 # Section 7 — differentiators doc explains the baseline layer
 # -----------------------------------------------------------------------------
 say "7. differentiators.md mentions the baseline"
-if ! grep -q 'base/scratch-trixie' docs/differentiators.md; then
-  echo "  ✗ docs/differentiators.md doesn't reference base/scratch-trixie" >&2
+if ! grep -q 'base/scratch-trixie' docs/specs/differentiators.md; then
+  echo "  ✗ docs/specs/differentiators.md doesn't reference base/scratch-trixie" >&2
   exit 1
 fi
 pass "differentiators.md documents the baseline layer"

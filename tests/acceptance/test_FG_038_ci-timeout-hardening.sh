@@ -121,8 +121,8 @@ pass "flaky steps carry continue-on-error + short timeouts"
 # Section 3 — CAP registered
 # -----------------------------------------------------------------------------
 say "3. CAP ci.timeout-hardened registered"
-grep -q '^### ci\.timeout-hardened' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md: missing CAP ci.timeout-hardened"
+grep -q '^### ci\.timeout-hardened' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md: missing CAP ci.timeout-hardened"
 pass "ci.timeout-hardened entry present"
 
 echo

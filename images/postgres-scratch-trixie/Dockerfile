@@ -146,7 +146,7 @@ COPY --from=builder /sbom.json /sbom.json
 # FG-009: baseline's ENV SSL_CERT_FILE does NOT propagate through COPY —
 # re-declare here so postgres can do outbound TLS (e.g. postgres_fdw
 # connecting to a TLS-encrypted remote instance, extensions issuing HTTPS
-# calls). See docs/baseline-contract.md § "TLS trust".
+# calls). See docs/specs/baseline-contract.md § "TLS trust".
 ENV PATH=/usr/lib/postgresql/18/bin \
     PGDATA=/var/lib/postgresql/data \
     LANG=C.UTF-8 \

@@ -43,15 +43,15 @@ done
 pass "all 8 baseline smokes green"
 
 # -----------------------------------------------------------------------------
-# Section 3 — docs/baseline-contract.md exists + documents the API
+# Section 3 — docs/specs/baseline-contract.md exists + documents the API
 # -----------------------------------------------------------------------------
-say "3. docs/baseline-contract.md published"
-test -f docs/baseline-contract.md
+say "3. docs/specs/baseline-contract.md published"
+test -f docs/specs/baseline-contract.md
 for term in 'base/scratch-trixie' 'nonroot' '65532' '65534' 'www-data' 'postgres' \
             'SSL_CERT_FILE' '/etc/services' '/etc/localtime' '/var/tmp' \
             'Composition contract' 'Non-guarantees' 'Reserved UIDs'; do
-  if ! grep -q "${term}" docs/baseline-contract.md; then
-    echo "  ✗ docs/baseline-contract.md missing required term: ${term}" >&2
+  if ! grep -q "${term}" docs/specs/baseline-contract.md; then
+    echo "  ✗ docs/specs/baseline-contract.md missing required term: ${term}" >&2
     exit 1
   fi
 done

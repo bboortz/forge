@@ -154,7 +154,7 @@ COPY --from=hc /hc /hc
 # we must re-declare here or every TLS call (urllib, requests, pip install,
 # grype DB download, Telegram API) fails with CERTIFICATE_VERIFY_FAILED.
 # See memory/scratch-closures.md § "ENV doesn't propagate" and
-# docs/baseline-contract.md § "TLS trust".
+# docs/specs/baseline-contract.md § "TLS trust".
 ENV PATH=/usr/local/bin \
     LANG=C.UTF-8 \
     SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \

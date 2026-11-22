@@ -1,6 +1,6 @@
 # The Forge 7-tier layering model
 
-**Status**: authoritative reference (post-FG-075, 2026-11-21). Supersedes the "definitions" section of `docs/plan/tier-layering-model.md`, which now reads as the migration history.
+**Status**: authoritative reference (post-FG-075, 2026-11-21). Supersedes the "definitions" section of `docs/specs/tier-layering-model.md`, which now reads as the migration history.
 
 **Audience**: Forge maintainers deciding where a new image belongs, downstream auditors verifying tier shape, and Claude sessions resolving ambiguity when adding or moving images.
 
@@ -156,7 +156,7 @@ Every tier has a **🔑 semantic test** — a single question that disambiguates
 | **Consumer requirement** | **ZERO forge-internal consumers** (if ≥1, it's an L3 base) |
 | **Published under** | `ghcr.io/bboortz/<name>` (flat — no tier prefix) |
 | **Size budget** | Varies (400 KB `healthy-scratch-trixie` → 600+ MB `github-runner-noble`) |
-| **Current members (17)** | See `docs/image-dependency-graph.md`; grouped in §4 below by construction pattern |
+| **Current members (17)** | See `docs/specs/image-dependency-graph.md`; grouped in §4 below by construction pattern |
 | **Documented exemption** | `postgres-slim-trixie` FROMs `postgres:18` directly — rebuilding postgres from source is too big. Allowlisted via `_UPSTREAM_FROM_RUNTIME_EXEMPTIONS`. |
 | **🔑 Semantic test** | *"Is this image consumer-facing (pulled by external operators) AND has zero forge-internal consumers?"* → L4 |
 
@@ -350,14 +350,14 @@ Future candidates (would land as separate FGs): `base/node-slim-trixie`, `base/n
 
 No CI gate blocks external consumers from FROMing internal tiers — that's a consumer-side policy call. But:
 - `scripts/verify-dockerfile-conformance.py` enforces internally that `pre-builder/*` + `builder/*` + `mirror/*` stay in their tier roles (Rules 7–10)
-- `docs/LAYERING.md` + `README.md` document the boundary so new contributors + external adopters know which paths are stable
+- `docs/specs/LAYERING.md` + `README.md` document the boundary so new contributors + external adopters know which paths are stable
 - Forge reserves the right to rebuild internal GHCR paths or re-point their `:latest` tag at any time
 
 ---
 
 ## 12. Historical references
 
-- **Migration planning + decisions log**: `docs/plan/tier-layering-model.md` (FG-067 through FG-071)
+- **Migration planning + decisions log**: `docs/specs/tier-layering-model.md` (FG-067 through FG-071)
 - **Per-FG stories**: `docs/stories/FG-067-*.md` through `FG-071-*.md`
-- **Capabilities delivered**: `docs/CAPABILITIES.md` — grep for `arch.*-tier-images`, `build.*-migrated`
-- **Live dependency graph**: `docs/image-dependency-graph.md` + `docs/image-dependency-graph.svg`
+- **Capabilities delivered**: `docs/specs/CAPABILITIES.md` — grep for `arch.*-tier-images`, `build.*-migrated`
+- **Live dependency graph**: `docs/specs/image-dependency-graph.md` + `docs/specs/image-dependency-graph.svg`

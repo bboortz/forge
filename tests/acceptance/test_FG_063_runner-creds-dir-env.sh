@@ -57,8 +57,8 @@ grep -q 'dangling' "${PP}" \
 pass "PROMISES.yaml ≥ 0.3 + two-phase + dangling-symlink note"
 
 say "5. image.github-runner-creds-dir CAP registered in CAPABILITIES.md"
-grep -qE '^### image\.github-runner-creds-dir$' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing ### image.github-runner-creds-dir section"
+grep -qE '^### image\.github-runner-creds-dir$' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing ### image.github-runner-creds-dir section"
 pass "CAP registered"
 
 say "6. Full build + smokes (skip in fast-mode)"

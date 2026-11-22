@@ -66,7 +66,7 @@ pass "dep graph edges present"
 
 # --- (7) CAP documented + traceability green ---
 say "7. CAP + traceability"
-grep -q '^### image.psitransfer-slim' docs/CAPABILITIES.md \
+grep -q '^### image.psitransfer-slim' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### image.psitransfer-slim"
 bash scripts/verify-traceability.sh >/dev/null \
   || fail "traceability check failed"

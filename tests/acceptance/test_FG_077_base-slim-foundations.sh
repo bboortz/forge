@@ -111,7 +111,7 @@ pass "all 3 new base/* present in L3 with normalized node ids"
 # --- (7) CAPs documented + traceability green ---
 say "7. 3 new CAPs documented + traceability green"
 for cap in image.debian-slim-foundation image.ubuntu-slim-foundation image.node-slim-foundation; do
-  grep -q "^### ${cap}" docs/CAPABILITIES.md \
+  grep -q "^### ${cap}" docs/specs/CAPABILITIES.md \
     || fail "CAPABILITIES missing ### ${cap}"
 done
 bash scripts/verify-traceability.sh >/dev/null \

@@ -15,7 +15,7 @@ Why L0.1 is a first-class tier (vs. collapsing into L0):
   - Pinning differs: L0 uses image digests; L0.1 uses git refs + tarball SHA256.
   - Supply-chain surface differs: L0 is Docker Hub + GHCR; L0.1 is GitHub + tarball hosts.
 
-See `docs/plan/tier-layering-model.md` §3 "L0.1 — Upstream sources" for the
+See `docs/specs/tier-layering-model.md` §3 "L0.1 — Upstream sources" for the
 full semantic test + rationale.
 """
 

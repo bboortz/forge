@@ -36,8 +36,8 @@ for d in postgres-scratch-trixie base/python-scratch-trixie; do
     || fail "images/${d}/tests/smoke_locale_utf8.sh: missing or not executable"
 done
 
-grep -q 'image.locale-utf8' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md: missing CAP image.locale-utf8"
+grep -q 'image.locale-utf8' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md: missing CAP image.locale-utf8"
 
 pass "all static invariants in place"
 

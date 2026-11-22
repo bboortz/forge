@@ -19,16 +19,16 @@ for tier in L0 L0.1 L0.5 L1 L2 L3 L4; do
   grep -q "\\*\\*${tier}\\*\\*" memory/docker-standard.md \
     || fail "memory/docker-standard.md missing bold reference to tier ${tier}"
 done
-grep -q 'docs/plan/tier-layering-model.md' memory/docker-standard.md \
-  || fail "memory/docker-standard.md must link to docs/plan/tier-layering-model.md for the full table"
+grep -q 'docs/specs/tier-layering-model.md' memory/docker-standard.md \
+  || fail "memory/docker-standard.md must link to docs/specs/tier-layering-model.md for the full table"
 pass "7-tier section present + all 7 tier ids referenced + plan-doc link present"
 
-# --- (2) docs/CAPABILITIES.md registers the two foundation CAPs ---
-say "2. docs/CAPABILITIES.md registers the FG-067 foundation CAPs"
-grep -q '^### arch.tier-prefix-convention' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing ### arch.tier-prefix-convention"
-grep -q '^### arch.layer-overlap-resolution' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing ### arch.layer-overlap-resolution"
+# --- (2) docs/specs/CAPABILITIES.md registers the two foundation CAPs ---
+say "2. docs/specs/CAPABILITIES.md registers the FG-067 foundation CAPs"
+grep -q '^### arch.tier-prefix-convention' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing ### arch.tier-prefix-convention"
+grep -q '^### arch.layer-overlap-resolution' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing ### arch.layer-overlap-resolution"
 # Each CAP section must have a 'Covered by:' pointer.
 for cap in arch.tier-prefix-convention arch.layer-overlap-resolution; do
   awk -v cap="### $cap" '
@@ -36,7 +36,7 @@ for cap in arch.tier-prefix-convention arch.layer-overlap-resolution; do
     inside && /^### / { exit 1 }
     inside && /Covered by/ { found = 1; exit 0 }
     END { exit !found }
-  ' docs/CAPABILITIES.md \
+  ' docs/specs/CAPABILITIES.md \
     || fail "${cap}: no 'Covered by:' pointer"
 done
 pass "both NEW CAPs present + each has a Covered by pointer"
