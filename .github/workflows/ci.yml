@@ -81,11 +81,16 @@ jobs:
       - name: make test-fast
         run: make test-fast
 
-  # FG-024: emit the acceptance-test matrix. One include entry per test_FG_*.sh.
+  # FG-024 + FG-090 (SH-022): emit the acceptance-test matrix.
+  # On PRs: scoped to tests that cover images affected by the diff
+  # (via scripts/smart-check.sh dry-run → scripts/discover-affected-tests.sh).
+  # Baseline/tooling touches trigger a full-run bailout (84 cells).
+  # Docs-only touches emit an empty matrix (lint-verify still runs).
+  # On dev push: always full matrix (safety net — covers merge races).
   discover:
     name: Discover acceptance tests
     runs-on: ubuntu-latest
-    # FG-038: 5-min cap. Typical 10s (jq over tests/acceptance glob).
+    # FG-038: 5-min cap. Typical 15s: smart-check dry-run + jq + grep over tests.
     timeout-minutes: 5
     if: >
       (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
@@ -94,9 +99,23 @@ jobs:
       matrix: ${{ steps.disc.outputs.matrix }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full fetch so smart-check.sh can `git diff origin/dev...HEAD`.
+          fetch-depth: 0
+
+      - name: Install python3-yaml (smart-check dep)
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-yaml jq
+
       - id: disc
         run: |
-          echo "matrix=$(bash scripts/discover-tests.sh)" >> "$GITHUB_OUTPUT"
+          # FG-090: PR → scoped matrix via smart-check; push-to-dev → full matrix.
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            matrix=$(bash scripts/discover-affected-tests.sh)
+          else
+            matrix=$(bash scripts/discover-tests.sh)
+          fi
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "::notice::acceptance matrix: $(echo "${matrix}" | jq '.include | length') cells"
 
   # FG-024: run EACH acceptance test in its own GHA job.
   acceptance-matrix:
@@ -212,10 +231,14 @@ jobs:
         run: |
           result="${{ needs.acceptance-matrix.result }}"
           echo "acceptance-matrix result: ${result}"
-          if [[ "${result}" != "success" ]]; then
-            echo "::error::one or more acceptance tests failed"
-            exit 1
+          # FG-090 (SH-022): docs-only diffs emit an empty matrix → acceptance-
+          # matrix is `skipped`. Treat as success — lint-verify covered it.
+          if [[ "${result}" == "success" || "${result}" == "skipped" ]]; then
+            echo "acceptance aggregate: ok"
+            exit 0
           fi
+          echo "::error::one or more acceptance tests failed (${result})"
+          exit 1
 
   release-check:
     name: Release check
