@@ -43,4 +43,4 @@ Scenario: <name>
 
 - Plan: `docs/plan/FG-NNN-<slug>-plan.md`
 - Red test: `tests/acceptance/test_FG_NNN_<slug>.sh`
-- Capabilities: see `docs/CAPABILITIES.md`
+- Capabilities: see `docs/specs/CAPABILITIES.md`

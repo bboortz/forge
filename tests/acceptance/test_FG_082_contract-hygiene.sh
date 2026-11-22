@@ -59,12 +59,12 @@ say "3. no new CAPs, no new images"
 
 # Headcount CAPs before/after: FG-081 ended with 111 tracked CAPs; FG-082
 # must not change that count.
-_cap_count=$(grep -cE "^### " docs/CAPABILITIES.md)
+_cap_count=$(grep -cE "^### " docs/specs/CAPABILITIES.md)
 # Soft check — the assertion is "no new CAPs defined for FG-082". We lock
 # the count against a FLOOR rather than an exact value so future FGs can
 # add CAPs without re-touching this test.
 if [[ "${_cap_count}" -lt 113 ]]; then
-  fail "docs/CAPABILITIES.md has only ${_cap_count} CAPs — expected ≥ 113 (FG-081 baseline)"
+  fail "docs/specs/CAPABILITIES.md has only ${_cap_count} CAPs — expected ≥ 113 (FG-081 baseline)"
 fi
 
 # Ensure no new image dirs appeared (the diff from main is only to text

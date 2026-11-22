@@ -5,7 +5,7 @@
 # Hand-authored. Verified by scripts/verify-contracts.py on every CI run.
 # Semver-gated by scripts/contracts-semver-check.py on commit — see FG-010.
 #
-# The human-readable narrative version lives in docs/baseline-contract.md
+# The human-readable narrative version lives in docs/specs/baseline-contract.md
 # and references this file as the canonical surface.
 
 spec_version: 1

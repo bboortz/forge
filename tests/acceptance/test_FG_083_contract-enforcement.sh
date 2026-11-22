@@ -48,13 +48,13 @@ pass "orphan smoke detected"
 say "3. artificial orphan CAP → verify-traceability fails"
 _cap_id="image.fg083-injected-orphan"
 _caps_backup="$(mktemp)"
-cp docs/CAPABILITIES.md "${_caps_backup}"
+cp docs/specs/CAPABILITIES.md "${_caps_backup}"
 _cleanup_3() {
-  cp "${_caps_backup}" docs/CAPABILITIES.md
+  cp "${_caps_backup}" docs/specs/CAPABILITIES.md
   rm -f "${_caps_backup}"
 }
 trap _cleanup_3 EXIT
-cat >> docs/CAPABILITIES.md <<EOF
+cat >> docs/specs/CAPABILITIES.md <<EOF
 
 ### ${_cap_id}
 

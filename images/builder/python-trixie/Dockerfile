@@ -24,7 +24,7 @@
 ARG PYTHON_SLIM_REF=ghcr.io/bboortz/pre-builder/python-slim-trixie:latest
 # FG-066: syft via forge-signed mirror (previously docker.io/anchore/syft).
 # arch.forge-mirror-image invariant: mirror/* consumed via COPY --from=
-# only; see docs/CAPABILITIES.md for the forge-mirror-image contract.
+# only; see docs/specs/CAPABILITIES.md for the forge-mirror-image contract.
 ARG SYFT_REF=ghcr.io/bboortz/mirror/syft:latest
 
 # --- Stage 0: syft source (forge mirror) -------------------------------------

@@ -30,10 +30,10 @@ images/                  — one directory per image we publish
   build.yml              — daily 03:00 UTC cron: build → scan → sign → push
   ci.yml                 — stratified: fast on feat branches, full on dev + PRs
   release.yml            — manual workflow_dispatch: fast-forward main from dev
-docs/                    — design notes, image rationale, consumer playbooks
+docs/                    — design notes, image rationale, consumer playbooks (FG-086 three-folder convention)
+  specs/                 — canonical specs: CAPABILITIES.md, LAYERING.md, baseline-contract.md, differentiators.md, tier-layering-model.md, image-dependency-graph.{md,svg}, docs-structure.md
   stories/               — FG-NNN-<slug>.md + INDEX + _template + _9-questions
-  plan/                  — per-change plan docs (FG-NNN-<slug>-plan.md) + _template
-  CAPABILITIES.md        — capability matrix; bidirectional links to tests
+  plan/                  — per-change plan docs (FG-NNN-<slug>-plan.md) + _template + IDEAS
 memory/                  — persistent context for Claude sessions
 ```
 
@@ -99,7 +99,7 @@ Design-Driven, Test-Guarded Development. Every published digest traces back to t
 3. Red acceptance test under `tests/acceptance/test_FG_NNN_<slug>.sh` encoding the Gherkin (top-of-file `Covers:` block names the CAPs).
 4. Implementation to turn test green (Dockerfile, sid pins, Makefile, GHA workflow).
 5. Refactor + unit tests under `tests/unit/` for non-trivial helpers.
-5a. **Register capabilities** — add or extend entries in `docs/CAPABILITIES.md`; ensure bidirectional links. `make verify-traceability` must pass.
+5a. **Register capabilities** — add or extend entries in `docs/specs/CAPABILITIES.md`; ensure bidirectional links. `make verify-traceability` must pass.
 6. `make check` passes (lint, pin-audit, traceability, acceptance tests). For image-touching changes: `make build && make scan && make verify` against a local digest.
 6a. **Pre-ship audit** — fill the Shipping evidence table in the plan doc. Three lenses: **Gherkin coverage** (every Scenario has a test pointer), **build/scan/verify symmetry** (every image built → scanned → signed → verified; every CAP has a test), **self-consistency** (the story applies its own new conventions). Any ⚠️/❌ blocks shipping.
 7. README updated only if the public contract changed (verify command, image set, roadmap).

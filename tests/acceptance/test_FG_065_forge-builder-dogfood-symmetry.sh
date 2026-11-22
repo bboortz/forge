@@ -178,10 +178,10 @@ pass "chain structure updated per FG-065"
 say "12. memory/design-decisions.md documents language-family-image-pair invariant"
 grep -q 'Language family image pairs' memory/design-decisions.md \
   || fail "memory/design-decisions.md missing '## Language family image pairs' section"
-grep -q 'arch.language-family-image-pair' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing arch.language-family-image-pair CAP"
-grep -q 'build.go-slim-base' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing build.go-slim-base CAP"
+grep -q 'arch.language-family-image-pair' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing arch.language-family-image-pair CAP"
+grep -q 'build.go-slim-base' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing build.go-slim-base CAP"
 pass "invariant + CAPs documented"
 
 # --- (13) Full build + smoke suite (skip in fast-mode) ------------------

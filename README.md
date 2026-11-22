@@ -90,7 +90,7 @@ cosign verify \
 
 ## Why not just use Google distroless?
 
-> For the full differentiator breakdown with measurable claims and trade-offs, see [`docs/differentiators.md`](docs/differentiators.md).
+> For the full differentiator breakdown with measurable claims and trade-offs, see [`docs/specs/differentiators.md`](docs/specs/differentiators.md).
 
 Google distroless is excellent. Forge builds on the same idea with two differences:
 

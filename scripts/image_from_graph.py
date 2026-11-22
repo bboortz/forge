@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # FG-059 — Emit the reverse-dependency graph derived from images/*/Dockerfile.
-# FG-064 — Add mermaid emitter for docs/image-dependency-graph.md (drift-gated).
+# FG-064 — Add mermaid emitter for docs/specs/image-dependency-graph.md (drift-gated).
 #
 # For every Dockerfile in images/*/:
 #   - `^ARG <NAME>_REF=ghcr.io/bboortz/<forge-image>[:@]...`  →  dep on <forge-image>
@@ -18,7 +18,7 @@
 #   scripts/image_from_graph.py                  # reverse-JSON (FG-059 default)
 #   scripts/image_from_graph.py --deps <image>   # one-line deps for <image>
 #   scripts/image_from_graph.py --emit=mermaid   # FG-064 mermaid block
-#   scripts/image_from_graph.py --emit=mermaid --write docs/image-dependency-graph.md
+#   scripts/image_from_graph.py --emit=mermaid --write docs/specs/image-dependency-graph.md
 #                                                # rewrite between GENERATED markers
 
 from __future__ import annotations

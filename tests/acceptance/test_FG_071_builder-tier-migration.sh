@@ -83,9 +83,9 @@ pass "all 4 builders present in L2 with normalized ids"
 
 # --- (8) CAPs documented + traceability green ---
 say "8. CAPABILITIES documents the new CAPs + traceability green"
-grep -q '^### build.builder-migrated' docs/CAPABILITIES.md \
+grep -q '^### build.builder-migrated' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### build.builder-migrated"
-grep -q '^### arch.builder-tier-images' docs/CAPABILITIES.md \
+grep -q '^### arch.builder-tier-images' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### arch.builder-tier-images"
 bash scripts/verify-traceability.sh >/dev/null \
   || fail "traceability check failed"

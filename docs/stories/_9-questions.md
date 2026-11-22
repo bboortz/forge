@@ -10,7 +10,7 @@ Every Forge story (`docs/stories/FG-NNN-<slug>.md`) answers these nine questions
 6. **Edge cases / failure modes** that matter?
 7. **Out of scope** — what could creep in but shouldn't?
 8. **How do we know it's done?** (acceptance test wording = Gherkin)
-9. **What capabilities does this story deliver or extend?** Name new CAP ids; link to existing ones in `docs/CAPABILITIES.md`.
+9. **What capabilities does this story deliver or extend?** Name new CAP ids; link to existing ones in `docs/specs/CAPABILITIES.md`.
 
 Rules:
 

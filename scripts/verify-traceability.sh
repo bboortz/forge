@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Enforce bidirectional story ↔ plan ↔ test ↔ CAP links:
-#   1. Every CAP in docs/CAPABILITIES.md has a `Covered by:` pointer.
+#   1. Every CAP in docs/specs/CAPABILITIES.md has a `Covered by:` pointer.
 #   2. Every tests/acceptance/test_FG_*.sh has a `# CAPs:` header line
 #      and the CAPs it names all exist in CAPABILITIES.md.
 #   3. Every story with status ready / in-progress / shipped lists at
 #      least one CAP id (NEW or EXT) in question 9.
 set -euo pipefail
 
-caps_file="docs/CAPABILITIES.md"
+caps_file="docs/specs/CAPABILITIES.md"
 fail=0
 
 if [[ ! -f "$caps_file" ]]; then
@@ -85,7 +85,7 @@ except ImportError:
 
 root = Path(".")
 known = set()
-for line in (root / "docs/CAPABILITIES.md").read_text().splitlines():
+for line in (root / "docs/specs/CAPABILITIES.md").read_text().splitlines():
     m = re.match(r"^### ([a-z]+\.[a-z0-9-]+)$", line)
     if m:
         known.add(m.group(1))

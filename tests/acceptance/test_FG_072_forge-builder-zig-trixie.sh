@@ -145,10 +145,10 @@ grep -q 'zig-slim-trixie' memory/design-decisions.md \
   || fail "memory/design-decisions.md must list zig-slim-trixie in the language family image pairs section"
 grep -q 'Zig' memory/design-decisions.md \
   || fail "memory/design-decisions.md must mention Zig in the satisfying families table"
-grep -q 'build.zig-slim-base' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing build.zig-slim-base CAP"
-grep -q 'build.shared-zig-builder' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing build.shared-zig-builder CAP"
+grep -q 'build.zig-slim-base' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing build.zig-slim-base CAP"
+grep -q 'build.shared-zig-builder' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing build.shared-zig-builder CAP"
 pass "memory + CAPABILITIES document the Zig pair"
 
 # --- (11) Full build + smoke suite (skip in fast-mode) -------------------

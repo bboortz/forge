@@ -135,8 +135,8 @@ pass "all verify-* gates green"
 
 # --- (10) traceability green with new CAPs ---
 say "10. new CAPs documented + traceability green"
-grep -q '^### build.base-tier' docs/CAPABILITIES.md || fail "CAPABILITIES missing ### build.base-tier"
-grep -q '^### arch.base-tier-images' docs/CAPABILITIES.md || fail "CAPABILITIES missing ### arch.base-tier-images"
+grep -q '^### build.base-tier' docs/specs/CAPABILITIES.md || fail "CAPABILITIES missing ### build.base-tier"
+grep -q '^### arch.base-tier-images' docs/specs/CAPABILITIES.md || fail "CAPABILITIES missing ### arch.base-tier-images"
 bash scripts/verify-traceability.sh >/dev/null || fail "traceability check failed"
 pass "CAPs registered + traceability green"
 

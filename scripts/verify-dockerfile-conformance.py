@@ -505,6 +505,7 @@ def _check_rule_12_base_tier_invariants(local_images: set[str]) -> list[str]:
 
     Decision context: docs/stories/FG-075-base-tier-public-api.md,
     docs/plan/FG-075-base-tier-public-api-plan.md § "Reworked Rule 12".
+    (Historical plan/story paths kept verbatim; see docs/specs/docs-structure.md.)
     """
     errors: list[str] = []
     base_images = {img for img in local_images if img.startswith("base/")}
@@ -542,7 +543,7 @@ def _check_rule_12_base_tier_invariants(local_images: set[str]) -> list[str]:
 def _check_rule_11_no_source_tier() -> list[str]:
     """FG-067 Rule 11: the retired L4.5 `source/` tier must never resurface.
 
-    Decision context: docs/plan/tier-layering-model.md §O8 — the `source/`
+    Decision context: docs/specs/tier-layering-model.md §O8 — the `source/`
     prefix was proposed to carry externally-sourced + from-source runtimes,
     then retired because that construction mechanism is a build-time
     detail of L4 runtimes. L4 absorbs from-source + externally-sourced
@@ -565,7 +566,7 @@ def _check_rule_11_no_source_tier() -> list[str]:
             f"(a) moving the image(s) to a flat `images/<name>/` path (L4 "
             f"runtime), OR (b) if this is an upstream source repo being "
             f"vendored, document it in the L0.1 inventory (see FG-068). "
-            f"Full decision log: docs/plan/tier-layering-model.md §O8."
+            f"Full decision log: docs/specs/tier-layering-model.md §O8."
         )
     return errors
 

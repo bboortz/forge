@@ -144,10 +144,10 @@ pass "Makefile wired"
 
 # --- (7) CAPs + memory documented ---
 say "7. CAPABILITIES + memory document the new CAPs"
-grep -q '^### build.l0-1-source-inventory' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing ### build.l0-1-source-inventory"
-grep -q '^### arch.l4-absorbs-from-source' docs/CAPABILITIES.md \
-  || fail "docs/CAPABILITIES.md missing ### arch.l4-absorbs-from-source"
+grep -q '^### build.l0-1-source-inventory' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing ### build.l0-1-source-inventory"
+grep -q '^### arch.l4-absorbs-from-source' docs/specs/CAPABILITIES.md \
+  || fail "docs/specs/CAPABILITIES.md missing ### arch.l4-absorbs-from-source"
 grep -q 'L0.1 inventory' memory/docker-standard.md \
   || fail "memory/docker-standard.md missing 'L0.1 inventory' reference"
 pass "CAPs + memory present"

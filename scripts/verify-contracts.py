@@ -27,7 +27,7 @@ except ImportError:
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IMAGES_DIR = REPO_ROOT / "images"
-CAPABILITIES_FILE = REPO_ROOT / "docs" / "CAPABILITIES.md"
+CAPABILITIES_FILE = REPO_ROOT / "docs" / "specs" / "CAPABILITIES.md"
 SPEC_VERSION = 1
 
 # e.g. ">=0.2", ">0.1", "0.2", "~0.2"
@@ -241,7 +241,7 @@ def load_expectations(path: Path, errors: list[str]) -> ImageExpectations | None
 
 
 def load_cap_ids(errors: list[str]) -> set[str]:
-    """Extract CAP ids from docs/CAPABILITIES.md. Each entry is a '### <id>' heading."""
+    """Extract CAP ids from docs/specs/CAPABILITIES.md. Each entry is a '### <id>' heading."""
     if not CAPABILITIES_FILE.exists():
         err(errors, f"{CAPABILITIES_FILE}: missing")
         return set()
@@ -331,7 +331,7 @@ def main() -> int:
         for promise in ip.promises.values():
             for cap in promise.caps:
                 if cap not in cap_ids:
-                    err(errors, f"{ip.source_file}: promise {promise.id!r} references cap {cap!r} that is not declared in docs/CAPABILITIES.md")
+                    err(errors, f"{ip.source_file}: promise {promise.id!r} references cap {cap!r} that is not declared in docs/specs/CAPABILITIES.md")
 
     # 3. Cross-check test file existence + executability.
     all_smokes = discover_smoke_tests()

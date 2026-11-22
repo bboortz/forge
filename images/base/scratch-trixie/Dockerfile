@@ -45,7 +45,7 @@ RUN set -eux; \
     syft dir:/ --override-default-catalogers dpkg-db-cataloger -o cyclonedx-json > /sbom.json
 
 # Assemble the baseline tree — the common standard every Forge scratch
-# image can rely on. Documented in docs/baseline-contract.md.
+# image can rely on. Documented in docs/specs/baseline-contract.md.
 RUN set -eux; \
     install -d /out/etc /out/etc/ssl/certs /out/lib64 /out/lib/x86_64-linux-gnu \
                /out/usr/share/zoneinfo /out/tmp /out/var/tmp /out/nonroot; \

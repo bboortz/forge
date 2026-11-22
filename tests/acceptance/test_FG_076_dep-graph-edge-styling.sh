@@ -87,10 +87,10 @@ pass "all linkStyle stroke-widths ≥ 3px"
 # --- (6) dep graph stays fresh after regen ---
 say "6. make dep-graph is a no-op against committed artifacts"
 make dep-graph >/dev/null 2>&1
-if ! git diff --exit-code docs/image-dependency-graph.md docs/image-dependency-graph.svg >/dev/null 2>&1; then
+if ! git diff --exit-code docs/specs/image-dependency-graph.md docs/specs/image-dependency-graph.svg >/dev/null 2>&1; then
   # Stage the regen'd files so the test is idempotent across local re-runs.
-  git add docs/image-dependency-graph.md docs/image-dependency-graph.svg 2>/dev/null || true
-  if ! git diff --staged --exit-code docs/image-dependency-graph.md docs/image-dependency-graph.svg >/dev/null 2>&1; then
+  git add docs/specs/image-dependency-graph.md docs/specs/image-dependency-graph.svg 2>/dev/null || true
+  if ! git diff --staged --exit-code docs/specs/image-dependency-graph.md docs/specs/image-dependency-graph.svg >/dev/null 2>&1; then
     fail "committed dep-graph artifacts out of date vs regen"
   fi
 fi
@@ -98,7 +98,7 @@ pass "committed artifacts match regen"
 
 # --- (7) CAPs documented + traceability green ---
 say "7. CAPABILITIES documents the new CAP + traceability green"
-grep -q '^### dep-graph.semantic-edge-styling' docs/CAPABILITIES.md \
+grep -q '^### dep-graph.semantic-edge-styling' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### dep-graph.semantic-edge-styling"
 bash scripts/verify-traceability.sh >/dev/null \
   || fail "traceability check failed"

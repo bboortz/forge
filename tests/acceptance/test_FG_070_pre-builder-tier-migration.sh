@@ -89,9 +89,9 @@ pass "FG-074 held at draft per user direction"
 
 # --- (9) CAPs documented + traceability green ---
 say "9. CAPABILITIES documents the new CAPs + traceability green"
-grep -q '^### build.pre-builder-migrated' docs/CAPABILITIES.md \
+grep -q '^### build.pre-builder-migrated' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### build.pre-builder-migrated"
-grep -q '^### arch.pre-builder-tier-images' docs/CAPABILITIES.md \
+grep -q '^### arch.pre-builder-tier-images' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### arch.pre-builder-tier-images"
 bash scripts/verify-traceability.sh >/dev/null \
   || fail "traceability check failed"

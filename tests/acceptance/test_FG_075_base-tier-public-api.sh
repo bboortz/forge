@@ -57,15 +57,15 @@ for b in beaconry-hub beaconry-scout beaconry-telegram-mock; do
 done
 pass "3 beaconry consumers depend on base/python-scratch-trixie"
 
-# --- (5) public API documented in docs/LAYERING.md ---
-say "5. docs/LAYERING.md names the public API + internal boundary"
-grep -qE '^## [0-9]+\.\s*Public API vs internal implementation' docs/LAYERING.md \
-  || fail "docs/LAYERING.md missing '## N. Public API vs internal implementation' section"
-grep -q 'base/\*' docs/LAYERING.md || fail "docs/LAYERING.md must mention base/* as public API"
+# --- (5) public API documented in docs/specs/LAYERING.md ---
+say "5. docs/specs/LAYERING.md names the public API + internal boundary"
+grep -qE '^## [0-9]+\.\s*Public API vs internal implementation' docs/specs/LAYERING.md \
+  || fail "docs/specs/LAYERING.md missing '## N. Public API vs internal implementation' section"
+grep -q 'base/\*' docs/specs/LAYERING.md || fail "docs/specs/LAYERING.md must mention base/* as public API"
 # pre-builder/* is mentioned in both the public section ("do NOT FROM") and its own internal row.
-grep -qE 'pre-builder' docs/LAYERING.md || fail "docs/LAYERING.md must mention pre-builder"
-grep -qE 'do NOT FROM from outside Forge|Internal implementation' docs/LAYERING.md \
-  || fail "docs/LAYERING.md must mark internal tiers as such"
+grep -qE 'pre-builder' docs/specs/LAYERING.md || fail "docs/specs/LAYERING.md must mention pre-builder"
+grep -qE 'do NOT FROM from outside Forge|Internal implementation' docs/specs/LAYERING.md \
+  || fail "docs/specs/LAYERING.md must mark internal tiers as such"
 pass "public API boundary documented"
 
 # --- (6) verify-no-upstream-drift _EXPECTED=6 (unchanged) ---
@@ -86,9 +86,9 @@ pass "all three base/* members discovered"
 
 # --- (8) CAPs documented + traceability green ---
 say "8. CAPABILITIES documents the new CAPs + traceability green"
-grep -q '^### arch.base-tier-public-api' docs/CAPABILITIES.md \
+grep -q '^### arch.base-tier-public-api' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### arch.base-tier-public-api"
-grep -q '^### image.python-slim-foundation' docs/CAPABILITIES.md \
+grep -q '^### image.python-slim-foundation' docs/specs/CAPABILITIES.md \
   || fail "CAPABILITIES missing ### image.python-slim-foundation"
 bash scripts/verify-traceability.sh >/dev/null \
   || fail "traceability check failed"

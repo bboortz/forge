@@ -32,14 +32,14 @@ repos:
         language: system
         entry: bash scripts/verify-traceability.sh
         pass_filenames: false
-        files: ^(docs/stories/|docs/plan/|docs/CAPABILITIES\.md|tests/acceptance/)
+        files: ^(docs/stories/|docs/plan/|docs/specs/CAPABILITIES\.md|tests/acceptance/)
 
       - id: verify-contracts
         name: verify-contracts (FG-010)
         language: system
         entry: python3 scripts/verify-contracts.py
         pass_filenames: false
-        files: ^(images/.*/PROMISES\.yaml|images/.*/EXPECTATIONS\.yaml|images/.*/tests/.*\.sh|images/.*/image\.yaml|docs/CAPABILITIES\.md)$
+        files: ^(images/.*/PROMISES\.yaml|images/.*/EXPECTATIONS\.yaml|images/.*/tests/.*\.sh|images/.*/image\.yaml|docs/specs/CAPABILITIES\.md)$
 
       - id: contracts-semver-check
         name: contracts-semver-check (FG-010)
@@ -64,9 +64,9 @@ repos:
       - id: dep-graph-fresh
         name: dep-graph-fresh (FG-064)
         language: system
-        entry: bash -c 'make dep-graph >/dev/null && git diff --exit-code docs/image-dependency-graph.md docs/image-dependency-graph.svg || { echo "✗ docs/image-dependency-graph.{md,svg} is out of date — run \`make dep-graph\` and \`git add\` the result"; exit 1; }'
+        entry: bash -c 'make dep-graph >/dev/null && git diff --exit-code docs/specs/image-dependency-graph.md docs/specs/image-dependency-graph.svg || { echo "✗ docs/specs/image-dependency-graph.{md,svg} is out of date — run \`make dep-graph\` and \`git add\` the result"; exit 1; }'
         pass_filenames: false
-        files: ^(images/.*/(Dockerfile|image\.yaml)|scripts/image_from_graph\.py|scripts/verify-dockerfile-conformance\.py|scripts/mermaid-to-svg\.sh|docs/image-dependency-graph\.(md|svg))$
+        files: ^(images/.*/(Dockerfile|image\.yaml)|scripts/image_from_graph\.py|scripts/verify-dockerfile-conformance\.py|scripts/mermaid-to-svg\.sh|docs/specs/image-dependency-graph\.(md|svg))$
 
       # FG-017: scope-aware pre-push. Typical 1-image PR is ~2-3 min (was ~15).
       # Lint stays full-repo (unscoped) so pre-push can't pass while CI fails

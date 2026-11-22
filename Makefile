@@ -61,7 +61,7 @@ help:
 	@echo "  verify               cosign verify (local key)"
 	@echo "  test-images          scripts/test-images.sh [\$$IMAGE_DIR]"
 	@echo "  test-acceptance      bash tests/acceptance/test_FG_*.sh"
-	@echo "  test-fast            lint + verify-sid-pins + verify-traceability + verify-contracts"
+	@echo "  test-fast            lint + verify-sid-pins + verify-traceability + verify-contracts + verify-docs-structure"
 	@echo "  check                test-fast + test-acceptance + test-images"
 	@echo "  check-strict         clean-local-images + check (nightly / release gate)"
 	@echo "  check-smart          FG-017: scope-aware gate (test-fast + affected images only)"
@@ -149,13 +149,19 @@ verify-no-orphan-smokes:
 verify-promises-version-bump:
 	@bash scripts/verify-promises-version-bump.sh
 
-# FG-064: regenerate the mermaid dep graph in docs/image-dependency-graph.md
+# FG-086: enforce the docs/ three-folder structure. docs/ top-level contains
+# only {specs, plan, stories}/; each subdir has a known allowed file set; no
+# active (non-historical) file references pre-FG-086 doc paths.
+verify-docs-structure:
+	@bash scripts/verify-docs-structure.sh
+
+# FG-064: regenerate the mermaid dep graph in docs/specs/image-dependency-graph.md
 # between the GENERATED markers + the SVG alongside it. Narrative sections
 # outside the markers are preserved verbatim.
 dep-graph: dep-graph-md dep-graph-svg
 
 dep-graph-md:
-	@python3 scripts/image_from_graph.py --emit=mermaid --write docs/image-dependency-graph.md
+	@python3 scripts/image_from_graph.py --emit=mermaid --write docs/specs/image-dependency-graph.md
 
 # FG-064: Docker-based mermaid-cli renders the SVG that GitHub mobile +
 # external consumers see. No-op if Docker is unavailable (CI always has it;
@@ -166,8 +172,8 @@ dep-graph-svg:
 # FG-064: drift gate — regenerate, then assert no diff on BOTH the markdown
 # and the SVG. Wired into test-fast so CI catches stale graphs on every PR.
 verify-dep-graph-fresh: dep-graph
-	@git diff --exit-code docs/image-dependency-graph.md docs/image-dependency-graph.svg \
-	  || { echo "✗ docs/image-dependency-graph.{md,svg} is out of date — run \`make dep-graph\` and commit the result"; exit 1; }
+	@git diff --exit-code docs/specs/image-dependency-graph.md docs/specs/image-dependency-graph.svg \
+	  || { echo "✗ docs/specs/image-dependency-graph.{md,svg} is out of date — run \`make dep-graph\` and commit the result"; exit 1; }
 
 # FG-019: scan-regression gate. Diffs grype CRITICAL findings for IMAGE_DIR
 # vs the committed images/$(IMAGE_DIR)/scan-baseline.json, subtracting any
@@ -222,7 +228,7 @@ test-acceptance:
 test-images:
 	@bash scripts/test-images.sh
 
-test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-source-inventory verify-no-upstream-drift verify-dockerfile-conformance verify-no-orphan-smokes verify-promises-version-bump verify-dep-graph-fresh
+test-fast: lint verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-source-inventory verify-no-upstream-drift verify-dockerfile-conformance verify-no-orphan-smokes verify-promises-version-bump verify-docs-structure verify-dep-graph-fresh
 
 check: test-fast test-acceptance test-images
 

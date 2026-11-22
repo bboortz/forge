@@ -344,7 +344,7 @@ Each step is a self-contained FG. Each FG:
 
 **Changes**:
 1. `memory/docker-standard.md`: add § "7-tier layering model" with definitions from §3 of this doc.
-2. `docs/CAPABILITIES.md`: NEW CAPs `arch.tier-prefix-convention`, `arch.layer-overlap-resolution`. Each documents the 🔑 semantic test.
+2. `docs/specs/CAPABILITIES.md`: NEW CAPs `arch.tier-prefix-convention`, `arch.layer-overlap-resolution`. Each documents the 🔑 semantic test.
 3. `scripts/verify-dockerfile-conformance.py`: generalize `_FORGE_MIRRORS` pattern. Add `_BASE_IMAGES`, `_SOURCE_IMAGES` sets. Add new tier detection via directory prefix (`mirror/`, `pre-builder/`, `builder/`, `base/`, `source/`).
 4. `scripts/discover-images.sh`: accept new tier modes (`mirrors`, `pre-builders`, `builders`, `base`, `source`, `base-runtimes`).
 5. `scripts/image_from_graph.py`: emit new subgraphs for L3 base + L4.5 source (empty until FG-068+).
@@ -366,7 +366,7 @@ Each step is a self-contained FG. Each FG:
 2. `image.yaml` of each: no change needed (`source:` block stays the same for beaconry; healthy keeps its local Dockerfile)
 3. GHCR repo paths change: `ghcr.io/bboortz/beaconry-hub` → `ghcr.io/bboortz/source/beaconry-hub`. `repo:` field in `image.yaml` is implicit (basename logic), so may need explicit `repo: source/beaconry-hub` override.
 4. `.github/workflows/build.yml`: add new `publish-source` job (needs `publish-base`), matrix from `discover-images.sh source`
-5. `docs/CAPABILITIES.md`: NEW CAPs `build.l0-1-source-inventory`, `arch.l4-absorbs-from-source`
+5. `docs/specs/CAPABILITIES.md`: NEW CAPs `build.l0-1-source-inventory`, `arch.l4-absorbs-from-source`
 6. `memory/design-decisions.md`: add § "L0.1 upstream sources" with members + CVE-tracking strategy
 7. Dep-graph regen: L0.1 subgraph shows source repos as nodes (dashed edges to their consumer L2 builders or L4 runtimes)
 
@@ -392,7 +392,7 @@ Each step is a self-contained FG. Each FG:
 5. Every scratch runtime's Dockerfile: `ARG SCRATCH_BASE_REF=ghcr.io/bboortz/scratch-base-trixie:latest` → `ARG SCRATCH_BASE_REF=ghcr.io/bboortz/base/scratch-trixie:0.2` — ~10 Dockerfiles. ARG name `SCRATCH_BASE_REF` kept (semantic — "the scratch base").
 6. Beaconry's Dockerfiles (in the beaconry repo, NOT in forge): `FROM ghcr.io/bboortz/python-scratch-trixie:3.13` → `FROM ghcr.io/bboortz/base/python-trixie:3.13` — 3 beaconry Dockerfiles (hub, scout, telegram-mock). Coordinated PR per O5.
 7. `.github/workflows/build.yml`: `publish-base` job matrix from `discover-images.sh base` (new mode).
-8. `docs/CAPABILITIES.md`: NEW CAPs `build.base-tier`, `arch.base-tier-images`.
+8. `docs/specs/CAPABILITIES.md`: NEW CAPs `build.base-tier`, `arch.base-tier-images`.
 9. `_KNOWN_REF_ARGS` in `verify-dockerfile-conformance.py` stays unchanged (ARG names aren't renamed).
 10. **README update**: the public-contract pull reference changes. Operators pulling `ghcr.io/bboortz/python-scratch-trixie:3.13` must migrate to `ghcr.io/bboortz/base/python-trixie:3.13`. Documented in the README's `§ Images` table + migration note.
 
@@ -419,7 +419,7 @@ Each step is a self-contained FG. Each FG:
    - 4 L4 consumers: `DEBIAN_SLIM_REF` in cadvisor + ipmi-slim; `NODE_SLIM_REF` in uptime-kuma; `UBUNTU_SLIM_NOBLE_REF` in github-runner-noble
 5. Homelab Dockerfiles that FROM `python-slim-trixie` directly: ~3-4 Dockerfiles in homelab — coordinated PR per O4
 6. `.github/workflows/build.yml`: `publish-pre-builders` job matrix mode (discover auto-picks via new prefix)
-7. `docs/CAPABILITIES.md`: EXT updates to `build.pre-builder-tier`
+7. `docs/specs/CAPABILITIES.md`: EXT updates to `build.pre-builder-tier`
 8. `scripts/verify-no-upstream-drift.sh`: `_EXPECTED=6` is unchanged by the move (ARG-indirect zig-slim-trixie doesn't match literal grep; the other 6 pre-builders still each FROM their upstream literal).
 
 **Blast radius**:
@@ -443,7 +443,7 @@ Each step is a self-contained FG. Each FG:
 5. `_KNOWN_REF_ARGS` in `verify-dockerfile-conformance.py`: replace `FORGE_BUILDER_*_REF` with `BUILDER_*_REF` entries.
 6. `scripts/build-image.sh`: rename all internal `FORGE_BUILDER_REF` references to `BUILDER_PYTHON_REF` / `BUILDER_GO_REF` / `BUILDER_NODE_REF` / `BUILDER_ZIG_REF` in the ref-resolution + build-arg wiring blocks.
 7. `.github/workflows/build.yml`: `publish-builders` matrix mode (no structural change — the discover filter picks up the new `builder/` prefix automatically).
-8. `docs/CAPABILITIES.md`: EXT updates to `build.shared-{python,go,node,zig}-builder` (the CAP ids may stay; the GHCR paths they reference change).
+8. `docs/specs/CAPABILITIES.md`: EXT updates to `build.shared-{python,go,node,zig}-builder` (the CAP ids may stay; the GHCR paths they reference change).
 9. **Dockerfile comments**: any inline docstring referencing `forge-builder-<lang>-trixie` by name gets refreshed to `builder/<lang>-trixie`. Grep sweep.
 10. `memory/docker-standard.md` + `memory/design-decisions.md`: rename references.
 
@@ -490,7 +490,7 @@ Each tier migration FG ships an acceptance test that proves:
 
 ### Dep-graph validation
 
-After every migration, `make dep-graph` regenerates `docs/image-dependency-graph.md` + `.svg`. The emitter shows each tier in its own subgraph (visual proof of layering).
+After every migration, `make dep-graph` regenerates `docs/specs/image-dependency-graph.md` + `.svg`. The emitter shows each tier in its own subgraph (visual proof of layering).
 
 ---
 

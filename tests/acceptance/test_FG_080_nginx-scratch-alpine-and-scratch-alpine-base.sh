@@ -90,7 +90,7 @@ pass "nginx responds with HTTP 200"
 # --- (8) CAPs + traceability ---
 say "8. CAPs documented + traceability green"
 for cap in image.scratch-alpine-foundation image.nginx-scratch-alpine; do
-  grep -q "^### ${cap}" docs/CAPABILITIES.md \
+  grep -q "^### ${cap}" docs/specs/CAPABILITIES.md \
     || fail "CAPABILITIES missing ### ${cap}"
 done
 bash scripts/verify-traceability.sh >/dev/null \

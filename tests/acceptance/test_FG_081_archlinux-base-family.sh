@@ -94,7 +94,7 @@ pass "both nodes present with normalized ids"
 # --- (8) CAPs documented ---
 say "8. CAPs documented + traceability green"
 for cap in arch.archlinux-pre-builder image.archlinux-foundation; do
-  grep -q "^### ${cap}" docs/CAPABILITIES.md \
+  grep -q "^### ${cap}" docs/specs/CAPABILITIES.md \
     || fail "CAPABILITIES missing ### ${cap}"
 done
 pass "CAPs registered"

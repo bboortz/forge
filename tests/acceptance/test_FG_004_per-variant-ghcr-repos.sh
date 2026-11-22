@@ -80,7 +80,7 @@ say "4. no stale ghcr.io/bboortz/python: references in docs or README"
 # Allow matches inside docs/stories/ and docs/plan/FG-001/2/3 for historical
 # accuracy (those commits really did reference the old repo). Check only the
 # surfaces consumers read: README + docs/CAPABILITIES + current plan docs.
-stale=$(grep -nE 'ghcr\.io/bboortz/python:' README.md docs/CAPABILITIES.md 2>/dev/null || true)
+stale=$(grep -nE 'ghcr\.io/bboortz/python:' README.md docs/specs/CAPABILITIES.md 2>/dev/null || true)
 if [[ -n "${stale}" ]]; then
   echo "  ✗ stale references found:" >&2
   echo "${stale}" >&2
