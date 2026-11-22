@@ -876,3 +876,10 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-087
 - **Covered by**: `tests/acceptance/test_FG_087_release-via-pr.sh`, `.github/workflows/release.yml`
+
+### ci.affected-only-matrix
+
+**FG-090 / SH-022**: PR-triggered acceptance matrix is scoped to tests that cover images affected by the diff (reuses `scripts/smart-check.sh` + `scripts/affected_images.py`). `push` to `dev` and nightly `check-strict` keep the full 84-cell matrix as the safety net. Three dispatch paths: (1) `full` on tooling/baseline touch → full matrix; (2) `test-fast-only` on docs-only → empty matrix (lint-verify covers it); (3) `scoped` → tests matching any affected image name + framework tests (any test that doesn't reference `images/`). Fail-safe: unexpected dispatch → full matrix.
+
+- **Delivered by**: FG-090
+- **Covered by**: `scripts/discover-affected-tests.sh` + `.github/workflows/ci.yml` (discover job) + measured post-adoption PR median delta from the SH-026 11.8 min baseline (shepherd).

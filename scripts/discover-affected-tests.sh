@@ -18,7 +18,6 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 TESTS_DIR="tests/acceptance"
-IMAGES_DIR="images"
 
 # ---------------------------------------------------------------------------
 # Helpers
