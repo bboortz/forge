@@ -97,8 +97,26 @@ _CORE_SCRIPTS=(
   scripts/smoke-server.sh
 )
 
-# Always-full triggers: Makefile, pre-commit, workflow, scratch-base dir.
-FULL_RE='^(Makefile$|\.pre-commit-config\.yaml$|\.github/workflows/|images/base/scratch-trixie/)'
+# Always-full triggers: Makefile, pre-commit, the three image-affecting
+# workflows (ci / build / nightly), scratch-base dir.
+#
+# FG-091 narrowing (2026-11-22): the former `.github/workflows/` blanket
+# triggered a full cold rebuild on edits to shepherd.yml /
+# shepherd-gates.yml / dependabot-automerge.yml / ci-release.yml /
+# release.yml — none of which change what the image builds look like.
+# The bailout now matches only workflows that actually affect image-
+# build semantics:
+#
+#   ci.yml       — the acceptance matrix + lint-verify
+#   build.yml    — the nightly image publish
+#   nightly.yml  — nightly check-strict sweep
+#
+# Other workflows fall through to the scoped path. test-fast still
+# always runs in the scoped path (covers lint + verify-* + yamllint on
+# every edited workflow file), so lint-level regressions on
+# shepherd.yml etc. are still caught — just without a 20-min cold
+# rebuild of 59 Docker images.
+FULL_RE='^(Makefile$|\.pre-commit-config\.yaml$|\.github/workflows/(ci|build|nightly)\.yml$|images/base/scratch-trixie/)'
 BAILOUT_HIT=$(echo "${CHANGED}" | grep -E "${FULL_RE}" | head -1 || true)
 if [[ -n "${BAILOUT_HIT}" ]]; then
   say "full-run bailout — ${BAILOUT_HIT} touched"
