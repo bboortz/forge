@@ -43,25 +43,25 @@ done
 pass "discover-tests.sh: ${COUNT} tests, all paths executable, fg_id format valid"
 
 # -----------------------------------------------------------------------------
-# Section 2 — ci.yml wires acceptance-matrix via matrix dispatch
+# Section 2 — ci-branch.yml wires acceptance-matrix via matrix dispatch
 # -----------------------------------------------------------------------------
-say "2. ci.yml wires acceptance-matrix with matrix.include from discover"
-grep -q '^  acceptance-matrix:' .github/workflows/ci.yml || {
-  echo "  ✗ ci.yml missing acceptance-matrix job" >&2; exit 1;
+say "2. ci-branch.yml wires acceptance-matrix with matrix.include from discover"
+grep -q '^  acceptance-matrix:' .github/workflows/ci-branch.yml || {
+  echo "  ✗ ci-branch.yml missing acceptance-matrix job" >&2; exit 1;
 }
-grep -qE 'matrix:.*(\n|$)' .github/workflows/ci.yml || true   # permissive
+grep -qE 'matrix:.*(\n|$)' .github/workflows/ci-branch.yml || true   # permissive
 # Must consume matrix via ${{ matrix.test }} or ${{ matrix.fg_id }}
-grep -qE '\$\{\{ *matrix\.(test|fg_id) *\}\}' .github/workflows/ci.yml || {
+grep -qE '\$\{\{ *matrix\.(test|fg_id) *\}\}' .github/workflows/ci-branch.yml || {
   echo "  ✗ acceptance-matrix doesn't reference matrix.test / matrix.fg_id" >&2; exit 1;
 }
 # Must include buildx + grype cache + tool install + GHCR login
 for pattern in "docker/setup-buildx-action" "docker/login-action" "FORGE_CACHE_FROM_PREFIX"; do
-  grep -q "${pattern}" .github/workflows/ci.yml || {
+  grep -q "${pattern}" .github/workflows/ci-branch.yml || {
     echo "  ✗ acceptance-matrix missing: ${pattern}" >&2; exit 1;
   }
 done
 # actions/cache can be any pinned version (v4, v6, SHA, …). Match the family.
-grep -Eq 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci.yml || {
+grep -Eq 'actions/cache@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci-branch.yml || {
   echo "  ✗ acceptance-matrix missing: actions/cache" >&2; exit 1;
 }
 pass "acceptance-matrix job: matrix dispatch + buildx + grype cache + cache env"
@@ -69,12 +69,12 @@ pass "acceptance-matrix job: matrix dispatch + buildx + grype cache + cache env"
 # -----------------------------------------------------------------------------
 # Section 3 — acceptance-aggregate gate depends on matrix
 # -----------------------------------------------------------------------------
-say "3. ci.yml wires acceptance-aggregate as single-green gate"
-grep -q '^  acceptance-aggregate:' .github/workflows/ci.yml || {
-  echo "  ✗ ci.yml missing acceptance-aggregate job" >&2; exit 1;
+say "3. ci-branch.yml wires acceptance-aggregate as single-green gate"
+grep -q '^  acceptance-aggregate:' .github/workflows/ci-branch.yml || {
+  echo "  ✗ ci-branch.yml missing acceptance-aggregate job" >&2; exit 1;
 }
 # needs: [acceptance-matrix]
-grep -qE 'needs:.*acceptance-matrix' .github/workflows/ci.yml || {
+grep -qE 'needs:.*acceptance-matrix' .github/workflows/ci-branch.yml || {
   echo "  ✗ acceptance-aggregate missing needs: acceptance-matrix" >&2; exit 1;
 }
 pass "acceptance-aggregate depends on acceptance-matrix"
@@ -84,15 +84,15 @@ pass "acceptance-aggregate depends on acceptance-matrix"
 # -----------------------------------------------------------------------------
 say "4. lint-verify job runs lint + verify-* (not acceptance)"
 # The job should exist and NOT call make check-smart / make check for acceptance
-grep -q '^  lint-verify:' .github/workflows/ci.yml || {
-  echo "  ✗ ci.yml missing lint-verify job" >&2; exit 1;
+grep -q '^  lint-verify:' .github/workflows/ci-branch.yml || {
+  echo "  ✗ ci-branch.yml missing lint-verify job" >&2; exit 1;
 }
 # Must call make test-fast (or equivalent) but NOT make check-smart/make check/make test-acceptance
 awk '
   /^  lint-verify:/ { capture=1; print; next }
   capture && /^  [a-z][a-z-]*:$/ { capture=0 }
   capture { print }
-' .github/workflows/ci.yml > /tmp/fg024-lint-verify-$$.yml
+' .github/workflows/ci-branch.yml > /tmp/fg024-lint-verify-$$.yml
 grep -q "make test-fast" /tmp/fg024-lint-verify-$$.yml || {
   echo "  ✗ lint-verify doesn't call make test-fast" >&2; exit 1;
 }
@@ -117,11 +117,11 @@ grep -qE '^test-acceptance:' Makefile || {
 pass "Makefile still has sequential test-acceptance (local path unchanged)"
 
 # -----------------------------------------------------------------------------
-# Section 6 — yamllint + actionlint clean on ci.yml
+# Section 6 — yamllint + actionlint clean on ci-branch.yml
 # -----------------------------------------------------------------------------
-say "6. ci.yml passes yamllint"
+say "6. ci-branch.yml passes yamllint"
 yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" \
-  .github/workflows/ci.yml >/dev/null
+  .github/workflows/ci-branch.yml >/dev/null
 pass "yamllint clean"
 
 echo

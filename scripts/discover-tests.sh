@@ -2,7 +2,7 @@
 # FG-024: emit a GHA matrix spec of all acceptance tests.
 # Output on stdout: {"include":[{"test":"<path>","fg_id":"FG-NNN"},...]}
 #
-# Used by .github/workflows/ci.yml to fan out one GHA job per test.
+# Used by .github/workflows/ci-branch.yml to fan out one GHA job per test.
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"

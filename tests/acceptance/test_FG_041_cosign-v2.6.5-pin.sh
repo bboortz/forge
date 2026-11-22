@@ -27,7 +27,7 @@ say "1. every cosign version reference pins ${EXPECTED_PIN}"
 
 # References we know about:
 #   - .github/workflows/build.yml       (3 publish jobs × cosign:vX.Y.Z)
-#   - .github/workflows/nightly.yml     (cosign:vX.Y.Z)
+#   - .github/workflows/ci-nightly.yml     (cosign:vX.Y.Z)
 #   - Makefile                          (cosign/releases/download/vX.Y.Z/)
 #
 # Grep every possible reference shape and assert each matches the pin.

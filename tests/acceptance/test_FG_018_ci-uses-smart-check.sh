@@ -3,7 +3,7 @@
 # Covers: FG-018
 # CAPs:   tooling.smart-check, build.pr-ci
 #
-# Validates .github/workflows/ci.yml wires PR → smart-check and keeps
+# Validates .github/workflows/ci-branch.yml wires PR → smart-check and keeps
 # push-to-dev → full check. Also exercises smart-check with
 # GITHUB_BASE_REF=dev + a synthetic diff to confirm dispatch resolution
 # works in the CI-environment shape.
@@ -23,14 +23,14 @@ pass() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 # which achieves the PR-speed goal without a dispatch target. We keep this
 # section to assert that EITHER the old dispatch exists OR the new matrix +
 # lint-verify split exists. Both outcomes satisfy FG-018's "fast PR CI" CAP.
-say "1. ci.yml PR gate is fast (dispatch or matrix)"
-if grep -q 'target=check-smart' .github/workflows/ci.yml; then
+say "1. ci-branch.yml PR gate is fast (dispatch or matrix)"
+if grep -q 'target=check-smart' .github/workflows/ci-branch.yml; then
   pass "legacy check-smart dispatch wired"
 else
   # New FG-024 shape: lint-verify + acceptance-matrix + acceptance-aggregate
-  grep -q '^  lint-verify:' .github/workflows/ci.yml \
+  grep -q '^  lint-verify:' .github/workflows/ci-branch.yml \
     || { echo "  ✗ neither check-smart dispatch nor lint-verify present" >&2; exit 1; }
-  grep -q '^  acceptance-matrix:' .github/workflows/ci.yml \
+  grep -q '^  acceptance-matrix:' .github/workflows/ci-branch.yml \
     || { echo "  ✗ FG-024 acceptance-matrix not present" >&2; exit 1; }
   pass "FG-024 matrix structure (lint-verify + acceptance-matrix)"
 fi
@@ -41,8 +41,8 @@ fi
 # Even under FG-024, lint-verify still uses fetch-depth: 0 so smart-check can
 # run locally in developers' pre-push hook. Validate the SHAPE, not the spec
 # that it lives inside a job named full-check.
-say "2. some job in ci.yml uses fetch-depth: 0 for smart-check"
-grep -EA4 'actions/checkout@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci.yml | grep -q 'fetch-depth: 0' || {
+say "2. some job in ci-branch.yml uses fetch-depth: 0 for smart-check"
+grep -EA4 'actions/checkout@(v[0-9]+|[0-9a-f]{40})' .github/workflows/ci-branch.yml | grep -q 'fetch-depth: 0' || {
   echo "  ✗ no actions/checkout invocation uses fetch-depth: 0" >&2; exit 1;
 }
 pass "fetch-depth: 0 present on a checkout invocation"
@@ -83,9 +83,9 @@ pass "smart-check dispatches test-fast-only on docs-only PR diff"
 # -----------------------------------------------------------------------------
 # Section 4 — workflow lints clean (hadolint / actionlint equivalent)
 # -----------------------------------------------------------------------------
-say "4. updated ci.yml passes yamllint"
-yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" .github/workflows/ci.yml >/dev/null
-pass "ci.yml yamllint-clean"
+say "4. updated ci-branch.yml passes yamllint"
+yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}" .github/workflows/ci-branch.yml >/dev/null
+pass "ci-branch.yml yamllint-clean"
 
 echo
 echo "FG-018 acceptance: all sections passed."
