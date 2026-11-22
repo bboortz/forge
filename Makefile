@@ -286,7 +286,26 @@ release-artifacts: build
 # Tier bodies.
 ci-branch:  lint test-affected    # 5-min PR gate: lint + affected-only scoped run
 ci-patch:   smoke                  # post-merge smoke (fast; no rebuild)
-ci-release:
-	@echo "ci-release: forge images are published by the nightly build.yml; promote-by-digest arrives with SH-022"
+
+# ci-release-promote: FF main to dev + tag from VERSION (SH-029).
+# Must run on `dev`. Mutates working tree; CI only.
+.PHONY: ci-release-promote
+ci-release-promote:
+	@current=$$(git branch --show-current); \
+	 [ "$$current" = "dev" ] || { echo "ci-release-promote must run on 'dev', got '$$current'"; exit 1; }
+	@[ -f VERSION ] || { echo "VERSION file missing — cannot determine tag"; exit 1; }
+	@version=$$(cat VERSION | tr -d '[:space:]'); \
+	 echo "SH-029 promote: dev → main as v$$version"; \
+	 git fetch origin main && \
+	 git checkout main && \
+	 git merge --ff-only origin/dev && \
+	 git tag "v$$version" HEAD && \
+	 git push origin main && \
+	 git push origin "v$$version" && \
+	 git checkout dev
+
+ci-release: ci-release-promote
+	@echo "ci-release: forge images continue publishing via nightly build.yml; promote-by-digest arrives with SH-022"
+
 ci-nightly: ci-nightly-body
 ci-nightly-body: check-strict      # nightly: full 83-test matrix from cold
