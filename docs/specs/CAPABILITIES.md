@@ -869,3 +869,10 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-086
 - **Covered by**: `tests/acceptance/test_FG_086_docs-structure.sh`, `scripts/verify-docs-structure.sh`
+
+### ci.release-via-pr
+
+**FG-087**: `release.yml` promotes dev → main via an auto-merge pull request, not a direct push. Preserves main's branch protection (required status checks like `resolve-pr` attach to PRs, not to pushed commits). Workflow steps: (1) pre-flight dev-CI-green assertion (unchanged), (2) find-or-create PR `dev → main`, (3) enable auto-merge (`gh pr merge --auto --merge`), (4) poll until merged (10-min cap). Eliminates the FG-086 loosen-push-restore recovery pattern.
+
+- **Delivered by**: FG-087
+- **Covered by**: `tests/acceptance/test_FG_087_release-via-pr.sh`, `.github/workflows/release.yml`
