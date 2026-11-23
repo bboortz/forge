@@ -93,13 +93,14 @@ lint:
 	@# FG-017 C: lint inputs resolved via `git ls-files` so pre-push sees
 	@# exactly what CI sees after push. Protects against the "untracked
 	@# working-tree file masks a CI failure" class of bug (homelab lesson).
-	@echo "→ hadolint"
-	@git ls-files 'images/*/Dockerfile' | xargs -r hadolint
-	@echo "→ shellcheck"
-	@git ls-files 'tests/acceptance/*.sh' 'images/*/tests/*.sh' 'scripts/*.sh' | xargs -r shellcheck
-	@echo "→ yamllint"
-	@git ls-files '.github/*.yaml' '.github/**/*.yaml' '.github/*.yml' '.github/**/*.yml' 'images/*/image.yaml' 'images/*/PROMISES.yaml' 'images/*/EXPECTATIONS.yaml' \
-	  | xargs -r yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}"
+	@# Each external linter is guarded with `command -v` so `make lint` stays
+	@# usable on any environment (dev workstation, ci-patch runner without
+	@# full lint-tool installs, etc.). ci-branch installs the full set and
+	@# remains the authoritative lint gate (mirrors homelab SH-054 pattern).
+	@if command -v hadolint >/dev/null 2>&1; then echo "→ hadolint"; git ls-files 'images/*/Dockerfile' | xargs -r hadolint; else echo "  hadolint missing — skipping"; fi
+	@if command -v shellcheck >/dev/null 2>&1; then echo "→ shellcheck"; git ls-files 'tests/acceptance/*.sh' 'images/*/tests/*.sh' 'scripts/*.sh' | xargs -r shellcheck; else echo "  shellcheck missing — skipping"; fi
+	@if command -v yamllint >/dev/null 2>&1; then echo "→ yamllint"; git ls-files '.github/*.yaml' '.github/**/*.yaml' '.github/*.yml' '.github/**/*.yml' 'images/*/image.yaml' 'images/*/PROMISES.yaml' 'images/*/EXPECTATIONS.yaml' \
+	  | xargs -r yamllint -d "{extends: default, rules: {line-length: disable, document-start: disable, truthy: {check-keys: false}}}"; else echo "  yamllint missing — skipping"; fi
 	@if command -v actionlint >/dev/null; then echo "→ actionlint"; git ls-files '.github/workflows/*.yml' | xargs -r actionlint; else echo "  actionlint missing — skipping"; fi
 	@echo "→ exec-bit check"
 	@# FG-017 C: every git-tracked .sh must be +x so shellcheck doesn't silently skip it.
