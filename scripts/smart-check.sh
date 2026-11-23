@@ -102,8 +102,7 @@ _CORE_SCRIPTS=(
 #
 # FG-091 narrowing (2026-11-22): the former `.github/workflows/` blanket
 # triggered a full cold rebuild on edits to shepherd.yml /
-# shepherd-gates.yml / dependabot-automerge.yml / ci-release.yml /
-# release.yml — none of which change what the image builds look like.
+# shepherd-gates.yml / dependabot-automerge.yml / ci-release.yml —
 # The bailout now matches only workflows that actually affect image-
 # build semantics:
 #
