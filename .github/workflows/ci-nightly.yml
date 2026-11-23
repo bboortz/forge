@@ -18,10 +18,12 @@ permissions:
 jobs:
   check-strict:
     runs-on: ubuntu-latest
-    # FG-038: 50-min cap. Typical 20-25 min (full cold rebuild of every
-    # image + full acceptance sweep). 2× worst-case typical. If this
-    # exceeds 50 min, something is genuinely hung.
-    timeout-minutes: 50
+    # FG-038: 120-min cap matches shepherd SH-014 nightly tier budget.
+    # Typical 20-25 min (full cold rebuild of every image + full acceptance
+    # sweep), median ~40 min per SH-026 baseline. Raised from 50 → 120 min
+    # after the 2026-11-23 run was killed at 50 min — the tail hit a
+    # genuinely slow image. If this exceeds 120 min, something is hung.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:

@@ -41,7 +41,7 @@ EXPECTED = {
     "build.yml":   {"discover": (1, 10),
                     "publish-builders": (5, 12), "publish-base": (5, 12),
                     "publish-derivatives": (10, 18)},
-    "ci-nightly.yml": {"check-strict": (40, 60)},
+    "ci-nightly.yml": {"check-strict": (40, 120)},
 }
 
 errors = []
