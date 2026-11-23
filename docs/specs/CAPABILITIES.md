@@ -893,7 +893,14 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 ### tier.hook-push
 
-**FG-091 / SH-042**: Canonical fleet-tier Makefile target `hook-push` wraps forge's push-time step bundle (`PUSH_STEPS = check-smart`, forge's FG-017 scope-aware gate) with a ~2 min budget. Same tier name across every fleet repo; step content stays repo-native. No workflow edits, no step renames. Shepherd-side umbrella CAP is `dev-cycle.tier.hook-push`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex. See shepherd `docs/stories/SH-042-hook-tiers.md` for the fleet umbrella.
+**FG-091 / SH-042**: Canonical fleet-tier Makefile target `hook-push` wraps forge's push-time step bundle (`PUSH_STEPS = check-docs check-smart` — check-docs added in FG-092; forge's FG-017 scope-aware gate still handles the image-affecting half) with a ~2 min budget. Same tier name across every fleet repo; step content stays repo-native. No workflow edits, no step renames. Shepherd-side umbrella CAP is `dev-cycle.tier.hook-push`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex. See shepherd `docs/stories/SH-042-hook-tiers.md` for the fleet umbrella.
 
 - **Delivered by**: FG-091
 - **Covered by**: `tests/acceptance/test_FG_091_hook-tiers.sh`
+
+### tier.check-docs
+
+**FG-092 / SH-055**: Canonical fleet-tier Makefile target `check-docs` wraps forge's three doc/metadata-drift gates — `verify-traceability` (story↔plan↔test↔CAP bidirectional links), `verify-sid-pins` (sid pin hygiene), and `verify-promises-version-bump` (PROMISES.yaml version-bump-when-promise-count-changes rule). Same tier name across every fleet repo; body is repo-specific but the entry point is uniform. Wired into both `PUSH_STEPS` (pre-push gate via `hook-push`) and `ci-branch` (CI backstop for `--no-verify` pushes). Pure composition — no new logic; each delegate is already in `make test-fast`. Shepherd-side umbrella CAP is `dev-cycle.tier.check-docs`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex. See shepherd `docs/stories/SH-055-check-docs.md` for the fleet umbrella.
+
+- **Delivered by**: FG-092
+- **Covered by**: `tests/acceptance/test_FG_092_check-docs.sh`
