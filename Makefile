@@ -40,7 +40,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 
 .PHONY: help tools install-hooks lint build scan sign-local verify \
         test-images test-acceptance test-fast check check-strict \
-        check-smart check-smart-strict \
+        check-smart check-smart-strict check-docs \
         hook-commit hook-push \
         scan-regression scan-baseline-update \
         verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift clean-local-images \
@@ -157,6 +157,15 @@ verify-promises-version-bump:
 verify-docs-structure:
 	@bash scripts/verify-docs-structure.sh
 
+# ---------------------------------------------------------------------------
+# FG-092 / SH-055 — fleet-wide `check-docs` wrapper. Each fleet repo exposes
+# a `check-docs` target under the SAME NAME but with a repo-specific body.
+# Forge wraps the three doc/metadata-drift gates that catch the staleness
+# classes observed during the SH-042/044/052/054 push. Delegates only —
+# no new logic. See docs/plan/FG-092-check-docs-plan.md for the fleet map.
+# ---------------------------------------------------------------------------
+check-docs: verify-traceability verify-sid-pins verify-promises-version-bump
+
 # FG-064: regenerate the mermaid dep graph in docs/specs/image-dependency-graph.md
 # between the GENERATED markers + the SVG alongside it. Narrative sections
 # outside the markers are preserved verbatim.
@@ -267,7 +276,7 @@ check-smart-strict:
 # for the fleet mapping; forge-side story is FG-091.
 # ---------------------------------------------------------------------------
 COMMIT_STEPS ?= lint verify-sid-pins verify-traceability
-PUSH_STEPS   ?= check-smart
+PUSH_STEPS   ?= check-docs check-smart
 
 hook-commit: $(COMMIT_STEPS)
 hook-push:   $(PUSH_STEPS)
@@ -299,9 +308,10 @@ smoke: test-fast
 # promote-by-digest in a later SH (SH-022 scope extension).
 release-artifacts: build
 
-# Tier bodies.
-ci-branch:  lint test-affected    # 5-min PR gate: lint + affected-only scoped run
-ci-patch:   smoke                  # post-merge smoke (fast; no rebuild)
+# Tier bodies. (FG-092 / SH-055 wires check-docs into ci-branch so CI
+# backs up pre-push's doc-staleness gate.)
+ci-branch:  lint check-docs test-affected    # 5-min PR gate: lint + docs-drift + affected-only scoped run
+ci-patch:   smoke                             # post-merge smoke (fast; no rebuild)
 
 # ci-release-promote: FF main to dev + tag from VERSION (SH-029).
 # Must run on `dev`. Mutates working tree; CI only.
