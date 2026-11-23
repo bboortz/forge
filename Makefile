@@ -41,6 +41,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
 .PHONY: help tools install-hooks lint build scan sign-local verify \
         test-images test-acceptance test-fast check check-strict \
         check-smart check-smart-strict \
+        hook-commit hook-push \
         scan-regression scan-baseline-update \
         verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift clean-local-images \
         _local-registry _local-registry-stop
@@ -255,6 +256,20 @@ check-smart:
 # nightly cron still runs check-strict from cold as the safety net.
 check-smart-strict:
 	@bash scripts/smart-check.sh
+
+# ---------------------------------------------------------------------------
+# SH-042 — fleet-wide hook-commit / hook-push tier wrappers.
+# Each tier name means the same thing on every fleet repo; step contents stay
+# repo-native (forge's COMMIT_STEPS = lint + verify-sid-pins + verify-
+# traceability; PUSH_STEPS = check-smart). Budgets: hook-commit ~15 s,
+# hook-push ~2 min. See shepherd docs/plan/IDEAS-dev-workflow-contract-v3.md
+# for the fleet mapping; forge-side story is FG-091.
+# ---------------------------------------------------------------------------
+COMMIT_STEPS ?= lint verify-sid-pins verify-traceability
+PUSH_STEPS   ?= check-smart
+
+hook-commit: $(COMMIT_STEPS)
+hook-push:   $(PUSH_STEPS)
 
 ##@ Shepherd dev-cycle contract (SH-014 / SH-019)
 #
