@@ -61,7 +61,7 @@ jobs:
       base: ${{ steps.disc.outputs.base }}
       derivatives: ${{ steps.disc.outputs.derivatives }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - id: disc
         env:
           # FG-057: workflow_dispatch may pass `images=<name|csv|glob>`.
@@ -98,13 +98,13 @@ jobs:
       packages: write
       id-token: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
       - name: Current UTC day (for grype DB cache key)
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         timeout-minutes: 3
         continue-on-error: true
         with:
@@ -121,7 +121,7 @@ jobs:
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Login to GHCR for cache pull/push
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -171,13 +171,13 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
       - name: Current UTC day (for grype DB cache key)
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         timeout-minutes: 3
         continue-on-error: true
         with:
@@ -194,7 +194,7 @@ jobs:
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -252,7 +252,7 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: scan-${{ matrix.safe_name }}-${{ matrix.tag }}
           path: build/
@@ -277,13 +277,13 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
       - name: Current UTC day (for grype DB cache key)
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         # FG-038: 3-min cap + continue-on-error — cache action hangs on
         # GHA service slowness should fail fast; grype re-downloads DB.
         timeout-minutes: 3
@@ -304,7 +304,7 @@ jobs:
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -362,7 +362,7 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: scan-${{ matrix.safe_name }}-${{ matrix.tag }}
           path: build/
@@ -382,15 +382,15 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       # FG-021: buildx + GHCR cache.
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
       - name: Current UTC day (for grype DB cache key)
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       # FG-022: cache grype CVE DB.
       - name: Cache grype DB
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         # FG-038: 3-min cap + continue-on-error — cache action hangs on
         # GHA service slowness should fail fast; grype re-downloads DB.
         timeout-minutes: 3
@@ -411,7 +411,7 @@ jobs:
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -470,7 +470,7 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: scan-${{ matrix.safe_name }}-${{ matrix.tag }}
           path: build/
@@ -492,14 +492,14 @@ jobs:
     env:
       REGISTRY: ghcr.io/bboortz
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       # FG-021 + FG-022: same cache setup as publish-base.
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
       - name: Current UTC day
         id: dt
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache grype DB
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         # FG-038: 3-min cap + continue-on-error — cache action hangs on
         # GHA service slowness should fail fast; grype re-downloads DB.
         timeout-minutes: 3
@@ -520,7 +520,7 @@ jobs:
           chmod +x "$HOME/.local/bin/cosign"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -578,7 +578,7 @@ jobs:
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: scan-${{ matrix.safe_name }}-${{ matrix.tag }}
           path: build/

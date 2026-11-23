@@ -883,3 +883,17 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 - **Delivered by**: FG-090
 - **Covered by**: `scripts/discover-affected-tests.sh` + `.github/workflows/ci.yml` (discover job) + measured post-adoption PR median delta from the SH-026 11.8 min baseline (shepherd).
+
+### tier.hook-commit
+
+**FG-091 / SH-042**: Canonical fleet-tier Makefile target `hook-commit` wraps forge's commit-time step bundle (`COMMIT_STEPS = lint verify-sid-pins verify-traceability`) with a ~15 s budget. Same tier name across every fleet repo; step content stays repo-native. No workflow edits, no step renames. Shepherd-side umbrella CAP is `dev-cycle.tier.hook-commit`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex. See shepherd `docs/stories/SH-042-hook-tiers.md` for the fleet umbrella.
+
+- **Delivered by**: FG-091
+- **Covered by**: `tests/acceptance/test_FG_091_hook-tiers.sh`
+
+### tier.hook-push
+
+**FG-091 / SH-042**: Canonical fleet-tier Makefile target `hook-push` wraps forge's push-time step bundle (`PUSH_STEPS = check-smart`, forge's FG-017 scope-aware gate) with a ~2 min budget. Same tier name across every fleet repo; step content stays repo-native. No workflow edits, no step renames. Shepherd-side umbrella CAP is `dev-cycle.tier.hook-push`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex. See shepherd `docs/stories/SH-042-hook-tiers.md` for the fleet umbrella.
+
+- **Delivered by**: FG-091
+- **Covered by**: `tests/acceptance/test_FG_091_hook-tiers.sh`

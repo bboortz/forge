@@ -3,7 +3,7 @@
 # cache, every image rebuilt cold, every acceptance test, every smoke) on
 # `dev` HEAD. Catches "smart pre-push was wrong about the affected set" —
 # the safety net that makes scope-based pre-push acceptable.
-name: Nightly check-strict
+name: ci-nightly
 
 on:
   schedule:
@@ -18,12 +18,14 @@ permissions:
 jobs:
   check-strict:
     runs-on: ubuntu-latest
-    # FG-038: 50-min cap. Typical 20-25 min (full cold rebuild of every
-    # image + full acceptance sweep). 2× worst-case typical. If this
-    # exceeds 50 min, something is genuinely hung.
-    timeout-minutes: 50
+    # FG-038: 120-min cap matches shepherd SH-014 nightly tier budget.
+    # Typical 20-25 min (full cold rebuild of every image + full acceptance
+    # sweep), median ~40 min per SH-026 baseline. Raised from 50 → 120 min
+    # after the 2026-11-23 run was killed at 50 min — the tail hit a
+    # genuinely slow image. If this exceeds 120 min, something is hung.
+    timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: dev
           fetch-depth: 0
@@ -34,7 +36,7 @@ jobs:
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
 
       - name: Cache grype DB
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
         # FG-038: 3-min cap + continue-on-error — cache action hangs on
         # GHA service slowness should fail fast; grype re-downloads DB.
         timeout-minutes: 3
@@ -51,16 +53,16 @@ jobs:
           sudo apt-get install -y -qq shellcheck yamllint jq python3-yaml
           # hadolint is NOT in Ubuntu apt (the 2026-11-09 nightly failure root
           # cause — ubuntu-latest runner drops the package). Use the same
-          # Docker Hub extract path ci.yml adopted on 2026-11-08 after the
+          # Docker Hub extract path ci-branch.yml adopted on 2026-11-08 after the
           # GitHub-releases CDN flapped 504s.
           sudo bash scripts/install-tool-from-docker.sh hadolint/hadolint:latest-debian /bin/hadolint /usr/local/bin/hadolint
           command -v grype >/dev/null || sudo bash scripts/install-tool-from-docker.sh anchore/grype:latest /grype /usr/local/bin/grype
           command -v syft  >/dev/null || sudo bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  /usr/local/bin/syft
           # cosign (needed by check-strict's sign-local / verify targets).
-          # Pinned to v2.6.5 as in ci.yml's acceptance-matrix job.
+          # Pinned to v2.6.5 as in ci-branch.yml's acceptance-matrix job.
           sudo bash scripts/install-tool-from-docker.sh gcr.io/projectsigstore/cosign:v2.6.5 /ko-app/cosign /usr/local/bin/cosign
           sudo chmod +x /usr/local/bin/cosign
-          # actionlint via `go install` (ci.yml pattern).
+          # actionlint via `go install` (ci-branch.yml pattern).
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
@@ -68,9 +70,9 @@ jobs:
       # is still useful here for the FROM-base-image layer (saves the python-
       # slim-trixie pull per image). Don't push cache from nightly — it
       # intentionally rebuilds everything cold.
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
 
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

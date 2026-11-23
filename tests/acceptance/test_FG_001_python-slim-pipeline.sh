@@ -71,19 +71,19 @@ pass "sign-local + verify both exit 0"
 # -----------------------------------------------------------------------------
 # Section 5 — Scenario: non-publish CI is scan-only
 # -----------------------------------------------------------------------------
-# Static check — ci.yml must not run `docker push` or `cosign sign` and must
+# Static check — ci-branch.yml must not run `docker push` or `cosign sign` and must
 # not request id-token:write. Keyless signing lives only in build.yml.
-say "5. .github/workflows/ci.yml is scan-only (no push, no keyless sign)"
-test -f .github/workflows/ci.yml
-if grep -E '^[[:space:]]*(docker push|cosign sign)' .github/workflows/ci.yml >/dev/null; then
-  echo "  ✗ ci.yml must not push or sign" >&2
+say "5. .github/workflows/ci-branch.yml is scan-only (no push, no keyless sign)"
+test -f .github/workflows/ci-branch.yml
+if grep -E '^[[:space:]]*(docker push|cosign sign)' .github/workflows/ci-branch.yml >/dev/null; then
+  echo "  ✗ ci-branch.yml must not push or sign" >&2
   exit 1
 fi
-if grep -E 'id-token:[[:space:]]*write' .github/workflows/ci.yml >/dev/null; then
-  echo "  ✗ ci.yml must not request id-token: write" >&2
+if grep -E 'id-token:[[:space:]]*write' .github/workflows/ci-branch.yml >/dev/null; then
+  echo "  ✗ ci-branch.yml must not request id-token: write" >&2
   exit 1
 fi
-pass "ci.yml has no push, no sign, no id-token write"
+pass "ci-branch.yml has no push, no sign, no id-token write"
 
 # -----------------------------------------------------------------------------
 # Section 6 — Scenarios requiring a published digest (opt-in via PUBLISHED=1)

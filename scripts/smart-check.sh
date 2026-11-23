@@ -102,14 +102,13 @@ _CORE_SCRIPTS=(
 #
 # FG-091 narrowing (2026-11-22): the former `.github/workflows/` blanket
 # triggered a full cold rebuild on edits to shepherd.yml /
-# shepherd-gates.yml / dependabot-automerge.yml / ci-release.yml /
-# release.yml — none of which change what the image builds look like.
+# shepherd-gates.yml / dependabot-automerge.yml / ci-release.yml —
 # The bailout now matches only workflows that actually affect image-
 # build semantics:
 #
-#   ci.yml       — the acceptance matrix + lint-verify
+#   ci-branch.yml       — the acceptance matrix + lint-verify
 #   build.yml    — the nightly image publish
-#   nightly.yml  — nightly check-strict sweep
+#   ci-nightly.yml  — nightly check-strict sweep
 #
 # Other workflows fall through to the scoped path. test-fast still
 # always runs in the scoped path (covers lint + verify-* + yamllint on

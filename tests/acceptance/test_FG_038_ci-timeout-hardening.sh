@@ -35,14 +35,13 @@ WF_DIR = ROOT / ".github" / "workflows"
 # Values from docs/plan/FG-038-ci-timeout-hardening-plan.md § Per-job
 # timeout-minutes table.
 EXPECTED = {
-    "ci.yml":      {"fast-check": (1, 10), "lint-verify": (1, 10), "discover": (1, 10),
+    "ci-branch.yml":      {"fast-check": (1, 10), "lint-verify": (1, 10), "discover": (1, 10),
                     "acceptance-matrix": (4, 15), "acceptance-aggregate": (1, 5),
                     "release-check": (1, 10)},
     "build.yml":   {"discover": (1, 10),
                     "publish-builders": (5, 12), "publish-base": (5, 12),
                     "publish-derivatives": (10, 18)},
-    "release.yml": {"promote": (1, 10)},
-    "nightly.yml": {"check-strict": (40, 60)},
+    "ci-nightly.yml": {"check-strict": (40, 120)},
 }
 
 errors = []
