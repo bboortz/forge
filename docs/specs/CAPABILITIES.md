@@ -900,7 +900,15 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 ### tier.check-docs
 
-**FG-092 / SH-055**: Canonical fleet-tier Makefile target `check-docs` wraps forge's three doc/metadata-drift gates — `verify-traceability` (story↔plan↔test↔CAP bidirectional links), `verify-sid-pins` (sid pin hygiene), and `verify-promises-version-bump` (PROMISES.yaml version-bump-when-promise-count-changes rule). Same tier name across every fleet repo; body is repo-specific but the entry point is uniform. Wired into both `PUSH_STEPS` (pre-push gate via `hook-push`) and `ci-branch` (CI backstop for `--no-verify` pushes). Pure composition — no new logic; each delegate is already in `make test-fast`. Shepherd-side umbrella CAP is `dev-cycle.tier.check-docs`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex. See shepherd `docs/stories/SH-055-check-docs.md` for the fleet umbrella.
+**FG-092 / SH-055**: Canonical fleet-tier Makefile target `check-docs` wraps forge's three doc/metadata-drift gates — `verify-traceability` (story↔plan↔test↔CAP bidirectional links), `verify-sid-pins` (sid pin hygiene), and `verify-promises-version-bump` (PROMISES.yaml version-bump-when-promise-count-changes rule). FG-093 appends `verify-index-status` as a fourth sibling delegate. Same tier name across every fleet repo; body is repo-specific but the entry point is uniform. Wired into both `PUSH_STEPS` (pre-push gate via `hook-push`) and `ci-branch` (CI backstop for `--no-verify` pushes). Pure composition — no new logic; each delegate is already in `make test-fast`. Shepherd-side umbrella CAP is `dev-cycle.tier.check-docs`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex. See shepherd `docs/stories/SH-055-check-docs.md` for the fleet umbrella.
 
 - **Delivered by**: FG-092
-- **Covered by**: `tests/acceptance/test_FG_092_check-docs.sh`
+- **Extended by**: FG-093 (verify-index-status appended)
+- **Covered by**: `tests/acceptance/test_FG_092_check-docs.sh`, `tests/acceptance/test_FG_093_verify-index-status.sh`
+
+### tier.verify-index-status
+
+**FG-093 / SH-056**: Doc-staleness check: every `docs/stories/<ID>-<slug>.md` file's frontmatter `status:` must match the status column of its matching row in `docs/stories/INDEX.md`; shipped+ stories missing an INDEX row fail. Byte-identical to shepherd's `scripts/verify-index-status.sh` (fleet convention). Wired as a fourth sibling delegate of `check-docs` so it runs in both `PUSH_STEPS` (pre-push via `hook-push`) and `ci-branch` (CI backstop for `--no-verify` pushes). Closes the specific gap that `verify-traceability` doesn't cover — traceability reads status only from frontmatter, so an out-of-sync INDEX slips through until a human notices (shepherd PR #55 drift, 2026-11-23). Shepherd-side umbrella CAP is `dev-cycle.verify-index-status`; forge drops the `dev-cycle.` prefix to fit its one-dot CAP-id regex.
+
+- **Delivered by**: FG-093
+- **Covered by**: `tests/acceptance/test_FG_093_verify-index-status.sh`
