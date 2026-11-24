@@ -46,7 +46,9 @@ jobs:
       - name: Install lint tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck yamllint jq
+          sudo apt-get install -y shellcheck jq
+          pip install --user yamllint
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # hadolint via Docker Hub (different CDN than GitHub releases; GH flapped 504s on 2026-11-08).
           sudo bash scripts/install-tool-from-docker.sh hadolint/hadolint:latest-debian /bin/hadolint /usr/local/bin/hadolint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
@@ -72,7 +74,9 @@ jobs:
       - name: Install lint tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck yamllint jq python3-yaml
+          sudo apt-get install -y shellcheck jq python3-yaml
+          pip install --user yamllint
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # hadolint via Docker Hub (different CDN than GitHub releases; GH flapped 504s on 2026-11-08).
           sudo bash scripts/install-tool-from-docker.sh hadolint/hadolint:latest-debian /bin/hadolint /usr/local/bin/hadolint
           go install github.com/rhysd/actionlint/cmd/actionlint@latest
@@ -183,7 +187,9 @@ jobs:
         timeout-minutes: 5
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y shellcheck yamllint jq python3-yaml
+          sudo apt-get install -y shellcheck jq python3-yaml
+          pip install --user yamllint
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # syft + grype via Docker Hub (GitHub release CDN flaps 504s; Docker Hub is separate).
           mkdir -p "$HOME/.local/bin"
           bash scripts/install-tool-from-docker.sh anchore/syft:latest  /syft  "$HOME/.local/bin/syft"
