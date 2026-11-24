@@ -248,7 +248,7 @@ jobs:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
         run: |
           cosign verify \
-            --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
+            --certificate-identity-regexp "^https://github\.com/bboortz/forge/\.github/workflows/build\.yml@refs/heads/(main|dev)$" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
@@ -358,7 +358,7 @@ jobs:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
         run: |
           cosign verify \
-            --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
+            --certificate-identity-regexp "^https://github\.com/bboortz/forge/\.github/workflows/build\.yml@refs/heads/(main|dev)$" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
@@ -466,7 +466,7 @@ jobs:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
         run: |
           cosign verify \
-            --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
+            --certificate-identity-regexp "^https://github\.com/bboortz/forge/\.github/workflows/build\.yml@refs/heads/(main|dev)$" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
@@ -574,7 +574,7 @@ jobs:
           IMAGE_DIGEST: ${{ steps.push.outputs.image_digest }}
         run: |
           cosign verify \
-            --certificate-identity "https://github.com/bboortz/forge/.github/workflows/build.yml@refs/heads/main" \
+            --certificate-identity-regexp "^https://github\.com/bboortz/forge/\.github/workflows/build\.yml@refs/heads/(main|dev)$" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
             "$IMAGE_DIGEST"
       - name: Upload scan artifacts
