@@ -62,7 +62,10 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN set -eux; \
     TARGET_REF="${CADVISOR_VERSION}"; \
     if [ -z "${TARGET_REF}" ]; then \
-      TARGET_REF="$(curl -fsSL \
+      # FG-050 hardening: api.github.com occasionally returns 502 on shared
+      # GHA runner IPs (observed 2026-11-24 run 45323010366). --retry 4
+      # with --retry-all-errors handles 5xx + transient resets natively.
+      TARGET_REF="$(curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors \
         ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
         https://api.github.com/repos/google/cadvisor/releases/latest \
         | jq -r '.tag_name // empty')"; \

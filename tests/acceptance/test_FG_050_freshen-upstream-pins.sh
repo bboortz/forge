@@ -110,7 +110,17 @@ for img_dir in cadvisor-slim-trixie \
                ipmi-exporter-slim-trixie \
                node-exporter-scratch-trixie; do
   echo "   → building ${img_dir}"
-  bash scripts/build-image.sh "${img_dir}" >/dev/null
+  # Keep stderr on failure so CI logs show the root cause (e.g. curl 502
+  # from the upstream-version resolve step in each Dockerfile). Previously
+  # both stdout + stderr were swallowed, which made FG-050 fails opaque.
+  build_log=$(mktemp)
+  if ! bash scripts/build-image.sh "${img_dir}" >"${build_log}" 2>&1; then
+    echo "--- build log (${img_dir}) ---" >&2
+    tail -80 "${build_log}" >&2
+    rm -f "${build_log}"
+    fail "scripts/build-image.sh ${img_dir} failed; see tail above"
+  fi
+  rm -f "${build_log}"
   # Resolve the tag we just built against (needed because :latest images
   # have a floating tag; FG-004 publishes them as forge-local/<img>:<tag>).
   tag=$(awk '$1 == "tag:" {gsub(/["\x27]/,"",$2); print $2; exit}' "images/${img_dir}/image.yaml")

@@ -62,7 +62,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN set -eux; \
     TARGET_REF="${IPMI_EXPORTER_VERSION}"; \
     if [ -z "${TARGET_REF}" ]; then \
-      TARGET_REF="$(curl -fsSL \
+      # FG-050 hardening: api.github.com 502s on shared runner IPs.
+      TARGET_REF="$(curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors \
         ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
         https://api.github.com/repos/prometheus-community/ipmi_exporter/releases/latest \
         | jq -r '.tag_name // empty')"; \
