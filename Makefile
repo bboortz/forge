@@ -43,7 +43,7 @@ ACCEPTANCE_TESTS := $(wildcard tests/acceptance/test_FG_*.sh)
         check-smart check-smart-strict check-docs \
         hook-commit hook-push \
         scan-regression scan-baseline-update \
-        verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift clean-local-images \
+        verify-sid-pins verify-traceability verify-contracts verify-image-dirs verify-no-upstream-drift verify-index-status clean-local-images \
         _local-registry _local-registry-stop
 
 help:
@@ -157,14 +157,21 @@ verify-promises-version-bump:
 verify-docs-structure:
 	@bash scripts/verify-docs-structure.sh
 
+# FG-093 / SH-056: catch docs/stories/INDEX.md ↔ story frontmatter status
+# drift. Byte-identical to shepherd's scripts/verify-index-status.sh (fleet
+# convention). Wired below as a fourth sibling of check-docs.
+verify-index-status:
+	@scripts/verify-index-status.sh
+
 # ---------------------------------------------------------------------------
 # FG-092 / SH-055 — fleet-wide `check-docs` wrapper. Each fleet repo exposes
 # a `check-docs` target under the SAME NAME but with a repo-specific body.
 # Forge wraps the three doc/metadata-drift gates that catch the staleness
 # classes observed during the SH-042/044/052/054 push. Delegates only —
 # no new logic. See docs/plan/FG-092-check-docs-plan.md for the fleet map.
+# FG-093 / SH-056 appends verify-index-status as a fourth sibling delegate.
 # ---------------------------------------------------------------------------
-check-docs: verify-traceability verify-sid-pins verify-promises-version-bump
+check-docs: verify-traceability verify-sid-pins verify-promises-version-bump verify-index-status
 
 # FG-064: regenerate the mermaid dep graph in docs/specs/image-dependency-graph.md
 # between the GENERATED markers + the SVG alongside it. Narrative sections
