@@ -78,3 +78,10 @@ repos:
         entry: bash -c 'make check-smart-strict'
         pass_filenames: false
         stages: [pre-push]
+
+  # SH-059 — fleet gitleaks secret-scan gate (staged scan, both stages).
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks-system
+        stages: [pre-commit, pre-push]
