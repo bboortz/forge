@@ -101,7 +101,7 @@ jobs:
             echo "number=${number}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Enable auto-merge
+      - name: Enable auto-merge (or merge directly if already clean)
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
@@ -110,8 +110,24 @@ jobs:
           # --merge: preserve dev's full history as a merge-commit on main
           # (matches the PR #187 / PR #190 precedent).
           # --auto: GitHub merges once required status checks are satisfied.
-          gh pr merge "${PR_NUMBER}" --merge --auto
-          echo "✓ auto-merge enabled on PR #${PR_NUMBER}"
+          #
+          # Quirk: `gh pr merge --auto` refuses with "Pull request is in clean
+          # status (enablePullRequestAutoMerge)" when the PR is already green
+          # at call time — GitHub insists auto-merge only arm when there's
+          # something to wait for. Fall back to a direct `gh pr merge` in
+          # that case; the preflight step already asserted CI is green on
+          # the source SHA, so the PR's checks will mirror that and the
+          # direct merge is safe.
+          if gh pr merge "${PR_NUMBER}" --merge --auto 2>&1 | tee /tmp/merge.log; then
+            echo "✓ auto-merge enabled on PR #${PR_NUMBER}"
+          elif grep -q "clean status" /tmp/merge.log; then
+            echo "→ PR #${PR_NUMBER} already clean; merging directly"
+            gh pr merge "${PR_NUMBER}" --merge
+            echo "✓ merged PR #${PR_NUMBER} directly"
+          else
+            echo "::error::gh pr merge failed for an unexpected reason (see log above)"
+            exit 1
+          fi
 
       - name: Wait for PR merge
         id: wait
