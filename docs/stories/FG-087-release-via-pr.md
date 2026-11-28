@@ -1,7 +1,7 @@
 ---
 id: FG-087
 slug: release-via-pr
-status: in-progress
+status: shipped
 owner: bboortz
 created: 2026-11-22
 ---

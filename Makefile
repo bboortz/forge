@@ -320,25 +320,26 @@ release-artifacts: build
 ci-branch:  lint check-docs test-affected    # 5-min PR gate: lint + docs-drift + affected-only scoped run
 ci-patch:   smoke                             # post-merge smoke (fast; no rebuild)
 
-# ci-release-promote: FF main to dev + tag from VERSION (SH-029).
-# Must run on `dev`. Mutates working tree; CI only.
+# ci-release-promote + ci-release: dev → main promotion.
+#
+# The actual promotion lives in .github/workflows/ci-release.yml, which
+# opens a dev → main PR, auto-merges on green checks, and tags v<VERSION>
+# on the resulting main HEAD. This PR path is required because main's
+# classic branch protection mandates the `resolve-pr` status check
+# (shepherd-gates app 15368) which never fires on direct pushes — see
+# the workflow file header for the full 2026-11-28 retro.
+#
+# These Makefile aliases exist so a developer who types `make ci-release`
+# out of habit gets dispatched to the workflow instead of a stale direct-
+# push recipe. Requires gh CLI + auth.
 .PHONY: ci-release-promote
-ci-release-promote:
-	@current=$$(git branch --show-current); \
-	 [ "$$current" = "dev" ] || { echo "ci-release-promote must run on 'dev', got '$$current'"; exit 1; }
-	@[ -f VERSION ] || { echo "VERSION file missing — cannot determine tag"; exit 1; }
-	@version=$$(cat VERSION | tr -d '[:space:]'); \
-	 echo "SH-029 promote: dev → main as v$$version"; \
-	 git fetch origin main && \
-	 git checkout main && \
-	 git merge --ff-only origin/dev && \
-	 git tag "v$$version" HEAD && \
-	 git push origin main && \
-	 git push origin "v$$version" && \
-	 git checkout dev
+ci-release-promote: ci-release
 
-ci-release: ci-release-promote
-	@echo "ci-release: forge images continue publishing via nightly build.yml; promote-by-digest arrives with SH-022"
+ci-release:
+	@command -v gh >/dev/null || { echo "gh CLI required (https://cli.github.com)"; exit 1; }
+	@echo "→ dispatching ci-release.yml on dev"
+	@gh workflow run ci-release.yml --ref dev
+	@echo "→ tail run: gh run watch \$$(gh run list --workflow=ci-release.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
 
 ci-nightly: ci-nightly-body
 ci-nightly-body: check-strict      # nightly: full 83-test matrix from cold

@@ -872,10 +872,12 @@ Architectural invariant: every `builder/<lang>-trixie/` L2 image is a language-f
 
 ### ci.release-via-pr
 
-**FG-087**: `release.yml` promotes dev → main via an auto-merge pull request, not a direct push. Preserves main's branch protection (required status checks like `resolve-pr` attach to PRs, not to pushed commits). Workflow steps: (1) pre-flight dev-CI-green assertion (unchanged), (2) find-or-create PR `dev → main`, (3) enable auto-merge (`gh pr merge --auto --merge`), (4) poll until merged (10-min cap). Eliminates the FG-086 loosen-push-restore recovery pattern.
+**FG-087**: `ci-release.yml` promotes dev → main via an auto-merge pull request, not a direct push. Preserves main's branch protection (classic protection still requires `resolve-pr` from shepherd-gates app 15368, which only attaches to PRs — never to pushed commits). Workflow steps: (1) preflight — on dev, VERSION readable, `v<VERSION>` tag unused; (2) assert dev-CI-green; (3) find-or-create PR `dev → main`; (4) enable auto-merge (`gh pr merge --auto --merge`); (5) poll until merged (10-min cap); (6) tag `v<VERSION>` on the merge commit, push tag. Eliminates the FG-086 loosen-push-restore recovery pattern.
+
+Originally shipped as `release.yml`; retired by SH-041 (2026-11-22) under the mistaken belief that the 2025 ruleset-only protection would accept direct pushes. Three failed ci-release runs on 2026-11-28 (46133329961 / 46134457137 / 46135343072) proved classic `resolve-pr` protection still applies. Restored under `ci-release.yml` with VERSION-driven tagging layered on top.
 
 - **Delivered by**: FG-087
-- **Covered by**: `tests/acceptance/test_FG_087_release-via-pr.sh`, `.github/workflows/release.yml`
+- **Covered by**: `tests/acceptance/test_FG_087_release-via-pr.sh`, `.github/workflows/ci-release.yml`
 
 ### ci.affected-only-matrix
 

@@ -1,10 +1,24 @@
 ---
 # Dev-cycle contract (SH-014) — tier 3: release promotion.
 # Budget: 15 minutes wall-clock. NO new build may start here.
-# Fast-forward dev -> main; tag; publish images/sigs in parallel.
 #
-# Copy from https://github.com/bboortz/shepherd/blob/main/templates/ci-release.yml
-# Spec: https://github.com/bboortz/shepherd/blob/main/docs/specs/dev-cycle-contract.md
+# Promote dev → main via auto-merge PR, then tag v<VERSION> on main HEAD.
+#
+# ## Why PR-based (not direct push)
+#
+# The main branch has two protection layers:
+#   1. Repository ruleset (2025 system) requires status check
+#      "Acceptance aggregate (all green)". Satisfied by dev HEAD.
+#   2. Classic branch protection requires status check "resolve-pr"
+#      (shepherd-gates app 15368). ONLY produced on pull_request events —
+#      never on direct pushes.
+#
+# SH-041 (2026-11-22) deleted the FG-087 PR-based release flow assuming
+# only the ruleset applied. That was wrong — classic protection still
+# requires resolve-pr, so direct pushes to main are structurally blocked.
+# The 2026-11-28 investigation of three failed ci-release runs
+# (46133329961 / 46134457137 / 46135343072) confirmed this. This workflow
+# restores the FG-087 PR flow with VERSION tagging layered on top.
 name: ci-release
 
 "on":
@@ -13,6 +27,7 @@ name: ci-release
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   release:
@@ -21,13 +36,129 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: dev       # SH-029: ci-release promotes dev → main; must start on dev
+          ref: dev
           fetch-depth: 0
 
-      - name: Configure git for FF-promote (SH-029)
+      - name: Preflight — on dev, VERSION readable, tag unused
+        id: preflight
         run: |
+          set -euo pipefail
+          [ "$(git branch --show-current)" = "dev" ] \
+            || { echo "::error::checkout left HEAD off dev"; exit 1; }
+          [ -f VERSION ] || { echo "::error::VERSION file missing"; exit 1; }
+          version=$(tr -d '[:space:]' < VERSION)
+          src_sha=$(git rev-parse HEAD)
+          echo "version=${version}"   >> "$GITHUB_OUTPUT"
+          echo "src_sha=${src_sha}"   >> "$GITHUB_OUTPUT"
+          git fetch origin --tags >/dev/null
+          if git rev-parse --quiet --verify "refs/tags/v${version}" >/dev/null; then
+            echo "::error::v${version} tag already exists. Bump VERSION in a PR first."
+            exit 1
+          fi
+          echo "✓ preflight: dev @ ${src_sha:0:8}, VERSION=${version}, v${version} tag free"
+
+      - name: Assert CI green on dev HEAD
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SRC_SHA: ${{ steps.preflight.outputs.src_sha }}
+        run: |
+          set -euo pipefail
+          # These checks must already be green on dev HEAD — the PR below
+          # will reuse them against the same SHA, which lets this whole
+          # workflow stay inside the 15-min SH-014 budget.
+          for check in "Acceptance aggregate (all green)" "Lint & verify (PR + push-to-dev)"; do
+            status=$(gh api --paginate \
+              "repos/${{ github.repository }}/commits/${SRC_SHA}/check-runs?per_page=100" \
+              --jq "[.check_runs[] | select(.name == \"${check}\")] | sort_by(.started_at) | .[-1].conclusion" \
+              2>/dev/null || echo "")
+            if [ "$status" != "success" ]; then
+              echo "::error::'${check}' on ${SRC_SHA:0:8} not green (status=${status:-not-yet-run}). Wait for CI to pass before promoting."
+              exit 1
+            fi
+            echo "✓ ${check} green"
+          done
+
+      - name: Find or create dev → main PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          SRC_SHA: ${{ steps.preflight.outputs.src_sha }}
+        run: |
+          set -euo pipefail
+          existing=$(gh pr list --base main --head dev --state open --json number --jq '.[0].number // empty')
+          if [ -n "${existing}" ]; then
+            echo "✓ reusing open PR #${existing}"
+            gh pr edit "${existing}" \
+              --body "Automated promotion by ci-release run ${{ github.run_id }}. VERSION=v${VERSION}. dev HEAD \`${SRC_SHA:0:8}\`."
+            echo "number=${existing}" >> "$GITHUB_OUTPUT"
+          else
+            pr_url=$(gh pr create --base main --head dev \
+              --title "release: promote dev → main (v${VERSION})" \
+              --body "Automated promotion by ci-release run ${{ github.run_id }}. VERSION=v${VERSION}. dev HEAD \`${SRC_SHA:0:8}\`. Auto-merges once required checks pass.")
+            number=$(basename "${pr_url}")
+            echo "✓ opened PR #${number}: ${pr_url}"
+            echo "number=${number}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
+          # --merge: preserve dev's full history as a merge-commit on main
+          # (matches the PR #187 / PR #190 precedent).
+          # --auto: GitHub merges once required status checks are satisfied.
+          gh pr merge "${PR_NUMBER}" --merge --auto
+          echo "✓ auto-merge enabled on PR #${PR_NUMBER}"
+
+      - name: Wait for PR merge
+        id: wait
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          until state=$(gh pr view "${PR_NUMBER}" --json state --jq .state) \
+                && [ "${state}" = "MERGED" ]; do
+            printf "  pr #%s state=%s — waiting…\n" "${PR_NUMBER}" "${state}"
+            sleep 15
+          done
+          merge_sha=$(gh pr view "${PR_NUMBER}" --json mergeCommit --jq '.mergeCommit.oid // empty')
+          echo "merge_sha=${merge_sha}" >> "$GITHUB_OUTPUT"
+          echo "✓ PR #${PR_NUMBER} merged: main now at ${merge_sha:0:8}"
+
+      - name: Tag v<VERSION> on main HEAD
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          MERGE_SHA: ${{ steps.wait.outputs.merge_sha }}
+        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main --tags >/dev/null
+          # Tag the merge commit directly, not origin/main — avoids a race
+          # if another push to main lands between the merge and this step.
+          git tag "v${VERSION}" "${MERGE_SHA}"
+          git push origin "v${VERSION}"
+          echo "✓ tagged v${VERSION} on ${MERGE_SHA:0:8}"
 
-      - name: Run release-tier promotion (FF dev → main + tag)
-        run: make ci-release
+      - name: Summary
+        env:
+          VERSION: ${{ steps.preflight.outputs.version }}
+          SRC_SHA: ${{ steps.preflight.outputs.src_sha }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          MERGE_SHA: ${{ steps.wait.outputs.merge_sha }}
+        run: |
+          {
+            echo "## Promoted dev → main as v${VERSION}"
+            echo "- Source (dev HEAD): \`${SRC_SHA:0:8}\`"
+            echo "- Release PR: #${PR_NUMBER}"
+            echo "- Main merge commit: \`${MERGE_SHA:0:8}\`"
+            echo "- Tag: \`v${VERSION}\`"
+            echo ""
+            echo "Next daily cron will publish from the new main HEAD."
+          } >> "$GITHUB_STEP_SUMMARY"
